@@ -349,23 +349,15 @@ Current staging snapshot record:
 - Integrity checks performed: `gzip -t` and `pg_restore --list`.
 - Full restore rehearsal: passed once in Step 35 against an isolated temporary PostgreSQL container with no host port exposure.
 
-Step 37 backup hardening decision:
+Step 37/38 backup hardening decision:
 
-- Recommended encryption: `age` file encryption with only the public recipient on the staging server.
-- Private key location: outside the staging server, controlled by the operator.
-- Recommended offsite path: encrypted backup copied by `rsync` to an existing NAS/separate server if available, or S3-compatible storage for longer-term beta/production alignment.
+- Age-based encrypted backup setup is deferred for the current staging/internal beta phase.
+- Reason: operator-only private-key custody would concentrate recovery responsibility, and private-key loss would make encrypted backups unrecoverable.
+- Current accepted risk: local gzip backup with file mode `600`, restricted server access, non-production/internal beta data only, no legal-effect voting, and no public production operation.
+- Production blocker: backup encryption, offsite backup, key custody/recovery policy, and recurring restore drills.
 - Current server tools: host `gzip`, `gpg`, and `rsync` are available; host `age`, `rclone`, and `pg_dump` were not available in PATH; the Docker PostgreSQL container has `pg_dump`.
-- Current automation state: `scripts/backup-postgres-staging.sh.example` supports Docker Compose backup, optional `age` encryption, and optional `rsync` offsite dry-run. A real server-local script must remain untracked.
-- Pending: install or otherwise provide `age`, provision an operator public recipient key, confirm offsite destination, create encrypted backup, and rehearse decrypt plus restore.
-
-Step 38 setup attempt:
-
-- `age` installation allowed: yes.
-- `age` installation result: not installed; `sudo apt-get` requires interactive sudo credentials on this server.
-- Public recipient ready: no.
-- Private key stored off-server: not confirmed.
-- Offsite target for later: manual.
-- Encrypted backup created: no.
+- Current automation state: `scripts/backup-postgres-staging.sh.example` supports Docker Compose backup, optional encryption if a future policy enables it, and optional `rsync` offsite dry-run. A real server-local script must remain untracked.
+- Pending before production: choose encryption/offsite strategy, define key custody/recovery, create encrypted/offsite backup, and rehearse decrypt plus restore.
 
 See `docs/backup-and-restore-plan.md` for the comparison and hardening plan.
 
@@ -387,7 +379,7 @@ Then verify:
 
 Do not treat a backup as operationally reliable until this restore rehearsal has been completed and recorded.
 
-For encrypted/offsite backups, additionally verify:
+Before production, encrypted/offsite backups must additionally verify:
 
 - decrypting the encrypted artifact without placing the private key on the staging server.
 - restoring the decrypted dump into an isolated temporary PostgreSQL container.

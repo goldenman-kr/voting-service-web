@@ -47,8 +47,8 @@ Do not paste secrets, database URLs, passwords, invite tokens, session tokens, o
 - Step 34: Staging test-data inventory, cleanup policy, RBAC drift review, and restore rehearsal preparation completed. Destructive cleanup was not run.
 - Step 35: Full restore rehearsal passed from the compressed staging backup into an isolated temporary PostgreSQL container with no host port exposure. Temporary restore resources were removed afterward.
 - Step 36: The two failed Step 33 draft smoke elections were cleaned up from staging, the successful published smoke election was preserved, and `StagingSmokeOperator` was retained as documented DB-only staging drift.
-- Step 37: Staging backup hardening plan documented. Recommended path is Docker Compose `pg_dump`, `age` public-recipient encryption with the private key kept off-server, encrypted offsite copy, and later encrypted/offsite restore rehearsal. No provider secret, private key, or offsite upload was created.
-- Step 38: Manual offsite target was selected. `age` installation is approved but not completed because `sudo apt-get` requires interactive sudo credentials; no public recipient is ready, private key off-server storage is not confirmed, and no encrypted backup was created.
+- Step 37: Staging backup hardening options documented. No provider secret, private key, or offsite upload was created.
+- Step 38/39: Age-based encrypted backup setup was deferred for the current staging/internal beta phase because operator-only key custody would concentrate recovery risk. Local backup with file mode `600` and the passed isolated restore rehearsal are accepted only for non-production staging/internal beta.
 
 ## C. Next Step For Server Agent
 
@@ -62,8 +62,8 @@ Check:
 - The two failed Step 33 `ready_for_review` draft smoke elections have been removed.
 - Step 33 added a DB-only `StagingSmokeOperator` role for smoke coverage. It is not in source guardrails or seed, remains staging-only drift, and must be removed or replaced through a separate RBAC design decision before production.
 - Full restore rehearsal passed from the local backup snapshot under `/mnt/data_4tb/voting-service-web/backups/`.
-- Backup hardening is planned in `docs/backup-and-restore-plan.md`; encrypted backup creation, offsite copy, and encrypted/offsite restore rehearsal are still pending.
-- Next backup hardening action requires operator-provided sudo/install path or preinstalled `age`, plus an age public recipient whose matching private key stays off-server.
+- Backup hardening is planned in `docs/backup-and-restore-plan.md`; encryption, offsite copy, key custody/recovery, and recurring restore drills remain production blockers.
+- Do not install `age`, generate keys, create encrypted backups, or upload offsite backups unless the operator explicitly reopens the encryption/offsite policy.
 
 ## D. Server Pre-flight Commands
 

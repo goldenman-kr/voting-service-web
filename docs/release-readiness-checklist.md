@@ -106,8 +106,7 @@ Confirmed staging shape:
 - a compressed local PostgreSQL backup snapshot was created under `/mnt/data_4tb/voting-service-web/backups/` and passed gzip, `pg_restore --list`, and full isolated restore rehearsal checks.
 - the restore rehearsal used a temporary PostgreSQL container, volume, and network with no host port exposure, restored `voting-service-web-staging-20260629T141827Z.dump.gz`, validated schema/count/index sanity, and removed the temporary resources afterward.
 - offsite backup, encrypted backup storage policy, and recurring restore drills are still pending.
-- Step 37 selected the recommended hardening direction: encrypt backups with `age` using an operator-managed public recipient on the staging server, keep the private key off-server, and copy only encrypted artifacts to an offsite target. Actual key provisioning, offsite upload, encrypted restore rehearsal, and recurring drills remain pending.
-- Step 38 selected manual offsite as the current target. `age` installation is approved but not completed because the server requires interactive sudo credentials; no public recipient is ready, private key off-server storage is not confirmed, and encrypted backup creation remains pending.
+- Step 37 documented backup hardening options. Step 38/39 decision defers age-based encrypted backup setup for the current staging/internal beta phase because operator-only key custody would concentrate recovery risk. Local backup with file mode `600` and the passed isolated restore rehearsal are accepted only for non-production staging/internal beta.
 
 Before provisioning staging:
 
@@ -300,7 +299,7 @@ CI badges are not added yet because repository visibility and badge exposure pol
 - Keep isolated CI E2E execution against a disposable PostgreSQL service green before merging.
 - Configure branch protection in GitHub repository settings so `CI Guardrail Verification` is required before merging.
 - Keep staging provisioning, migration deploy, admin bootstrap, smoke test, cleanup, and log redaction review current before real participant data is used.
-- Add encrypted/offsite backup storage, encrypted restore rehearsal, offsite restore rehearsal, and recurring restore drills before any production data collection.
+- Add backup encryption, offsite storage, key custody/recovery policy, encrypted/offsite restore rehearsal, and recurring restore drills before any production data collection.
 - Prepare terms of service and privacy policy before processing real user/organization data.
 
 ## Beta-Test Position

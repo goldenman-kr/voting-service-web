@@ -83,8 +83,7 @@ WHERE is_current = true;
 - Report file generation for PDF, CSV, and Excel is not implemented.
 - KMS-backed field encryption, key rotation, and production secret-management adapters are not implemented.
 - Backup/restore workflows are documented and have one successful staging restore rehearsal, but offsite backup, encryption-at-rest policy, and recurring restore drills remain pending.
-- Step 37 documented the recommended staging backup hardening path: Docker Compose `pg_dump`, `age` recipient-key encryption, encrypted offsite copy by `rsync` or S3-compatible storage, and future encrypted/offsite restore rehearsal. No offsite upload or key generation was performed.
-- Step 38 confirmed manual offsite as the current target and approved `age` installation, but installation was blocked by interactive sudo credentials. No public recipient is ready, the private key is not confirmed off-server, and no encrypted backup was created.
+- Step 37 documented backup hardening options. Step 38/39 decision deferred age-based encrypted backup setup for the current staging/internal beta phase because operator-only key custody would concentrate recovery risk. Local backup with file mode `600` and the passed isolated restore rehearsal are accepted only for non-production staging/internal beta.
 - Advanced audit log search/export review UI is not implemented.
 - DB emergency access workflow is documented and permissioned, but not implemented as an operational console.
 - Incident management UI and advanced incident workflows remain skeletal.
@@ -144,7 +143,7 @@ WHERE is_current = true;
 - Provision the internal beta staging target only after approval, using `docs/staging-deployment-plan.md`.
 - Use `docs/self-hosted-staging-runbook.md` as the execution checklist for self-hosted staging.
 - Before self-hosted provisioning, complete the pre-flight checklist without writing real secrets to docs or chat.
-- Move staging backups to encrypted offsite storage and schedule recurring restore drills before relying on beta data long-term.
+- Define backup encryption, offsite storage, key custody/recovery, and recurring restore drills before production.
 - Keep `https://voting.kryp.xyz` staging limited to non-production or explicitly approved low-risk beta data until monitoring, offsite/encrypted backups, recurring restore drills, and remaining production blockers are addressed.
 - Add provider-specific delivery adapters only after token redaction tests exist for each provider.
 - Add real MFA/WebAuthn before any production administrator access.

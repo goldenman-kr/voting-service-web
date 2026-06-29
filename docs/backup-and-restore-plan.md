@@ -8,10 +8,11 @@ This plan records the current staging backup posture and the recommended hardeni
 - Database: Docker Compose PostgreSQL on a private Docker network with no host port mapping.
 - Local backup directory: `/mnt/data_4tb/voting-service-web/backups/`.
 - Current backup format: gzip-compressed PostgreSQL custom-format dump (`.dump.gz`).
-- Current encryption: none. Step 38 did not create an encrypted backup because no age public recipient is ready and the private key is not confirmed off-server.
-- Current offsite target: manual, selected in Step 38.
+- Current encryption: none. Age-based encrypted backup setup is deferred for the current staging/internal beta phase.
+- Current offsite target: manual, selected in Step 38 and deferred until the encryption/key-custody policy is revisited.
 - Current offsite copy: none confirmed.
 - Restore evidence: Step 35 restored the compressed backup into an isolated temporary PostgreSQL container with no host port exposure and validated schema/count/index sanity.
+- Accepted current risk: local-only backup is acceptable only for staging/internal beta with non-production data, minimal sensitive personal data, no legal-effect voting, restricted server access, and backup file mode `600`.
 
 ## Tooling Status
 
@@ -20,7 +21,7 @@ This plan records the current staging backup posture and the recommended hardeni
 - Host `rsync`: available.
 - Host `pg_dump`: not available in PATH during Step 37.
 - Docker PostgreSQL container `pg_dump`: available.
-- Host `age`: not available in PATH during Step 37. Step 38 installation was approved, but the server could not install it through `sudo apt-get` without interactive sudo credentials.
+- Host `age`: not available in PATH. Age installation is deferred.
 - Host `rclone`: not available in PATH during Step 37.
 
 The staging backup script example defaults to Docker Compose `pg_dump` so the server does not need to expose PostgreSQL or install host PostgreSQL client tools.
@@ -38,15 +39,17 @@ The staging backup script example defaults to Docker Compose `pg_dump` so the se
 | Google Drive via `rclone` | Low | Medium | Use `rclone crypt` or pre-encrypt files | Adequate | Acceptable | Weaker operational fit |
 | Manual download | Low | Low | Pre-encrypt file first | Human-dependent | Temporary only | Not sufficient |
 
-## Recommended Offsite Path
+## Deferred Offsite Path
 
-Recommended staging path:
+Age/offsite hardening is intentionally deferred for the current staging/internal beta phase because key custody and restore responsibility would be concentrated on the operator. Losing the private key would make encrypted backups unrecoverable.
 
-1. Encrypt each backup locally with `age` using an operator-owned public recipient key.
-2. Keep the matching private key off the staging server.
-3. Copy only encrypted artifacts offsite.
-4. For the current manual offsite target, download or transfer only encrypted artifacts.
-5. Move to S3-compatible storage with lifecycle/versioning when beta data volume or retention needs grow.
+Future production-readiness path:
+
+1. Define key custody, recovery, and rotation policy before choosing an encryption tool.
+2. Encrypt backups before offsite transfer.
+3. Keep backup decryption material recoverable by the organization, not only one operator.
+4. Copy only encrypted artifacts offsite.
+5. Rehearse restore from the encrypted offsite artifact into a separate non-production database.
 
 Do not put provider access keys, private keys, database URLs, or passwords in the repository, chat, issue trackers, or documents.
 
@@ -60,11 +63,11 @@ Do not put provider access keys, private keys, database URLs, or passwords in th
 | Provider-side encryption | Simple with S3-like services | Provider can still access plaintext unless customer-managed keys are used | Use only as an additional layer |
 | `rclone crypt` | Good for cloud/offsite remotes | Requires rclone config secret management | Good when using rclone-based storage |
 
-Recommended encryption path:
+Deferred encryption path:
 
-- Use `age` for backup file encryption.
-- Store only the `age` public recipient on the staging server.
-- Store the private key outside the staging server in an operator-controlled secret store.
+- Do not install or adopt `age` for the current staging/internal beta phase.
+- Do not generate or store an age private key on the staging server.
+- Revisit encryption tooling and key custody before production.
 - Test decrypt and restore in a temporary non-production PostgreSQL container before relying on encrypted backups.
 
 ## Automation Draft
@@ -77,8 +80,8 @@ Recommended server-local setup:
 - `chmod 700` the script.
 - Use Docker Compose backup mode so PostgreSQL remains unexposed.
 - Write output to `/mnt/data_4tb/voting-service-web/backups/`.
-- Set `AGE_RECIPIENT` only after the operator provides a real public recipient key.
-- Use `OFFSITE_DRY_RUN=yes` until the offsite target is confirmed.
+- Leave `AGE_RECIPIENT` unset while encrypted backup setup is deferred.
+- Use `OFFSITE_DRY_RUN=yes` until the offsite target and encryption/key-custody policy are confirmed.
 - Never hardcode database passwords, provider secrets, private keys, or full database URLs in the script.
 
 ## Restore Requirements
@@ -87,14 +90,14 @@ Current verified path:
 
 - local unencrypted gzip backup restore: passed once in Step 35.
 
-Still pending:
+Still pending before production:
 
-- install or otherwise provide `age` on the staging server.
-- operator age public recipient provisioning.
-- confirmation that the matching private key is stored off-server.
+- backup encryption policy.
+- offsite backup policy.
+- key custody, recovery, and rotation policy.
 - encrypted backup creation.
 - encrypted backup decrypt and restore rehearsal.
-- manual offsite copy download and restore rehearsal.
+- offsite copy download and restore rehearsal.
 - recurring restore drill schedule.
 - backup retention policy.
 - backup monitoring/alerting.
