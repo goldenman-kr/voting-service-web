@@ -84,6 +84,7 @@ WHERE is_current = true;
 - KMS-backed field encryption, key rotation, and production secret-management adapters are not implemented.
 - Backup/restore workflows are documented and have one successful staging restore rehearsal, but offsite backup, encryption-at-rest policy, and recurring restore drills remain pending.
 - Step 37 documented the recommended staging backup hardening path: Docker Compose `pg_dump`, `age` recipient-key encryption, encrypted offsite copy by `rsync` or S3-compatible storage, and future encrypted/offsite restore rehearsal. No offsite upload or key generation was performed.
+- Step 38 confirmed manual offsite as the current target and approved `age` installation, but installation was blocked by interactive sudo credentials. No public recipient is ready, the private key is not confirmed off-server, and no encrypted backup was created.
 - Advanced audit log search/export review UI is not implemented.
 - DB emergency access workflow is documented and permissioned, but not implemented as an operational console.
 - Incident management UI and advanced incident workflows remain skeletal.

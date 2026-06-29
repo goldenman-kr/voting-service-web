@@ -8,7 +8,8 @@ This plan records the current staging backup posture and the recommended hardeni
 - Database: Docker Compose PostgreSQL on a private Docker network with no host port mapping.
 - Local backup directory: `/mnt/data_4tb/voting-service-web/backups/`.
 - Current backup format: gzip-compressed PostgreSQL custom-format dump (`.dump.gz`).
-- Current encryption: none.
+- Current encryption: none. Step 38 did not create an encrypted backup because no age public recipient is ready and the private key is not confirmed off-server.
+- Current offsite target: manual, selected in Step 38.
 - Current offsite copy: none confirmed.
 - Restore evidence: Step 35 restored the compressed backup into an isolated temporary PostgreSQL container with no host port exposure and validated schema/count/index sanity.
 
@@ -19,7 +20,7 @@ This plan records the current staging backup posture and the recommended hardeni
 - Host `rsync`: available.
 - Host `pg_dump`: not available in PATH during Step 37.
 - Docker PostgreSQL container `pg_dump`: available.
-- Host `age`: not available in PATH during Step 37.
+- Host `age`: not available in PATH during Step 37. Step 38 installation was approved, but the server could not install it through `sudo apt-get` without interactive sudo credentials.
 - Host `rclone`: not available in PATH during Step 37.
 
 The staging backup script example defaults to Docker Compose `pg_dump` so the server does not need to expose PostgreSQL or install host PostgreSQL client tools.
@@ -44,7 +45,7 @@ Recommended staging path:
 1. Encrypt each backup locally with `age` using an operator-owned public recipient key.
 2. Keep the matching private key off the staging server.
 3. Copy only encrypted artifacts offsite.
-4. Start with a mounted NAS or separate server via `rsync` if one already exists.
+4. For the current manual offsite target, download or transfer only encrypted artifacts.
 5. Move to S3-compatible storage with lifecycle/versioning when beta data volume or retention needs grow.
 
 Do not put provider access keys, private keys, database URLs, or passwords in the repository, chat, issue trackers, or documents.
@@ -88,8 +89,12 @@ Current verified path:
 
 Still pending:
 
+- install or otherwise provide `age` on the staging server.
+- operator age public recipient provisioning.
+- confirmation that the matching private key is stored off-server.
+- encrypted backup creation.
 - encrypted backup decrypt and restore rehearsal.
-- offsite copy download and restore rehearsal.
+- manual offsite copy download and restore rehearsal.
 - recurring restore drill schedule.
 - backup retention policy.
 - backup monitoring/alerting.

@@ -358,6 +358,15 @@ Step 37 backup hardening decision:
 - Current automation state: `scripts/backup-postgres-staging.sh.example` supports Docker Compose backup, optional `age` encryption, and optional `rsync` offsite dry-run. A real server-local script must remain untracked.
 - Pending: install or otherwise provide `age`, provision an operator public recipient key, confirm offsite destination, create encrypted backup, and rehearse decrypt plus restore.
 
+Step 38 setup attempt:
+
+- `age` installation allowed: yes.
+- `age` installation result: not installed; `sudo apt-get` requires interactive sudo credentials on this server.
+- Public recipient ready: no.
+- Private key stored off-server: not confirmed.
+- Offsite target for later: manual.
+- Encrypted backup created: no.
+
 See `docs/backup-and-restore-plan.md` for the comparison and hardening plan.
 
 ## Restore Rehearsal
