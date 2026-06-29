@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Self-hosted staging PostgreSQL backup example.
+# Copy to a server-local script path before use, review it, and keep real secrets out of git.
+# Required env:
+#   DATABASE_URL - staging database URL only
+# Optional env:
+#   BACKUP_DIR - output directory, default /srv/voting-service-web/backups
+#   BACKUP_PREFIX - filename prefix, default voting-service-web-staging
+#   AGE_RECIPIENT - optional age recipient for encryption, if age is installed
+
+if [[ "${NODE_ENV:-}" == "production" && "${ALLOW_STAGING_BACKUP_IN_PRODUCTION_NODE_ENV:-}" != "yes" ]]; then
+  echo "Refusing to run with NODE_ENV=production unless ALLOW_STAGING_BACKUP_IN_PRODUCTION_NODE_ENV=yes is set." >&2
+  echo "This script is for staging only. Confirm the target database before proceeding." >&2
+  exit 1
+fi
+
+if [[ -z "${DATABASE_URL:-}" ]]; then
+  echo "DATABASE_URL is required and must point to the staging database." >&2
+  exit 1
+fi
+
+if [[ "${DATABASE_URL}" == *"prod"* || "${DATABASE_URL}" == *"production"* ]]; then
+  echo "Refusing to run because DATABASE_URL looks production-like." >&2
+  exit 1
+fi
+
+BACKUP_DIR="${BACKUP_DIR:-/srv/voting-service-web/backups}"
+BACKUP_PREFIX="${BACKUP_PREFIX:-voting-service-web-staging}"
+TIMESTAMP="$(date -u +"%Y%m%dT%H%M%SZ")"
+OUT_BASE="${BACKUP_DIR}/${BACKUP_PREFIX}-${TIMESTAMP}"
+DUMP_FILE="${OUT_BASE}.dump"
+GZIP_FILE="${DUMP_FILE}.gz"
+
+mkdir -p "${BACKUP_DIR}"
+chmod 700 "${BACKUP_DIR}"
+
+echo "Creating PostgreSQL custom-format dump at ${DUMP_FILE}"
+pg_dump "${DATABASE_URL}" --format=custom --file "${DUMP_FILE}"
+
+echo "Compressing backup to ${GZIP_FILE}"
+gzip -9 "${DUMP_FILE}"
+
+if [[ -n "${AGE_RECIPIENT:-}" ]]; then
+  if ! command -v age >/dev/null 2>&1; then
+    echo "AGE_RECIPIENT is set but age is not installed." >&2
+    exit 1
+  fi
+
+  echo "Encrypting backup with age"
+  age -r "${AGE_RECIPIENT}" -o "${GZIP_FILE}.age" "${GZIP_FILE}"
+  rm -f "${GZIP_FILE}"
+  echo "Encrypted backup written to ${GZIP_FILE}.age"
+else
+  echo "Unencrypted compressed backup written to ${GZIP_FILE}"
+  echo "Move it to encrypted/offsite storage if beta data matters."
+fi
+
+echo "Backup complete. Rehearse restore into a non-production database before relying on this backup."

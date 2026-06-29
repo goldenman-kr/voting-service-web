@@ -1,0 +1,21 @@
+# Local development only. Do not reuse these credentials outside a developer machine.
+services:
+  postgres:
+    image: postgres:16
+    container_name: voting-service-web-postgres
+    environment:
+      POSTGRES_DB: voting_service_web
+      POSTGRES_USER: voting_app
+      POSTGRES_PASSWORD: voting_app_dev_password_only
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U voting_app -d voting_service_web"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:

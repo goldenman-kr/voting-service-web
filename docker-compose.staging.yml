@@ -1,0 +1,53 @@
+# Self-hosted staging draft. Do not use for local development without review.
+# Validate without real secrets:
+#   STAGING_ENV_FILE=.env.staging.example docker compose --env-file .env.staging.example -f docker-compose.staging.yml config
+# Run on the server only after creating .env.staging with real staging-only values:
+#   docker compose --env-file .env.staging -f docker-compose.staging.yml up -d
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: voting-service-web:staging
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      APP_URL: ${APP_URL:?Set APP_URL in .env.staging}
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env.staging}
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env.staging}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Set ENCRYPTION_KEY in .env.staging}
+      HMAC_KEY: ${HMAC_KEY:?Set HMAC_KEY in .env.staging}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      # Bind to localhost only. Caddy/Nginx on the host can proxy to this port.
+      # Do not expose the app directly to the public internet.
+      - "127.0.0.1:${APP_HOST_PORT:-3000}:3000"
+    networks:
+      - voting_staging
+
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-voting_service_web_staging}
+      POSTGRES_USER: ${POSTGRES_USER:-voting_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.staging}
+    volumes:
+      - postgres_staging_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-voting_app} -d $${POSTGRES_DB:-voting_service_web_staging}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - voting_staging
+    # No host port mapping by default. PostgreSQL must not be publicly exposed.
+
+volumes:
+  postgres_staging_data:
+
+networks:
+  voting_staging:
+    driver: bridge

@@ -1,0 +1,56 @@
+{
+  "name": "voting-service-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Multi-purpose online voting service",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run guardrails:check && npm run test:unit",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:clean": "E2E_CLEANUP_CONFIRM=DELETE_E2E_DATA node --experimental-strip-types test/e2e/cleanup.ts",
+    "test:e2e:ui": "playwright test --ui",
+    "guardrails:check": "node --test test/guardrails.test.js",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres",
+    "db:validate": "prisma validate",
+    "db:generate": "prisma generate",
+    "db:seed": "node prisma/seed.js",
+    "db:migrate:create": "prisma migrate dev --create-only",
+    "db:migrate:dev": "prisma migrate dev",
+    "admin:bootstrap": "node --experimental-strip-types scripts/bootstrap-admin.ts",
+    "dev:ready": "npm run db:up && npm run db:migrate:dev && npm run db:seed"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "next": "^16.2.9",
+    "pg": "^8.22.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^26.0.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.5.2",
+    "postcss": "^8.5.15",
+    "prisma": "^7.8.0",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  }
+}

@@ -1,0 +1,1283 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ElectionState {
+  draft
+  ready_for_review
+  approved
+  scheduled
+  notice
+  open
+  paused
+  closed
+  tallying
+  pending_confirmation
+  confirmed
+  published
+  archived
+  invalidated
+}
+
+enum ElectionType {
+  representative_election
+  yes_no_agenda
+  multiple_choice_agenda
+  opinion_collection
+}
+
+enum VotingMode {
+  anonymous
+  named
+}
+
+enum AuthenticationMethod {
+  invite_link_only
+  invite_link_with_identifier
+  email_code
+  sms_code
+  kakao_message
+  external_identity
+  sso
+  legal_strong_auth
+}
+
+enum CredentialStatus {
+  active
+  locked
+  revoked
+  expired
+}
+
+enum AuthStatus {
+  not_started
+  identifier_verified
+  code_pending
+  authenticated
+  failed
+}
+
+enum InvitationStatus {
+  pending
+  sent
+  failed
+  opened
+  expired
+  revoked
+}
+
+enum AnonymousVotingPassStatus {
+  issued
+  used
+  revoked
+  expired
+}
+
+enum BallotSubmissionStatus {
+  received
+  failed
+  uncertain
+}
+
+enum BallotAcceptanceStatus {
+  accepted
+  rejected_late
+  rejected_invalid
+  superseded
+}
+
+enum VoteAnswerType {
+  option
+  free_text
+  abstain
+}
+
+enum QuestionType {
+  single_choice
+  multiple_choice
+  yes_no
+  free_text
+}
+
+enum RecordStatus {
+  active
+  disabled
+  archived
+}
+
+enum ResultStatus {
+  draft
+  tallied
+  discarded
+}
+
+enum ResultVersionStatus {
+  confirmed
+  published
+  superseded
+}
+
+enum ResultVersionType {
+  initial
+  correction
+  withdrawal
+  invalidation_notice
+}
+
+enum ReportType {
+  result_summary
+  question_detail
+  participation
+  audit_summary
+  admin_activity
+  dispute
+  invalidation_correction
+}
+
+enum ExportStatus {
+  requested
+  approved
+  rejected
+  ready
+  downloaded
+  expired
+  failed
+}
+
+enum AuditEventType {
+  election_created
+  election_updated
+  election_review_requested
+  election_approved
+  election_rejected
+  election_opened
+  election_paused
+  election_resumed
+  election_closed
+  election_archived
+  election_invalidated
+  authentication_policy_updated
+  voter_registry_imported
+  voter_registry_confirmed
+  invitation_sent
+  invitation_resend_requested
+  role_changed
+  permission_changed
+  result_tally_started
+  result_tallied
+  result_confirmed
+  result_published
+  correction_requested
+  correction_approved
+  report_export_requested
+  report_export_downloaded
+  log_viewed
+  log_export_requested
+  log_export_downloaded
+  deletion_requested
+  deletion_approved
+  deletion_completed
+  db_access_requested
+  db_access_approved
+}
+
+enum SecurityEventType {
+  login_success
+  login_failed
+  mfa_success
+  mfa_failed
+  step_up_success
+  step_up_failed
+  permission_denied
+  suspicious_access
+  account_locked
+}
+
+enum CredentialEventType {
+  invite_token_verified
+  invite_token_failed
+  invite_opened
+  identifier_check_success
+  identifier_check_failed
+  code_sent
+  code_resent
+  code_verified
+  code_failed
+  external_auth_success
+  external_auth_failed
+  sso_auth_success
+  sso_auth_failed
+  locked
+  unlocked
+}
+
+enum SubmissionEventType {
+  submission_started
+  submission_accepted
+  submission_failed
+  submission_uncertain
+  late_rejected
+  superseded
+}
+
+enum PermissionRiskLevel {
+  low
+  medium
+  high
+  critical
+}
+
+enum UserStatus {
+  active
+  invited
+  locked
+  disabled
+}
+
+enum OrganizationStatus {
+  active
+  suspended
+  archived
+}
+
+enum TenantStatus {
+  active
+  suspended
+  archived
+}
+
+enum RoleScope {
+  system
+  organization
+  election
+}
+
+enum RegistryStatus {
+  draft
+  imported
+  validated
+  confirmed
+  locked
+}
+
+enum ImportStatus {
+  uploaded
+  validating
+  validated
+  failed
+}
+
+enum ValidationErrorType {
+  missing_required
+  duplicate
+  invalid_format
+  conflict
+}
+
+enum DisputeStatus {
+  submitted
+  under_review
+  accepted
+  rejected
+  withdrawn
+}
+
+enum CorrectionStatus {
+  requested
+  approved
+  rejected
+  applied
+}
+
+enum IncidentStatus {
+  open
+  mitigated
+  resolved
+}
+
+enum IncidentSeverity {
+  low
+  medium
+  high
+  critical
+}
+
+enum DeletionStatus {
+  requested
+  approved
+  rejected
+  running
+  completed
+  failed
+}
+
+enum DeliveryStatus {
+  pending
+  sent
+  failed
+  suppressed
+}
+
+enum NotificationChannel {
+  app
+  email
+  sms
+  kakao
+}
+
+enum DbAccessType {
+  read
+  export
+  maintenance
+  restore
+}
+
+model Tenant {
+  id            String          @id @default(uuid()) @db.Uuid
+  name          String
+  status        TenantStatus    @default(active)
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organizations Organization[]
+  users         User[]
+  auditEvents   AuditEvent[]
+  securityEvents SecurityEvent[]
+
+  @@map("tenants")
+}
+
+model Organization {
+  id                            String                         @id @default(uuid()) @db.Uuid
+  tenantId                      String                         @map("tenant_id") @db.Uuid
+  name                          String
+  status                        OrganizationStatus             @default(active)
+  defaultTimezone               String                         @default("Asia/Seoul") @map("default_timezone")
+  settings                      Json?
+  createdAt                     DateTime                       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                     DateTime                       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  tenant                        Tenant                         @relation(fields: [tenantId], references: [id])
+  users                         User[]
+  roles                         Role[]
+  elections                     Election[]
+  organizationAuthMethods       OrganizationAuthenticationMethod[]
+  auditEvents                   AuditEvent[]
+  retentionPolicies             RetentionPolicy[]
+  deletionRequests              DeletionRequest[]
+  notificationSettings          NotificationSetting[]
+  deliveryEvents                DeliveryEvent[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, status])
+  @@map("organizations")
+}
+
+model User {
+  id                         String                 @id @default(uuid()) @db.Uuid
+  tenantId                   String                 @map("tenant_id") @db.Uuid
+  organizationId             String?                @map("organization_id") @db.Uuid
+  emailHash                  String                 @map("email_hash")
+  emailEncrypted             String?                @map("email_encrypted") @db.Text
+  nameEncrypted              String?                @map("name_encrypted") @db.Text
+  passwordHash               String                 @map("password_hash")
+  status                     UserStatus             @default(active)
+  mfaRequired                Boolean                @default(true) @map("mfa_required")
+  lastLoginAt                DateTime?              @map("last_login_at") @db.Timestamptz(6)
+  createdAt                  DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                  DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  tenant                     Tenant                 @relation(fields: [tenantId], references: [id])
+  organization               Organization?          @relation(fields: [organizationId], references: [id])
+  mfaMethods                 UserMfaMethod[]
+  adminSessions              AdminSession[]
+  adminStepUpGrants          AdminStepUpGrant[]
+  userRoles                  UserRole[]
+  grantedRolePermissions     RolePermission[]       @relation("RolePermissionGrantedBy")
+  electionsCreated           Election[]             @relation("ElectionCreatedBy")
+  electionStateRequests      ElectionStateHistory[] @relation("ElectionStateRequestedBy")
+  electionStateApprovals     ElectionStateHistory[] @relation("ElectionStateApprovedBy")
+  electionChanges            ElectionChangeHistory[] @relation("ElectionChangeChangedBy")
+  resultsTallied             Result[]               @relation("ResultTalliedBy")
+  resultVersionsConfirmed    ResultVersion[]        @relation("ResultVersionConfirmedBy")
+  reportsGenerated           Report[]               @relation("ReportGeneratedBy")
+  reportExportsRequested     ReportExport[]         @relation("ReportExportRequestedBy")
+  reportExportsApproved      ReportExport[]         @relation("ReportExportApprovedBy")
+  disputesSubmitted          Dispute[]              @relation("DisputeSubmittedBy")
+  disputesHandled            Dispute[]              @relation("DisputeHandledBy")
+  correctionRequests         CorrectionRequest[]    @relation("CorrectionRequestedBy")
+  correctionApprovals        CorrectionRequest[]    @relation("CorrectionApprovedBy")
+  invalidationRequests       InvalidationRecord[]   @relation("InvalidationRequestedBy")
+  invalidationApprovals      InvalidationRecord[]   @relation("InvalidationApprovedBy")
+  incidentsCreated           OperationIncident[]    @relation("IncidentCreatedBy")
+  auditEvents                AuditEvent[]           @relation("AuditActor")
+  dbAccessEvents             DbAccessEvent[]        @relation("DbAccessActor")
+  deletionRequestsRequested  DeletionRequest[]      @relation("DeletionRequestedBy")
+  deletionRequestsApproved   DeletionRequest[]      @relation("DeletionApprovedBy")
+
+  @@unique([tenantId, emailHash])
+  @@index([organizationId, status])
+  @@map("users")
+}
+
+model UserMfaMethod {
+  id             String       @id @default(uuid()) @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  methodType     String       @map("method_type")
+  secretEncrypted String?     @map("secret_encrypted") @db.Text
+  status         RecordStatus @default(active)
+  lastUsedAt     DateTime?    @map("last_used_at") @db.Timestamptz(6)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  user           User         @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+  @@map("user_mfa_methods")
+}
+
+model AdminSession {
+  id                 String              @id @default(uuid()) @db.Uuid
+  userId             String              @map("user_id") @db.Uuid
+  /// HMAC or securely hashed opaque admin session token.
+  /// Never store raw session tokens, passwords, IP, or User-Agent here.
+  sessionTokenHash   String              @unique @map("session_token_hash")
+  issuedAt           DateTime            @default(now()) @map("issued_at") @db.Timestamptz(6)
+  expiresAt          DateTime            @map("expires_at") @db.Timestamptz(6)
+  revokedAt          DateTime?           @map("revoked_at") @db.Timestamptz(6)
+  lastUsedAt         DateTime?           @map("last_used_at") @db.Timestamptz(6)
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user               User                @relation(fields: [userId], references: [id])
+  stepUpGrants       AdminStepUpGrant[]
+
+  @@index([userId, revokedAt, expiresAt])
+  @@index([expiresAt])
+  @@map("admin_sessions")
+}
+
+model AdminStepUpGrant {
+  id                 String       @id @default(uuid()) @db.Uuid
+  adminSessionId     String       @map("admin_session_id") @db.Uuid
+  userId             String       @map("user_id") @db.Uuid
+  /// HMAC or securely hashed opaque step-up token.
+  /// Never store raw step-up tokens, passwords, IP, or User-Agent here.
+  tokenHash          String       @unique @map("token_hash")
+  permissionCodes    Json         @map("permission_codes")
+  purpose            String?      @db.Text
+  verifiedAt         DateTime     @map("verified_at") @db.Timestamptz(6)
+  expiresAt          DateTime     @map("expires_at") @db.Timestamptz(6)
+  revokedAt          DateTime?    @map("revoked_at") @db.Timestamptz(6)
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  adminSession       AdminSession @relation(fields: [adminSessionId], references: [id])
+  user               User         @relation(fields: [userId], references: [id])
+
+  @@index([adminSessionId, revokedAt, expiresAt])
+  @@index([userId, expiresAt])
+  @@map("admin_step_up_grants")
+}
+
+model Role {
+  id              String           @id @default(uuid()) @db.Uuid
+  organizationId  String?          @map("organization_id") @db.Uuid
+  code            String
+  name            String
+  scope           RoleScope
+  isSystemRole    Boolean          @default(false) @map("is_system_role")
+  status          RecordStatus     @default(active)
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization    Organization?    @relation(fields: [organizationId], references: [id])
+  permissions     RolePermission[]
+  userRoles       UserRole[]
+
+  @@unique([organizationId, code])
+  @@index([scope])
+  @@map("roles")
+}
+
+model Permission {
+  id          String              @id @default(uuid()) @db.Uuid
+  code        String              @unique
+  description String
+  riskLevel   PermissionRiskLevel @map("risk_level")
+  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String    @map("role_id") @db.Uuid
+  permissionId String    @map("permission_id") @db.Uuid
+  grantedById  String?   @map("granted_by") @db.Uuid
+  grantedAt    DateTime  @default(now()) @map("granted_at") @db.Timestamptz(6)
+  role         Role      @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+  grantedBy    User?     @relation("RolePermissionGrantedBy", fields: [grantedById], references: [id])
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  roleId       String    @map("role_id") @db.Uuid
+  electionId   String?   @map("election_id") @db.Uuid
+  assignedAt   DateTime  @default(now()) @map("assigned_at") @db.Timestamptz(6)
+  user         User      @relation(fields: [userId], references: [id])
+  role         Role      @relation(fields: [roleId], references: [id])
+  election     Election? @relation(fields: [electionId], references: [id])
+
+  @@unique([userId, roleId, electionId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model Election {
+  id                     String                    @id @default(uuid()) @db.Uuid
+  organizationId         String                    @map("organization_id") @db.Uuid
+  createdById            String?                   @map("created_by") @db.Uuid
+  title                  String
+  description            String?                   @db.Text
+  electionType           ElectionType              @map("election_type")
+  votingMode             VotingMode                @default(anonymous) @map("voting_mode")
+  state                  ElectionState             @default(draft)
+  noticeStartsAt         DateTime?                 @map("notice_starts_at") @db.Timestamptz(6)
+  startsAt               DateTime                  @map("starts_at") @db.Timestamptz(6)
+  endsAt                 DateTime                  @map("ends_at") @db.Timestamptz(6)
+  timezone               String                    @default("Asia/Seoul")
+  createdAt              DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization           Organization              @relation(fields: [organizationId], references: [id])
+  createdBy              User?                     @relation("ElectionCreatedBy", fields: [createdById], references: [id])
+  policy                 ElectionPolicy?
+  authenticationPolicy   AuthenticationPolicy?
+  stateHistories         ElectionStateHistory[]
+  changeHistories        ElectionChangeHistory[]
+  questions              Question[]
+  voterRegistry          VoterRegistry?
+  eligibleVoters         EligibleVoter[]
+  invitations            Invitation[]
+  votingCredentials      VotingCredential[]
+  voterSessions          VoterSession[]
+  credentialEvents       CredentialEvent[]
+  anonymousVotingPasses  AnonymousVotingPass[]
+  anonymousBallotGroups  AnonymousBallotGroup[]
+  ballots                Ballot[]
+  submissionEvents       SubmissionEvent[]
+  results                Result[]
+  resultVersions         ResultVersion[]
+  reports                Report[]
+  disputes               Dispute[]
+  correctionRequests     CorrectionRequest[]
+  invalidationRecords    InvalidationRecord[]
+  incidents              OperationIncident[]
+  deletionRequests       DeletionRequest[]
+  deliveryEvents         DeliveryEvent[]
+  userRoles              UserRole[]
+
+  @@index([organizationId, state])
+  @@index([startsAt, endsAt])
+  @@map("elections")
+}
+
+model ElectionPolicy {
+  id                         String   @id @default(uuid()) @db.Uuid
+  electionId                 String   @unique @map("election_id") @db.Uuid
+  allowRevote                Boolean  @default(true) @map("allow_revote")
+  publishCounts              Boolean  @default(false) @map("publish_counts")
+  resultAudience             String   @default("voters") @map("result_audience")
+  requireResultConfirmation  Boolean  @default(true) @map("require_result_confirmation")
+  smallElectionMinVoters     Int      @default(10) @map("small_election_min_voters")
+  smallOptionMinVotes        Int      @default(3) @map("small_option_min_votes")
+  createdAt                  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  election                   Election @relation(fields: [electionId], references: [id])
+
+  @@map("election_policies")
+}
+
+model AuthenticationPolicy {
+  id                   String               @id @default(uuid()) @db.Uuid
+  electionId           String               @unique @map("election_id") @db.Uuid
+  method               AuthenticationMethod @default(invite_link_with_identifier)
+  isEnabled            Boolean              @default(true) @map("is_enabled")
+  isPaidMethod         Boolean              @default(false) @map("is_paid_method")
+  provider             String?
+  securityLevel        String               @default("standard") @map("security_level")
+  identifierFields     Json?                @map("identifier_fields")
+  codeChannel          String?              @map("code_channel")
+  codeTtlMinutes       Int?                 @map("code_ttl_minutes")
+  maxCodeResends       Int?                 @map("max_code_resends")
+  createdAt            DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  election             Election             @relation(fields: [electionId], references: [id])
+
+  @@index([method])
+  @@map("authentication_policies")
+}
+
+model OrganizationAuthenticationMethod {
+  id             String               @id @default(uuid()) @db.Uuid
+  organizationId String               @map("organization_id") @db.Uuid
+  method         AuthenticationMethod
+  isAllowed      Boolean              @default(true) @map("is_allowed")
+  isPaidMethod   Boolean              @default(false) @map("is_paid_method")
+  provider       String?
+  enabledAt      DateTime?            @map("enabled_at") @db.Timestamptz(6)
+  disabledAt     DateTime?            @map("disabled_at") @db.Timestamptz(6)
+  organization   Organization         @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, method, provider])
+  @@map("organization_authentication_methods")
+}
+
+model ElectionStateHistory {
+  id            String        @id @default(uuid()) @db.Uuid
+  electionId    String        @map("election_id") @db.Uuid
+  fromState     ElectionState? @map("from_state")
+  toState       ElectionState @map("to_state")
+  requestedById String?       @map("requested_by") @db.Uuid
+  approvedById  String?       @map("approved_by") @db.Uuid
+  reason        String?       @db.Text
+  changeType    String        @map("change_type")
+  changedAt     DateTime      @default(now()) @map("changed_at") @db.Timestamptz(6)
+  election      Election      @relation(fields: [electionId], references: [id])
+  requestedBy   User?         @relation("ElectionStateRequestedBy", fields: [requestedById], references: [id])
+  approvedBy    User?         @relation("ElectionStateApprovedBy", fields: [approvedById], references: [id])
+
+  @@index([electionId, changedAt])
+  @@index([toState])
+  @@map("election_state_histories")
+}
+
+model ElectionChangeHistory {
+  id            String   @id @default(uuid()) @db.Uuid
+  electionId    String   @map("election_id") @db.Uuid
+  changedArea   String   @map("changed_area")
+  beforeSummary Json?    @map("before_summary")
+  afterSummary  Json?    @map("after_summary")
+  changedById   String   @map("changed_by") @db.Uuid
+  changedAt     DateTime @default(now()) @map("changed_at") @db.Timestamptz(6)
+  election      Election @relation(fields: [electionId], references: [id])
+  changedBy     User     @relation("ElectionChangeChangedBy", fields: [changedById], references: [id])
+
+  @@index([electionId, changedAt])
+  @@map("election_change_histories")
+}
+
+model Question {
+  id           String       @id @default(uuid()) @db.Uuid
+  electionId   String       @map("election_id") @db.Uuid
+  title        String
+  description  String?      @db.Text
+  questionType QuestionType @map("question_type")
+  required     Boolean      @default(true)
+  minSelect    Int?         @map("min_select")
+  maxSelect    Int?         @map("max_select")
+  displayOrder Int          @map("display_order")
+  status       RecordStatus @default(active)
+  election     Election     @relation(fields: [electionId], references: [id])
+  options      Option[]
+  votes        Vote[]
+  resultItems  ResultItem[]
+
+  @@unique([electionId, displayOrder])
+  @@index([electionId])
+  @@map("questions")
+}
+
+model Option {
+  id           String       @id @default(uuid()) @db.Uuid
+  questionId   String       @map("question_id") @db.Uuid
+  label        String
+  description  String?      @db.Text
+  displayOrder Int          @map("display_order")
+  status       RecordStatus @default(active)
+  question     Question     @relation(fields: [questionId], references: [id])
+  voteOptions  VoteOption[]
+  resultItems  ResultItem[]
+
+  @@unique([questionId, displayOrder])
+  @@index([questionId])
+  @@map("options")
+}
+
+model VoterRegistry {
+  id              String          @id @default(uuid()) @db.Uuid
+  electionId      String          @unique @map("election_id") @db.Uuid
+  status          RegistryStatus  @default(draft)
+  sourceType      String          @map("source_type")
+  totalRows       Int             @default(0) @map("total_rows")
+  validRows       Int             @default(0) @map("valid_rows")
+  confirmedAt     DateTime?       @map("confirmed_at") @db.Timestamptz(6)
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  election        Election        @relation(fields: [electionId], references: [id])
+  imports         VoterRegistryImport[]
+  eligibleVoters  EligibleVoter[]
+
+  @@map("voter_registries")
+}
+
+model VoterRegistryImport {
+  id                     String                         @id @default(uuid()) @db.Uuid
+  voterRegistryId         String                         @map("voter_registry_id") @db.Uuid
+  importStatus            ImportStatus                   @default(uploaded) @map("import_status")
+  fileName                String?                        @map("file_name")
+  fileHash                String?                        @map("file_hash")
+  rowCount                Int                            @default(0) @map("row_count")
+  uploadedAt              DateTime                       @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+  registry                VoterRegistry                  @relation(fields: [voterRegistryId], references: [id])
+  validationErrors        VoterRegistryValidationError[]
+
+  @@index([voterRegistryId, importStatus])
+  @@map("voter_registry_imports")
+}
+
+model VoterRegistryValidationError {
+  id          String              @id @default(uuid()) @db.Uuid
+  importId    String              @map("import_id") @db.Uuid
+  rowNumber   Int?                @map("row_number")
+  fieldName   String?             @map("field_name")
+  errorType   ValidationErrorType @map("error_type")
+  message     String?             @db.Text
+  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  import      VoterRegistryImport @relation(fields: [importId], references: [id])
+
+  @@index([importId, errorType])
+  @@map("voter_registry_validation_errors")
+}
+
+model EligibleVoter {
+  id                         String              @id @default(uuid()) @db.Uuid
+  voterRegistryId             String              @map("voter_registry_id") @db.Uuid
+  electionId                  String              @map("election_id") @db.Uuid
+  nameEncrypted               String?             @map("name_encrypted") @db.Text
+  emailEncrypted              String?             @map("email_encrypted") @db.Text
+  phoneEncrypted              String?             @map("phone_encrypted") @db.Text
+  externalIdentifierEncrypted String?             @map("external_identifier_encrypted") @db.Text
+  externalIdentifierHmac      String              @map("external_identifier_hmac")
+  searchHmac                  String?             @map("search_hmac")
+  status                      RecordStatus        @default(active)
+  createdAt                   DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  registry                    VoterRegistry       @relation(fields: [voterRegistryId], references: [id])
+  election                    Election            @relation(fields: [electionId], references: [id])
+  invitations                 Invitation[]
+  votingCredentials           VotingCredential[]
+  voterSessions               VoterSession[]
+
+  @@unique([electionId, externalIdentifierHmac])
+  @@index([voterRegistryId, status])
+  @@map("eligible_voters")
+}
+
+model Invitation {
+  id              String           @id @default(uuid()) @db.Uuid
+  electionId      String           @map("election_id") @db.Uuid
+  eligibleVoterId String           @map("eligible_voter_id") @db.Uuid
+  inviteTokenHash String           @unique @map("invite_token_hash")
+  channel         NotificationChannel @default(email)
+  status          InvitationStatus @default(pending)
+  sentAt          DateTime?        @map("sent_at") @db.Timestamptz(6)
+  lastSentAt      DateTime?        @map("last_sent_at") @db.Timestamptz(6)
+  sendCount       Int              @default(0) @map("send_count")
+  expiresAt       DateTime         @map("expires_at") @db.Timestamptz(6)
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  election        Election         @relation(fields: [electionId], references: [id])
+  eligibleVoter   EligibleVoter    @relation(fields: [eligibleVoterId], references: [id])
+
+  @@index([electionId, status])
+  @@index([eligibleVoterId])
+  @@map("invitations")
+}
+
+model VotingCredential {
+  id                         String                  @id @default(uuid()) @db.Uuid
+  electionId                  String                  @map("election_id") @db.Uuid
+  eligibleVoterId             String                  @map("eligible_voter_id") @db.Uuid
+  credentialStatus            CredentialStatus        @default(active) @map("credential_status")
+  authStatus                  AuthStatus              @default(not_started) @map("auth_status")
+  identifierFailedAttempts    Int                     @default(0) @map("identifier_failed_attempts")
+  lockedUntil                 DateTime?               @map("locked_until") @db.Timestamptz(6)
+  authenticatedAt             DateTime?               @map("authenticated_at") @db.Timestamptz(6)
+  hasVoted                    Boolean                 @default(false) @map("has_voted")
+  lastVoteConfirmedAt         DateTime?               @map("last_vote_confirmed_at") @db.Timestamptz(6)
+  submissionCount             Int                     @default(0) @map("submission_count")
+  createdAt                   DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                   DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  election                    Election                @relation(fields: [electionId], references: [id])
+  eligibleVoter               EligibleVoter           @relation(fields: [eligibleVoterId], references: [id])
+  credentialEvents            CredentialEvent[]
+  anonymousVotingPass         AnonymousVotingPass?
+  voterSessions               VoterSession[]
+
+  @@unique([electionId, eligibleVoterId])
+  @@index([electionId, authStatus])
+  @@index([lockedUntil])
+  @@map("voting_credentials")
+}
+
+model VoterSession {
+  id                    String               @id @default(uuid()) @db.Uuid
+  electionId            String               @map("election_id") @db.Uuid
+  eligibleVoterId       String               @map("eligible_voter_id") @db.Uuid
+  votingCredentialId    String               @map("voting_credential_id") @db.Uuid
+  /// HMAC or securely hashed opaque voter session handle.
+  /// Never store raw invite tokens, raw session handles, session tokens, IP, or User-Agent here.
+  opaqueHandleHash      String               @unique @map("opaque_handle_hash")
+  authenticationMethod  AuthenticationMethod @map("authentication_method")
+  authenticated         Boolean              @default(false)
+  identifierVerifiedAt  DateTime?            @map("identifier_verified_at") @db.Timestamptz(6)
+  step                  AuthStatus           @default(not_started)
+  failureCount          Int                  @default(0) @map("failure_count")
+  lockedUntil           DateTime?            @map("locked_until") @db.Timestamptz(6)
+  metadataSummary       Json?                @map("metadata_summary")
+  issuedAt              DateTime             @default(now()) @map("issued_at") @db.Timestamptz(6)
+  expiresAt             DateTime             @map("expires_at") @db.Timestamptz(6)
+  revokedAt             DateTime?            @map("revoked_at") @db.Timestamptz(6)
+  lastUsedAt            DateTime?            @map("last_used_at") @db.Timestamptz(6)
+  createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  election              Election             @relation(fields: [electionId], references: [id])
+  eligibleVoter         EligibleVoter        @relation(fields: [eligibleVoterId], references: [id])
+  votingCredential      VotingCredential     @relation(fields: [votingCredentialId], references: [id])
+
+  @@index([expiresAt])
+  @@index([electionId])
+  @@index([eligibleVoterId, expiresAt])
+  @@index([votingCredentialId, revokedAt, expiresAt])
+  @@map("voter_sessions")
+}
+
+model CredentialEvent {
+  id                  String              @id @default(uuid()) @db.Uuid
+  electionId          String              @map("election_id") @db.Uuid
+  votingCredentialId  String              @map("voting_credential_id") @db.Uuid
+  eventType           CredentialEventType @map("event_type")
+  method              AuthenticationMethod
+  channel             NotificationChannel?
+  provider            String?
+  success             Boolean?
+  failureReasonCode   String?             @map("failure_reason_code")
+  occurredAt          DateTime            @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  metadata            Json?
+  election            Election            @relation(fields: [electionId], references: [id])
+  votingCredential    VotingCredential    @relation(fields: [votingCredentialId], references: [id])
+
+  @@index([votingCredentialId, occurredAt])
+  @@index([electionId, eventType])
+  @@map("credential_events")
+}
+
+model AnonymousVotingPass {
+  id                  String                    @id @default(uuid()) @db.Uuid
+  electionId          String                    @map("election_id") @db.Uuid
+  votingCredentialId  String                    @unique @map("voting_credential_id") @db.Uuid
+  passStatus          AnonymousVotingPassStatus @default(issued) @map("pass_status")
+  issuedAt            DateTime                  @default(now()) @map("issued_at") @db.Timestamptz(6)
+  usedAt              DateTime?                 @map("used_at") @db.Timestamptz(6)
+  revokedAt           DateTime?                 @map("revoked_at") @db.Timestamptz(6)
+  usageCount          Int                       @default(0) @map("usage_count")
+  election            Election                  @relation(fields: [electionId], references: [id])
+  votingCredential    VotingCredential          @relation(fields: [votingCredentialId], references: [id])
+
+  @@unique([electionId, votingCredentialId])
+  @@index([electionId, passStatus])
+  @@map("anonymous_voting_passes")
+}
+
+model AnonymousBallotGroup {
+  id                    String    @id @default(uuid()) @db.Uuid
+  electionId             String    @map("election_id") @db.Uuid
+  ballotGroupTokenHash   String    @map("ballot_group_token_hash")
+  currentBallotId        String?   @map("current_ballot_id") @db.Uuid
+  submissionCount        Int       @default(0) @map("submission_count")
+  lastSubmittedAt        DateTime? @map("last_submitted_at") @db.Timestamptz(6)
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  election               Election  @relation(fields: [electionId], references: [id])
+  ballots                Ballot[]  @relation("BallotGroupSubmissions")
+  currentBallot          Ballot?   @relation("CurrentBallot", fields: [currentBallotId], references: [id])
+
+  @@unique([electionId, ballotGroupTokenHash])
+  @@index([electionId, currentBallotId])
+  @@map("anonymous_ballot_groups")
+}
+
+model Ballot {
+  id                      String                 @id @default(uuid()) @db.Uuid
+  electionId              String                 @map("election_id") @db.Uuid
+  anonymousBallotGroupId  String?                @map("anonymous_ballot_group_id") @db.Uuid
+  submissionStatus        BallotSubmissionStatus @map("submission_status")
+  acceptanceStatus        BallotAcceptanceStatus @map("acceptance_status")
+  serverReceivedAt        DateTime               @map("server_received_at") @db.Timestamptz(6)
+  isCurrent               Boolean                @default(false) @map("is_current")
+  supersededAt            DateTime?              @map("superseded_at") @db.Timestamptz(6)
+  receiptHash             String                 @map("receipt_hash")
+  createdAt               DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  election                Election               @relation(fields: [electionId], references: [id])
+  anonymousBallotGroup    AnonymousBallotGroup?  @relation("BallotGroupSubmissions", fields: [anonymousBallotGroupId], references: [id])
+  currentForGroups        AnonymousBallotGroup[] @relation("CurrentBallot")
+  votes                   Vote[]
+  submissionEvents        SubmissionEvent[]
+
+  @@index([electionId, isCurrent, acceptanceStatus, serverReceivedAt])
+  @@index([anonymousBallotGroupId, serverReceivedAt])
+  @@index([anonymousBallotGroupId, isCurrent])
+  // PostgreSQL partial unique index required in migration:
+  // unique (anonymous_ballot_group_id) where is_current = true.
+  @@map("ballots")
+}
+
+model Vote {
+  id                String         @id @default(uuid()) @db.Uuid
+  ballotId          String         @map("ballot_id") @db.Uuid
+  questionId        String         @map("question_id") @db.Uuid
+  answerType        VoteAnswerType @map("answer_type")
+  freeTextEncrypted String?        @map("free_text_encrypted") @db.Text
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  ballot            Ballot         @relation(fields: [ballotId], references: [id])
+  question          Question       @relation(fields: [questionId], references: [id])
+  options           VoteOption[]
+
+  @@unique([ballotId, questionId])
+  @@index([questionId])
+  @@map("votes")
+}
+
+model VoteOption {
+  voteId   String @map("vote_id") @db.Uuid
+  optionId String @map("option_id") @db.Uuid
+  vote     Vote   @relation(fields: [voteId], references: [id])
+  option   Option @relation(fields: [optionId], references: [id])
+
+  @@id([voteId, optionId])
+  @@index([optionId])
+  @@map("vote_options")
+}
+
+model SubmissionEvent {
+  id                String                 @id @default(uuid()) @db.Uuid
+  electionId         String                 @map("election_id") @db.Uuid
+  ballotId           String?                @map("ballot_id") @db.Uuid
+  eventType          SubmissionEventType    @map("event_type")
+  serverReceivedAt   DateTime?              @map("server_received_at") @db.Timestamptz(6)
+  acceptanceStatus   BallotAcceptanceStatus? @map("acceptance_status")
+  reasonCode         String?                @map("reason_code")
+  ipMasked           String?                @map("ip_masked")
+  ipHash             String?                @map("ip_hash")
+  userAgentSummary   String?                @map("user_agent_summary")
+  createdAt          DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  election           Election               @relation(fields: [electionId], references: [id])
+  ballot             Ballot?                @relation(fields: [ballotId], references: [id])
+
+  @@index([electionId, createdAt])
+  @@index([ballotId])
+  @@map("submission_events")
+}
+
+model Result {
+  id          String       @id @default(uuid()) @db.Uuid
+  electionId  String       @map("election_id") @db.Uuid
+  status      ResultStatus @default(draft)
+  talliedAt   DateTime?    @map("tallied_at") @db.Timestamptz(6)
+  talliedById String?      @map("tallied_by") @db.Uuid
+  sourceRule  String       @map("source_rule")
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  election    Election     @relation(fields: [electionId], references: [id])
+  talliedBy   User?        @relation("ResultTalliedBy", fields: [talliedById], references: [id])
+  items       ResultItem[]
+  versions    ResultVersion[]
+
+  @@index([electionId, status])
+  @@map("results")
+}
+
+model ResultItem {
+  id              String    @id @default(uuid()) @db.Uuid
+  resultId        String    @map("result_id") @db.Uuid
+  questionId      String    @map("question_id") @db.Uuid
+  optionId        String?   @map("option_id") @db.Uuid
+  voteCount       Int       @default(0) @map("vote_count")
+  masked          Boolean   @default(false)
+  displayLabel    String?   @map("display_label")
+  result          Result    @relation(fields: [resultId], references: [id])
+  question        Question  @relation(fields: [questionId], references: [id])
+  option          Option?   @relation(fields: [optionId], references: [id])
+
+  @@index([resultId, questionId])
+  @@index([optionId])
+  @@map("result_items")
+}
+
+model ResultVersion {
+  id             String              @id @default(uuid()) @db.Uuid
+  electionId     String              @map("election_id") @db.Uuid
+  resultId       String              @map("result_id") @db.Uuid
+  versionNo      Int                 @map("version_no")
+  versionType    ResultVersionType   @map("version_type")
+  status         ResultVersionStatus @default(confirmed)
+  confirmedById  String?             @map("confirmed_by") @db.Uuid
+  publishedAt    DateTime?           @map("published_at") @db.Timestamptz(6)
+  notice         String?             @db.Text
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  election       Election            @relation(fields: [electionId], references: [id])
+  result         Result              @relation(fields: [resultId], references: [id])
+  confirmedBy    User?               @relation("ResultVersionConfirmedBy", fields: [confirmedById], references: [id])
+  reports        Report[]
+  correctionRequests CorrectionRequest[]
+  invalidationRecords InvalidationRecord[]
+
+  @@unique([electionId, versionNo])
+  @@index([electionId, status])
+  @@map("result_versions")
+}
+
+model Report {
+  id              String        @id @default(uuid()) @db.Uuid
+  electionId      String        @map("election_id") @db.Uuid
+  resultVersionId String        @map("result_version_id") @db.Uuid
+  reportType      ReportType    @map("report_type")
+  format          String
+  status          ExportStatus  @default(requested)
+  generatedById   String?       @map("generated_by") @db.Uuid
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  election        Election      @relation(fields: [electionId], references: [id])
+  resultVersion   ResultVersion @relation(fields: [resultVersionId], references: [id])
+  generatedBy     User?         @relation("ReportGeneratedBy", fields: [generatedById], references: [id])
+  exports         ReportExport[]
+
+  @@index([electionId, reportType])
+  @@map("reports")
+}
+
+model ReportExport {
+  id              String       @id @default(uuid()) @db.Uuid
+  reportId        String       @map("report_id") @db.Uuid
+  requestedById   String       @map("requested_by") @db.Uuid
+  approvedById    String?      @map("approved_by") @db.Uuid
+  status          ExportStatus @default(requested)
+  purpose         String       @db.Text
+  exportFormat    String       @map("export_format")
+  scopeSummary    Json?        @map("scope_summary")
+  fileHash        String?      @map("file_hash")
+  watermarkId     String?      @map("watermark_id")
+  downloadUrlHash String?      @map("download_url_hash")
+  expiresAt       DateTime?    @map("expires_at") @db.Timestamptz(6)
+  downloadedAt    DateTime?    @map("downloaded_at") @db.Timestamptz(6)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  report          Report       @relation(fields: [reportId], references: [id])
+  requestedBy     User         @relation("ReportExportRequestedBy", fields: [requestedById], references: [id])
+  approvedBy      User?        @relation("ReportExportApprovedBy", fields: [approvedById], references: [id])
+
+  @@index([reportId, status])
+  @@map("report_exports")
+}
+
+model Dispute {
+  id             String        @id @default(uuid()) @db.Uuid
+  electionId      String        @map("election_id") @db.Uuid
+  submittedById   String?       @map("submitted_by") @db.Uuid
+  handledById     String?       @map("handled_by") @db.Uuid
+  status          DisputeStatus @default(submitted)
+  reason          String        @db.Text
+  resolution      String?       @db.Text
+  submittedAt     DateTime      @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  resolvedAt      DateTime?     @map("resolved_at") @db.Timestamptz(6)
+  election        Election      @relation(fields: [electionId], references: [id])
+  submittedBy     User?         @relation("DisputeSubmittedBy", fields: [submittedById], references: [id])
+  handledBy       User?         @relation("DisputeHandledBy", fields: [handledById], references: [id])
+
+  @@index([electionId, status])
+  @@map("disputes")
+}
+
+model CorrectionRequest {
+  id              String           @id @default(uuid()) @db.Uuid
+  electionId      String           @map("election_id") @db.Uuid
+  resultVersionId String           @map("result_version_id") @db.Uuid
+  status          CorrectionStatus @default(requested)
+  reason          String           @db.Text
+  requestedById   String           @map("requested_by") @db.Uuid
+  approvedById    String?          @map("approved_by") @db.Uuid
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  approvedAt      DateTime?        @map("approved_at") @db.Timestamptz(6)
+  election        Election         @relation(fields: [electionId], references: [id])
+  resultVersion   ResultVersion    @relation(fields: [resultVersionId], references: [id])
+  requestedBy     User             @relation("CorrectionRequestedBy", fields: [requestedById], references: [id])
+  approvedBy      User?            @relation("CorrectionApprovedBy", fields: [approvedById], references: [id])
+
+  @@index([electionId, status])
+  @@map("correction_requests")
+}
+
+model InvalidationRecord {
+  id              String         @id @default(uuid()) @db.Uuid
+  electionId      String         @map("election_id") @db.Uuid
+  resultVersionId String?        @map("result_version_id") @db.Uuid
+  reason          String         @db.Text
+  requestedById   String         @map("requested_by") @db.Uuid
+  approvedById    String?        @map("approved_by") @db.Uuid
+  notice          String?        @db.Text
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  approvedAt      DateTime?      @map("approved_at") @db.Timestamptz(6)
+  election        Election       @relation(fields: [electionId], references: [id])
+  resultVersion   ResultVersion? @relation(fields: [resultVersionId], references: [id])
+  requestedBy     User           @relation("InvalidationRequestedBy", fields: [requestedById], references: [id])
+  approvedBy      User?          @relation("InvalidationApprovedBy", fields: [approvedById], references: [id])
+
+  @@index([electionId])
+  @@map("invalidation_records")
+}
+
+model OperationIncident {
+  id            String           @id @default(uuid()) @db.Uuid
+  electionId     String           @map("election_id") @db.Uuid
+  incidentType   String           @map("incident_type")
+  severity       IncidentSeverity
+  status         IncidentStatus   @default(open)
+  startedAt      DateTime?        @map("started_at") @db.Timestamptz(6)
+  endedAt        DateTime?        @map("ended_at") @db.Timestamptz(6)
+  impactSummary  String?          @map("impact_summary") @db.Text
+  resolution     String?          @db.Text
+  createdById    String?          @map("created_by") @db.Uuid
+  election       Election         @relation(fields: [electionId], references: [id])
+  createdBy      User?            @relation("IncidentCreatedBy", fields: [createdById], references: [id])
+
+  @@index([electionId, status])
+  @@index([severity])
+  @@map("operation_incidents")
+}
+
+model AuditEvent {
+  id              String              @id @default(uuid()) @db.Uuid
+  tenantId        String              @map("tenant_id") @db.Uuid
+  organizationId  String?             @map("organization_id") @db.Uuid
+  actorUserId     String?             @map("actor_user_id") @db.Uuid
+  eventType       AuditEventType      @map("event_type")
+  targetType      String              @map("target_type")
+  targetId        String?             @map("target_id") @db.Uuid
+  riskLevel       PermissionRiskLevel? @map("risk_level")
+  reason          String?             @db.Text
+  beforeSummary   Json?               @map("before_summary")
+  afterSummary    Json?               @map("after_summary")
+  occurredAt      DateTime            @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  integrityHash   String?             @map("integrity_hash")
+  tenant          Tenant              @relation(fields: [tenantId], references: [id])
+  organization    Organization?       @relation(fields: [organizationId], references: [id])
+  actorUser       User?               @relation("AuditActor", fields: [actorUserId], references: [id])
+
+  @@index([organizationId, occurredAt])
+  @@index([eventType])
+  @@index([targetType, targetId])
+  @@map("audit_events")
+}
+
+model SecurityEvent {
+  id               String              @id @default(uuid()) @db.Uuid
+  tenantId          String?             @map("tenant_id") @db.Uuid
+  actorType         String              @map("actor_type")
+  actorId           String?             @map("actor_id") @db.Uuid
+  eventType         SecurityEventType   @map("event_type")
+  riskLevel         PermissionRiskLevel @map("risk_level")
+  ipMasked          String?             @map("ip_masked")
+  ipHash            String?             @map("ip_hash")
+  userAgentSummary  String?             @map("user_agent_summary")
+  occurredAt        DateTime            @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  metadata          Json?
+  tenant            Tenant?             @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, occurredAt])
+  @@index([eventType, riskLevel])
+  @@map("security_events")
+}
+
+model DbAccessEvent {
+  id                String       @id @default(uuid()) @db.Uuid
+  actorUserId        String       @map("actor_user_id") @db.Uuid
+  approvalId         String?      @map("approval_id") @db.Uuid
+  accessType         DbAccessType @map("access_type")
+  targetArea         String       @map("target_area")
+  reason             String       @db.Text
+  startedAt          DateTime     @map("started_at") @db.Timestamptz(6)
+  endedAt            DateTime?    @map("ended_at") @db.Timestamptz(6)
+  rowCountSummary    Int?         @map("row_count_summary")
+  postReviewStatus   String?      @map("post_review_status")
+  actorUser          User         @relation("DbAccessActor", fields: [actorUserId], references: [id])
+
+  @@index([actorUserId, startedAt])
+  @@index([targetArea])
+  @@map("db_access_events")
+}
+
+model RetentionPolicy {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  dataCategory   String       @map("data_category")
+  retentionDays  Int?         @map("retention_days")
+  isDefault      Boolean      @default(false) @map("is_default")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, dataCategory])
+  @@map("retention_policies")
+}
+
+model DeletionRequest {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  electionId     String?        @map("election_id") @db.Uuid
+  requestedById  String         @map("requested_by") @db.Uuid
+  approvedById   String?        @map("approved_by") @db.Uuid
+  dataCategory   String         @map("data_category")
+  status         DeletionStatus @default(requested)
+  reason         String?        @db.Text
+  requestedAt    DateTime       @default(now()) @map("requested_at") @db.Timestamptz(6)
+  approvedAt     DateTime?      @map("approved_at") @db.Timestamptz(6)
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  election       Election?      @relation(fields: [electionId], references: [id])
+  requestedBy    User           @relation("DeletionRequestedBy", fields: [requestedById], references: [id])
+  approvedBy     User?          @relation("DeletionApprovedBy", fields: [approvedById], references: [id])
+
+  @@index([organizationId, status])
+  @@index([electionId])
+  @@map("deletion_requests")
+}
+
+model NotificationSetting {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @map("organization_id") @db.Uuid
+  channel        NotificationChannel
+  settingType    String              @map("setting_type")
+  isEnabled      Boolean             @default(true) @map("is_enabled")
+  config         Json?
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization        @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, channel, settingType])
+  @@map("notification_settings")
+}
+
+model DeliveryEvent {
+  id                String              @id @default(uuid()) @db.Uuid
+  organizationId    String              @map("organization_id") @db.Uuid
+  electionId        String?             @map("election_id") @db.Uuid
+  recipientType     String              @map("recipient_type")
+  recipientRefId    String?             @map("recipient_ref_id") @db.Uuid
+  channel           NotificationChannel
+  deliveryType      String              @map("delivery_type")
+  status            DeliveryStatus      @default(pending)
+  provider          String?
+  sentAt            DateTime?           @map("sent_at") @db.Timestamptz(6)
+  failedAt          DateTime?           @map("failed_at") @db.Timestamptz(6)
+  failureReasonCode String?             @map("failure_reason_code")
+  organization      Organization        @relation(fields: [organizationId], references: [id])
+  election          Election?           @relation(fields: [electionId], references: [id])
+
+  @@index([electionId, deliveryType])
+  @@index([status, sentAt])
+  @@map("delivery_events")
+}
