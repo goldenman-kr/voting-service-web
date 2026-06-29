@@ -1,6 +1,6 @@
 # Implementation Status
 
-This document records the implementation state after Step 36. It is not a product design replacement; it tracks what is implemented, what is still mocked or skeletal, and which guardrails must remain fixed before beta or production use.
+This document records the implementation state after Step 40. It is not a product design replacement; it tracks what is implemented, what is still mocked or skeletal, and which guardrails must remain fixed before beta or production use.
 
 ## Completed Steps
 
@@ -40,6 +40,8 @@ This document records the implementation state after Step 36. It is not a produc
 - Step 34: Staging test-data inventory, cleanup policy, RBAC drift review, and restore rehearsal preparation were completed. No destructive cleanup was run.
 - Step 35: Full restore rehearsal passed by restoring the compressed staging backup into an isolated temporary PostgreSQL container with no host port, validating schema/count/index sanity, and removing the temporary restore resources.
 - Step 36: Failed Step 33 draft smoke elections were cleaned up from staging after backup confirmation. The successful published smoke election was preserved, and the DB-only `StagingSmokeOperator` role was retained as documented staging drift.
+- Step 37-39: Staging backup hardening options were documented, and age-based encrypted backup setup was deferred for the current staging/internal beta phase. Backup encryption, offsite copy, key custody/recovery, and recurring restore drills remain production blockers.
+- Step 40: Staging operations handoff was finalized in `docs/staging-operations-handoff.md`, including operator commands, internal beta rules, admin/RBAC cautions, emergency stop criteria, and production blockers.
 
 ## Currently Working MVP Flow
 
@@ -90,6 +92,7 @@ WHERE is_current = true;
 - Production monitoring, APM redaction validation, and access-log redaction validation are not complete.
 - Staging monitoring and reverse-proxy access-log redaction validation are planned but not complete. App/PostgreSQL log leakage quick checks passed for the bring-up smoke.
 - Full restore rehearsal into a separate temporary PostgreSQL database passed once for the current staging snapshot. Recurring restore drills remain pending.
+- Staging operations handoff is documented in `docs/staging-operations-handoff.md`.
 - Failed Step 33 staging draft cleanup is complete. The successful published smoke election remains as short-term staging evidence.
 - Docker image build and staging Compose startup have been executed on the office Linux server.
 - Production deployment target is planned at the architecture level but not provisioned.

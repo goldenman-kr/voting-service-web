@@ -29,6 +29,8 @@ Actual server pre-flight remains a later step and must be run on the office Linu
 
 Server-agent entry point for the next handoff: `docs/server-agent-handoff.md`.
 
+Current staging operations handoff: `docs/staging-operations-handoff.md`.
+
 ## Deployment Model
 
 Recommended first self-hosted staging model:
@@ -419,6 +421,10 @@ Result:
 - confirm.
 - publish.
 - voter/public result is visible according to policy.
+
+## Routine Operations
+
+Use `docs/staging-operations-handoff.md` for the current internal beta operating surface, including health checks, restart commands, log masking rules, backup posture, emergency stop criteria, and production blockers.
 
 ## Staging Test Data Cleanup
 

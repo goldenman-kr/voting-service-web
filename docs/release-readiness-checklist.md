@@ -107,6 +107,7 @@ Confirmed staging shape:
 - the restore rehearsal used a temporary PostgreSQL container, volume, and network with no host port exposure, restored `voting-service-web-staging-20260629T141827Z.dump.gz`, validated schema/count/index sanity, and removed the temporary resources afterward.
 - offsite backup, encrypted backup storage policy, and recurring restore drills are still pending.
 - Step 37 documented backup hardening options. Step 38/39 decision defers age-based encrypted backup setup for the current staging/internal beta phase because operator-only key custody would concentrate recovery risk. Local backup with file mode `600` and the passed isolated restore rehearsal are accepted only for non-production staging/internal beta.
+- Step 40 finalized the staging operations handoff in `docs/staging-operations-handoff.md`.
 
 Before provisioning staging:
 

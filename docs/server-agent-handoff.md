@@ -49,10 +49,11 @@ Do not paste secrets, database URLs, passwords, invite tokens, session tokens, o
 - Step 36: The two failed Step 33 draft smoke elections were cleaned up from staging, the successful published smoke election was preserved, and `StagingSmokeOperator` was retained as documented DB-only staging drift.
 - Step 37: Staging backup hardening options documented. No provider secret, private key, or offsite upload was created.
 - Step 38/39: Age-based encrypted backup setup was deferred for the current staging/internal beta phase because operator-only key custody would concentrate recovery risk. Local backup with file mode `600` and the passed isolated restore rehearsal are accepted only for non-production staging/internal beta.
+- Step 40: Staging operations handoff finalized in `docs/staging-operations-handoff.md`.
 
 ## C. Next Step For Server Agent
 
-Next step: **staging operational hardening**.
+Next step: **internal beta operation within documented constraints**.
 
 The server agent must not inspect or modify Caddy unless the operator explicitly asks. Caddy is user-managed and proxies `voting.kryp.xyz` to `127.0.0.1:3334`.
 
@@ -64,6 +65,7 @@ Check:
 - Full restore rehearsal passed from the local backup snapshot under `/mnt/data_4tb/voting-service-web/backups/`.
 - Backup hardening is planned in `docs/backup-and-restore-plan.md`; encryption, offsite copy, key custody/recovery, and recurring restore drills remain production blockers.
 - Do not install `age`, generate keys, create encrypted backups, or upload offsite backups unless the operator explicitly reopens the encryption/offsite policy.
+- Routine staging operations are documented in `docs/staging-operations-handoff.md`.
 
 ## D. Server Pre-flight Commands
 
@@ -162,6 +164,7 @@ The server agent must not:
 - `scripts/backup-postgres-staging.sh.example`: `pg_dump` staging backup example.
 - `docs/release-readiness-checklist.md`: readiness gates and CI/guardrail checklist.
 - `docs/implementation-status.md`: current implementation state and remaining blockers.
+- `docs/staging-operations-handoff.md`: current internal beta operations handoff.
 
 ## I. Candidate Follow-up Steps
 
