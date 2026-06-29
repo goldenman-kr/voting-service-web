@@ -1,11 +1,14 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
+import { existsSync } from "node:fs";
 import { loadEnvFile } from "node:process";
 
 import { parseEnv } from "../src/lib/env.ts";
 import { bootstrapInitialAdmin } from "../src/server/auth/bootstrap-admin.ts";
 
-loadEnvFile(".env");
+if (existsSync(".env")) {
+  loadEnvFile(".env");
+}
 
 const env = parseEnv();
 const prisma = new PrismaClient({ adapter: new PrismaPg(env.DATABASE_URL) });

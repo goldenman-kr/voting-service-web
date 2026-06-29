@@ -179,16 +179,16 @@ The draft assumes:
 
 - app runs in Docker.
 - PostgreSQL runs in Docker.
-- app binds to host localhost only through `127.0.0.1:${APP_HOST_PORT:-3000}:3000`.
+- app binds to host localhost only through `${APP_HOST:-127.0.0.1}:${APP_HOST_PORT:-3334}:3000`.
 - PostgreSQL has no host port mapping.
-- reverse proxy is host-level Caddy/Nginx or a later Compose addition.
+- reverse proxy is the existing user-managed Caddy/Nginx, outside this Compose file.
 - staging env is read through Compose `--env-file`, and the app service receives only the minimum runtime env values.
 
 Before using it on the office Linux server, confirm:
 
 - app container build strategy.
 - PostgreSQL strategy.
-- reverse proxy strategy.
+- reverse proxy strategy, with upstream `127.0.0.1:3334`.
 - persistent volume paths.
 - backup location.
 - env file path.
@@ -199,9 +199,9 @@ Recommended future Compose services:
 
 - `app`
 - `postgres`, only if using Docker Postgres
-- `caddy` or `nginx`, unless reverse proxy is host-managed
+- no reverse proxy service by default; Caddy is user-managed on this server
 
-Initial recommendation: keep reverse proxy host-managed until the real server's Caddy/Nginx state is known.
+Initial recommendation: keep reverse proxy host-managed. Do not generate, overwrite, stop, or restart Caddy from this app deployment runbook unless the operator explicitly chooses to do so.
 
 ## Provisioning Command Runbook
 
@@ -282,7 +282,7 @@ NODE_ENV=production npm run admin:bootstrap
 
 12. Remove bootstrap-only env values from server env file.
 13. Start or restart app.
-14. Configure reverse proxy.
+14. Confirm the user-managed Caddy reverse proxy points to `127.0.0.1:3334`.
 15. Confirm HTTPS.
 16. Run smoke test.
 17. Review logs for leakage.
@@ -290,20 +290,15 @@ NODE_ENV=production npm run admin:bootstrap
 
 ## Reverse Proxy
 
-Caddy option:
+This server uses a user-managed Caddy reverse proxy outside `docker-compose.staging.yml`.
 
-- simpler automatic HTTPS.
-- good first staging choice if supported by server/network.
-
-Nginx option:
-
-- more manual TLS/certificate handling.
-- good if operator already uses Nginx.
+Do not create, overwrite, stop, or restart Caddy from this runbook without explicit operator approval. The voting service app must only listen on the host-local upstream `127.0.0.1:3334`.
 
 Minimum requirements:
 
 - HTTPS enabled.
 - HTTP redirects to HTTPS.
+- upstream points to `127.0.0.1:3334`.
 - request body limits set conservatively.
 - proxy access logs reviewed for token leakage.
 - PostgreSQL not exposed through proxy or public ports.
@@ -346,6 +341,14 @@ Copy and review it on the server before use. It intentionally refuses production
 
 For Docker Postgres, also consider volume snapshot/backup. A dump is still needed for portable restore testing.
 
+Current staging snapshot record:
+
+- Backup storage: `/mnt/data_4tb/voting-service-web/backups/`
+- Format: compressed PostgreSQL custom-format dump (`.dump.gz`)
+- Encryption: not yet encrypted; move to encrypted/offsite storage before relying on beta data.
+- Integrity checks performed: `gzip -t` and `pg_restore --list`.
+- Full restore rehearsal: pending.
+
 ## Restore Rehearsal
 
 Restore into a separate non-production database:
@@ -361,6 +364,8 @@ Then verify:
 - key tables exist.
 - `unique_current_ballot_per_group` exists.
 - no production data was used.
+
+Do not treat a backup as operationally reliable until this restore rehearsal has been completed and recorded.
 
 ## Smoke Test
 

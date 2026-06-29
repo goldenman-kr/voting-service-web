@@ -17,13 +17,19 @@ services:
       SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env.staging}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Set ENCRYPTION_KEY in .env.staging}
       HMAC_KEY: ${HMAC_KEY:?Set HMAC_KEY in .env.staging}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      BOOTSTRAP_TENANT_NAME: ${BOOTSTRAP_TENANT_NAME:-}
+      BOOTSTRAP_ORGANIZATION_NAME: ${BOOTSTRAP_ORGANIZATION_NAME:-}
+      BOOTSTRAP_ADMIN_ROLE: ${BOOTSTRAP_ADMIN_ROLE:-}
+      BOOTSTRAP_CONFIRM: ${BOOTSTRAP_CONFIRM:-}
     depends_on:
       postgres:
         condition: service_healthy
     ports:
       # Bind to localhost only. Caddy/Nginx on the host can proxy to this port.
       # Do not expose the app directly to the public internet.
-      - "127.0.0.1:${APP_HOST_PORT:-3000}:3000"
+      - "${APP_HOST:-127.0.0.1}:${APP_HOST_PORT:-3334}:3000"
     networks:
       - voting_staging
 

@@ -1,6 +1,6 @@
 # Implementation Status
 
-This document records the implementation state after Step 28. It is not a product design replacement; it tracks what is implemented, what is still mocked or skeletal, and which guardrails must remain fixed before beta or production use.
+This document records the implementation state after Step 32. It is not a product design replacement; it tracks what is implemented, what is still mocked or skeletal, and which guardrails must remain fixed before beta or production use.
 
 ## Completed Steps
 
@@ -34,6 +34,8 @@ This document records the implementation state after Step 28. It is not a produc
 - Step 26: Render staging operator dry-run input sheet, final Web Service/Postgres/env values checklist, one-off job command order, smoke order, log leakage pattern checklist, and Go/No-go criteria.
 - Step 27: Render staging flow stopped, internal beta staging target changed to self-hosted Linux server, self-hosted staging runbook added, Docker Compose staging need documented, and backup/restore/log redaction responsibilities moved to the operator-owned server model.
 - Step 28: Self-hosted staging artifacts prepared locally, including Dockerfile, staging Compose draft, staging env example, reverse proxy examples, backup script example, and updated self-hosted runbook. Actual server pre-flight and deployment remain deferred.
+- Step 29: Server pre-flight confirmed the self-hosted staging shape: user-managed Caddy proxies to `127.0.0.1:3334`, the app container binds only to that host-local port, and PostgreSQL remains private on the Docker network with no host port mapping.
+- Step 30-32: Self-hosted staging was brought up at `https://voting.kryp.xyz` with Docker Compose app/PostgreSQL, migration deploy, RBAC seed, admin bootstrap, bootstrap env removal, HTTPS admin/voter smoke, RBAC staging admin repair, log leakage quick check, and a local compressed PostgreSQL backup snapshot.
 
 ## Currently Working MVP Flow
 
@@ -59,9 +61,11 @@ WHERE is_current = true;
 - GitHub Actions runs the same migration, seed, test, build, E2E, and cleanup gates against an isolated PostgreSQL service named `voting_service_web_ci`.
 - Remote GitHub Actions execution must be confirmed after push or pull request creation. Branch protection should require the `CI Guardrail Verification / Guardrails, DB, build, and E2E` check.
 - A local production-like rehearsal was run against `voting_service_web_rehearsal` with migration deploy, RBAC seed, admin bootstrap, production build/start smoke, and Playwright E2E.
-- Internal beta staging target is selected as a self-hosted Linux server, but it is not provisioned.
-- Self-hosted staging provisioning is documented in `docs/self-hosted-staging-runbook.md`, but no server deployment has been performed.
-- Self-hosted staging deployment artifacts now exist, but they have not been run on the office Linux server.
+- Internal beta staging is provisioned on the self-hosted Linux server at `https://voting.kryp.xyz`.
+- The staging app is bound only to `127.0.0.1:3334` behind user-managed Caddy. PostgreSQL is internal to Docker Compose and has no host port mapping.
+- Staging migration deploy, RBAC seed, initial admin bootstrap, duplicate bootstrap block, bootstrap env removal, HTTPS admin login/session/logout/relogin smoke, and voter invite page smoke have passed.
+- The bootstrap admin currently has `OrganizationOwner` plus `ElectionManager` in staging so the dashboard's `election.read` requirement is satisfied using existing seeded role mappings.
+- A compressed staging PostgreSQL backup snapshot exists under `/mnt/data_4tb/voting-service-web/backups/`, with gzip integrity and `pg_restore --list` catalog checks performed. Full restore rehearsal remains pending.
 - Render staging documents are archived as an alternative path only; no Render resource has been created.
 - Production candidate remains AWS ECS/Fargate + RDS PostgreSQL or an equivalent managed container/app platform with managed PostgreSQL, KMS, secret store, backup/PITR, and redacted logging.
 - No staging or production cloud resources have been created.
@@ -77,9 +81,9 @@ WHERE is_current = true;
 - DB emergency access workflow is documented and permissioned, but not implemented as an operational console.
 - Incident management UI and advanced incident workflows remain skeletal.
 - Production monitoring, APM redaction validation, and access-log redaction validation are not complete.
-- Staging monitoring, reverse-proxy/app/PostgreSQL log redaction validation, and access-log redaction validation are planned but not complete.
-- Self-hosted staging smoke, backup/restore rehearsal, and log leakage review are planned but not executed.
-- Docker image build and staging Compose startup have not been executed against the office Linux server.
+- Staging monitoring and reverse-proxy access-log redaction validation are planned but not complete. App/PostgreSQL log leakage quick checks passed for the bring-up smoke.
+- Full restore rehearsal into a separate non-production database remains pending.
+- Docker image build and staging Compose startup have been executed on the office Linux server.
 - Production deployment target is planned at the architecture level but not provisioned.
 
 ## npm Audit Status
@@ -131,7 +135,7 @@ WHERE is_current = true;
 - Provision the internal beta staging target only after approval, using `docs/staging-deployment-plan.md`.
 - Use `docs/self-hosted-staging-runbook.md` as the execution checklist for self-hosted staging.
 - Before self-hosted provisioning, complete the pre-flight checklist without writing real secrets to docs or chat.
-- Confirm self-hosted staging migration deploy, RBAC seed, admin bootstrap, smoke checks, backup snapshot, and log redaction review before using real participant data.
-- Implement a real backup/restore rehearsal before any production data collection.
+- Run a real restore rehearsal from the staging backup snapshot before relying on beta data.
+- Keep `https://voting.kryp.xyz` staging limited to non-production or explicitly approved low-risk beta data until restore rehearsal, monitoring, and remaining production blockers are addressed.
 - Add provider-specific delivery adapters only after token redaction tests exist for each provider.
 - Add real MFA/WebAuthn before any production administrator access.

@@ -91,7 +91,17 @@ Step 28 prepared self-hosted staging artifacts locally:
 - `docs/self-hosted-reverse-proxy-examples.md`: Caddy and Nginx examples.
 - `scripts/backup-postgres-staging.sh.example`: `pg_dump` backup example.
 
-These artifacts are not a deployment record. The office Linux server pre-flight, final port/reverse-proxy decisions, real `.env.staging` creation, migration deploy, seed, bootstrap, smoke test, backup check, and log leakage review remain future operator steps.
+The self-hosted staging server has now been provisioned for internal beta smoke at `https://voting.kryp.xyz`.
+
+Confirmed staging shape:
+
+- user-managed Caddy terminates HTTPS and proxies to `127.0.0.1:3334`.
+- the app container binds only to `127.0.0.1:3334`.
+- PostgreSQL runs inside Docker Compose without a host port mapping.
+- migration deploy, RBAC seed, initial admin bootstrap, duplicate bootstrap block, bootstrap env removal, admin login/session/logout/relogin smoke, voter invite page smoke, and app/PostgreSQL log leakage quick check passed.
+- the staging bootstrap admin has `OrganizationOwner` plus `ElectionManager` using existing seeded role mappings.
+- a compressed local PostgreSQL backup snapshot was created under `/mnt/data_4tb/voting-service-web/backups/` and passed gzip and `pg_restore --list` checks.
+- full restore rehearsal is still pending.
 
 Before provisioning staging:
 
@@ -119,6 +129,8 @@ Confirmed command values for the current Next.js app:
 - Start command: `npm run start`
 
 Staging migration is a manual operator step. Do not put `npx prisma migrate deploy` in the normal app startup path.
+
+For the current self-hosted staging server, keep `.env.staging` and the local credential handoff file untracked and server-local. Do not copy either file into issues, pull requests, docs, chat, or image layers.
 
 Self-hosted staging provisioning can start only after the pre-flight fields in `docs/self-hosted-staging-runbook.md` have been reviewed:
 

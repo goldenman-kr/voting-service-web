@@ -1,10 +1,13 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { existsSync } from "node:fs";
 import { loadEnvFile } from "node:process";
 
 import { PERMISSIONS, ROLE_PERMISSIONS, Role } from "../src/guardrails/index.js";
 
-loadEnvFile(".env");
+if (existsSync(".env")) {
+  loadEnvFile(".env");
+}
 
 const adapter = new PrismaPg(process.env.DATABASE_URL);
 const prisma = new PrismaClient({ adapter });

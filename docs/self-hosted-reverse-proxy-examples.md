@@ -1,10 +1,10 @@
 # Self-hosted Reverse Proxy Examples
 
-These examples are drafts for a future self-hosted staging server. Do not overwrite an existing office server Caddy or Nginx configuration without reviewing the live server first.
+These examples are drafts for a future self-hosted staging server. On the office server, Caddy is user-managed; do not generate, overwrite, stop, or restart the existing Caddy configuration from the app deployment flow.
 
 Assumptions:
 
-- The Next.js app listens on `127.0.0.1:3000`.
+- The Next.js app listens on the host-local upstream `127.0.0.1:3334`.
 - PostgreSQL is not publicly exposed.
 - HTTPS is required for production-like cookie behavior.
 - Replace `staging.example.com` with the real staging domain on the server.
@@ -15,7 +15,7 @@ Assumptions:
 staging.example.com {
   encode zstd gzip
 
-  reverse_proxy 127.0.0.1:3000 {
+  reverse_proxy 127.0.0.1:3334 {
     header_up X-Forwarded-Proto {scheme}
     header_up X-Forwarded-Host {host}
     header_up X-Real-IP {remote_host}
@@ -56,7 +56,7 @@ server {
   error_log /var/log/nginx/voting-service-web-staging.error.log warn;
 
   location / {
-    proxy_pass http://127.0.0.1:3000;
+    proxy_pass http://127.0.0.1:3334;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
     proxy_set_header X-Forwarded-Host $host;

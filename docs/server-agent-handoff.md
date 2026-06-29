@@ -12,7 +12,7 @@ Do not paste secrets, database URLs, passwords, invite tokens, session tokens, o
 - PostgreSQL Prisma migration and RBAC seed are implemented.
 - Playwright MVP browser smoke test is implemented and has passed locally.
 - GitHub Actions CI guardrail workflow is configured.
-- Self-hosted staging deployment artifacts are prepared locally.
+- Self-hosted staging is running for internal beta smoke at `https://voting.kryp.xyz`.
 
 ## B. Completed Step Summary
 
@@ -42,12 +42,13 @@ Do not paste secrets, database URLs, passwords, invite tokens, session tokens, o
 - Step 23-26: Production and staging planning, Render runbooks, operator checklist, and Go/No-go criteria.
 - Step 27: Render path stopped; staging direction changed to self-hosted Linux server.
 - Step 28: Dockerfile, `docker-compose.staging.yml`, `.env.staging.example`, backup script example, reverse proxy examples, and self-hosted runbook updates completed.
+- Step 29-32: Office Linux server pre-flight, staging env creation, Docker Compose app/PostgreSQL bring-up, migration deploy, RBAC seed, initial admin bootstrap, RBAC admin permission repair, HTTPS smoke at `https://voting.kryp.xyz`, app/PostgreSQL log leakage quick check, and local compressed PostgreSQL backup snapshot completed.
 
 ## C. Next Step For Server Agent
 
-Next step: **Step 29: Self-hosted Server Pre-flight / Server-specific Adjustment**.
+Next step: **restore rehearsal and beta operational hardening**.
 
-The server agent must first inspect the actual office Linux server before changing deployment files or starting services.
+The server agent must not inspect or modify Caddy unless the operator explicitly asks. Caddy is user-managed and proxies `voting.kryp.xyz` to `127.0.0.1:3334`.
 
 Check:
 
@@ -119,12 +120,12 @@ Default recommendation until server evidence says otherwise:
 - Run the app and PostgreSQL as containers.
 - Reuse an existing host Caddy/Nginx reverse proxy if present and safe.
 - Do not expose PostgreSQL on a public host port.
-- Bind the app to localhost by default: `127.0.0.1:${APP_HOST_PORT:-3000}:3000`.
-- Proxy Caddy/Nginx to `127.0.0.1:3000`.
+- Bind the app to localhost by default: `${APP_HOST:-127.0.0.1}:${APP_HOST_PORT:-3334}:3000`.
+- Proxy user-managed Caddy/Nginx to `127.0.0.1:3334`.
 - Create `.env.staging` only on the server.
 - Set `.env.staging` permissions to `chmod 600`.
 - Remove bootstrap env values after initial admin creation.
-- Take a database backup before migrations.
+- Take and verify database backups before relying on beta data.
 
 The current draft assumes Docker PostgreSQL for first staging, but host PostgreSQL or managed PostgreSQL can be selected after pre-flight if that is safer.
 
@@ -160,12 +161,10 @@ The server agent must not:
 
 ## I. Candidate Follow-up Steps
 
-- Step 29: Server pre-flight.
-- Step 30: Server-specific compose/proxy/env adjustment.
-- Step 31: Staging bring-up.
-- Step 32: Migration deploy, seed, and initial admin bootstrap.
-- Step 33: Smoke test and log leakage review.
-- Step 34: Backup and restore rehearsal.
+- Complete restore rehearsal from the staging backup snapshot.
+- Add backup encryption/offsite storage.
+- Confirm reverse-proxy access-log redaction without exposing secrets.
+- Confirm remote CI after pushing staging runtime changes.
 
 ## J. Sensitive Information Rules
 
