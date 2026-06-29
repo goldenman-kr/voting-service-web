@@ -100,8 +100,12 @@ Confirmed staging shape:
 - PostgreSQL runs inside Docker Compose without a host port mapping.
 - migration deploy, RBAC seed, initial admin bootstrap, duplicate bootstrap block, bootstrap env removal, admin login/session/logout/relogin smoke, voter invite page smoke, and app/PostgreSQL log leakage quick check passed.
 - the staging bootstrap admin has `OrganizationOwner` plus `ElectionManager` using existing seeded role mappings.
-- a compressed local PostgreSQL backup snapshot was created under `/mnt/data_4tb/voting-service-web/backups/` and passed gzip and `pg_restore --list` checks.
-- full restore rehearsal is still pending.
+- a full manual MVP staging smoke passed on `https://voting.kryp.xyz`, including admin election setup, invite/identify, ballot submit, revote, close/tally/confirm/publish, published result viewing, DB sanity checks, and app/PostgreSQL log leakage review.
+- Step 36 removed the two failed Step 33 draft smoke elections from staging and preserved the successful published smoke election as evidence.
+- Step 33 introduced a DB-only `StagingSmokeOperator` role for staging smoke coverage. It is not present in source guardrail role mappings, remains staging-only drift, and must be removed or replaced through a separate RBAC design decision before production.
+- a compressed local PostgreSQL backup snapshot was created under `/mnt/data_4tb/voting-service-web/backups/` and passed gzip, `pg_restore --list`, and full isolated restore rehearsal checks.
+- the restore rehearsal used a temporary PostgreSQL container, volume, and network with no host port exposure, restored `voting-service-web-staging-20260629T141827Z.dump.gz`, validated schema/count/index sanity, and removed the temporary resources afterward.
+- offsite backup, encrypted backup storage policy, and recurring restore drills are still pending.
 
 Before provisioning staging:
 
@@ -273,7 +277,7 @@ CI badges are not added yet because repository visibility and badge exposure pol
 - External identity verification and SSO are not implemented.
 - Real MFA/WebAuthn is not implemented.
 - KMS-backed field encryption is not implemented.
-- Backup/restore is not implemented.
+- Production-grade encrypted/offsite backup automation and recurring restore drills are not implemented. One staging backup and isolated restore rehearsal have passed.
 - PDF/CSV/Excel report file generation is not implemented.
 - Advanced audit export review UI is not implemented.
 - DB emergency access console is not implemented.
@@ -293,8 +297,8 @@ CI badges are not added yet because repository visibility and badge exposure pol
 - Rehearse migrations against a production-like PostgreSQL environment.
 - Keep isolated CI E2E execution against a disposable PostgreSQL service green before merging.
 - Configure branch protection in GitHub repository settings so `CI Guardrail Verification` is required before merging.
-- Complete staging provisioning, staging migration deploy, admin bootstrap, smoke test, and log redaction review before real participant data is used.
-- Complete self-hosted backup/restore rehearsal before any production data collection.
+- Keep staging provisioning, migration deploy, admin bootstrap, smoke test, cleanup, and log redaction review current before real participant data is used.
+- Add encrypted/offsite backup storage and recurring restore drills before any production data collection.
 - Prepare terms of service and privacy policy before processing real user/organization data.
 
 ## Beta-Test Position

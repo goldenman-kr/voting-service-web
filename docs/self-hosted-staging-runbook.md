@@ -347,7 +347,7 @@ Current staging snapshot record:
 - Format: compressed PostgreSQL custom-format dump (`.dump.gz`)
 - Encryption: not yet encrypted; move to encrypted/offsite storage before relying on beta data.
 - Integrity checks performed: `gzip -t` and `pg_restore --list`.
-- Full restore rehearsal: pending.
+- Full restore rehearsal: passed once in Step 35 against an isolated temporary PostgreSQL container with no host port exposure.
 
 ## Restore Rehearsal
 
@@ -400,6 +400,80 @@ Result:
 - confirm.
 - publish.
 - voter/public result is visible according to policy.
+
+## Staging Test Data Cleanup
+
+After the Step 33 MVP smoke, the staging database contained:
+
+- one successful published `Staging Smoke Vote step33-*` election.
+- two failed `ready_for_review` `Staging Smoke Vote step33-*` draft elections.
+
+Step 36 cleanup result:
+
+- the two failed `ready_for_review` draft elections were removed after backup confirmation and exact target-count verification.
+- dependent non-audit operational records for the failed drafts were removed in a transaction.
+- the successful published smoke election was preserved.
+- audit/security events were left untouched.
+
+Default future cleanup policy:
+
+- Preserve the successful published smoke election as short-term evidence for beta readiness review.
+- Remove only failed draft smoke elections after explicit operator approval.
+- Do not delete production-like or non-`step33-*` data.
+- Do not print raw PII, invite tokens, token hashes, ballot group hashes, session values, or voter-to-ballot linkage while inventorying or deleting.
+
+Cleanup plan for failed drafts:
+
+1. Confirm the target title prefix and states before deletion.
+2. Confirm the database is the staging Docker Compose PostgreSQL, not production.
+3. Count dependent rows by election before deletion.
+4. Delete dependent rows in FK-safe order, including result/report/correction records if present, submission/vote/ballot/group records if present, voter sessions, invitations, voting credentials, eligible voters, registry imports, questions/options, state/change history, delivery events, and finally the failed draft elections.
+5. Recount the same targets after deletion.
+6. Leave audit/security events untouched unless an explicit retention decision says otherwise.
+
+Do not run future destructive cleanup without an explicit operator approval for the exact target set.
+
+## Staging RBAC Drift
+
+Step 33 required a staging-only DB role named `StagingSmokeOperator` because the seeded `ElectionManager` role intentionally does not include approval and result-publication permissions. This role is not part of the source guardrail role mapping or seed.
+
+Recommended handling:
+
+- Treat `StagingSmokeOperator` as temporary staging drift.
+- Do not copy it to production seed or source guardrails without a separate RBAC design step.
+- Keep it only for internal beta staging convenience while `voting.kryp.xyz` remains a non-production environment.
+- Before production, remove it or replace it with a source-controlled role model that separates approval and publication duties as intended.
+- For production, decide whether operational smoke should use a dedicated scripted operator role, separate approver/publisher accounts, or a documented combination of existing seeded roles.
+
+Step 36 sanity summary:
+
+- source guardrails/seed include no `StagingSmokeOperator` role.
+- staging DB contains one assigned user for the role.
+- staging DB role permission count is 27, including 11 high-risk operational permissions.
+
+## Restore Rehearsal Prep
+
+Latest known staging backup source:
+
+- `/mnt/data_4tb/voting-service-web/backups/voting-service-web-staging-20260629T141827Z.dump.gz`
+
+Step 35 restore rehearsal result:
+
+- Status: passed.
+- Restore target: isolated temporary PostgreSQL 16 container, volume, and network.
+- Host port exposure: none.
+- Staging app/PostgreSQL impact: none.
+- Sanity checks: migrations table, key tables, RBAC baseline counts, ballot counts, result-version counts, and `unique_current_ballot_per_group` partial unique index.
+- Cleanup: temporary restore container, volume, network, and local temporary env file removed after verification.
+
+Recommended recurring rehearsal shape:
+
+1. Create a temporary PostgreSQL container and volume that are not attached to the staging app network as the primary database.
+2. Restore the gzip-compressed custom-format dump into a new temporary database.
+3. Run sanity checks for migration history, key table existence, the `unique_current_ballot_per_group` index, and high-level row counts.
+4. Do not connect the staging app to the restored database.
+5. Do not print database URLs, passwords, token values, token hashes, raw voter identifiers, or voter-to-ballot linkage.
+6. Remove the temporary restore container and volume after recording the result.
 
 ## Log Redaction Review
 

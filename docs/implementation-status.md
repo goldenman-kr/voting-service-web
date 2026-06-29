@@ -1,6 +1,6 @@
 # Implementation Status
 
-This document records the implementation state after Step 32. It is not a product design replacement; it tracks what is implemented, what is still mocked or skeletal, and which guardrails must remain fixed before beta or production use.
+This document records the implementation state after Step 36. It is not a product design replacement; it tracks what is implemented, what is still mocked or skeletal, and which guardrails must remain fixed before beta or production use.
 
 ## Completed Steps
 
@@ -36,6 +36,10 @@ This document records the implementation state after Step 32. It is not a produc
 - Step 28: Self-hosted staging artifacts prepared locally, including Dockerfile, staging Compose draft, staging env example, reverse proxy examples, backup script example, and updated self-hosted runbook. Actual server pre-flight and deployment remain deferred.
 - Step 29: Server pre-flight confirmed the self-hosted staging shape: user-managed Caddy proxies to `127.0.0.1:3334`, the app container binds only to that host-local port, and PostgreSQL remains private on the Docker network with no host port mapping.
 - Step 30-32: Self-hosted staging was brought up at `https://voting.kryp.xyz` with Docker Compose app/PostgreSQL, migration deploy, RBAC seed, admin bootstrap, bootstrap env removal, HTTPS admin/voter smoke, RBAC staging admin repair, log leakage quick check, and a local compressed PostgreSQL backup snapshot.
+- Step 33: Staging manual MVP voting smoke passed through admin election creation, question/options, voter registry import, review/approve/schedule/open, invitation prepare/send stub, invite/identify, ballot submit, revote, close/tally/confirm/publish, published result viewing, DB sanity checks, and app/PostgreSQL log leakage review.
+- Step 34: Staging test-data inventory, cleanup policy, RBAC drift review, and restore rehearsal preparation were completed. No destructive cleanup was run.
+- Step 35: Full restore rehearsal passed by restoring the compressed staging backup into an isolated temporary PostgreSQL container with no host port, validating schema/count/index sanity, and removing the temporary restore resources.
+- Step 36: Failed Step 33 draft smoke elections were cleaned up from staging after backup confirmation. The successful published smoke election was preserved, and the DB-only `StagingSmokeOperator` role was retained as documented staging drift.
 
 ## Currently Working MVP Flow
 
@@ -65,7 +69,9 @@ WHERE is_current = true;
 - The staging app is bound only to `127.0.0.1:3334` behind user-managed Caddy. PostgreSQL is internal to Docker Compose and has no host port mapping.
 - Staging migration deploy, RBAC seed, initial admin bootstrap, duplicate bootstrap block, bootstrap env removal, HTTPS admin login/session/logout/relogin smoke, and voter invite page smoke have passed.
 - The bootstrap admin currently has `OrganizationOwner` plus `ElectionManager` in staging so the dashboard's `election.read` requirement is satisfied using existing seeded role mappings.
-- A compressed staging PostgreSQL backup snapshot exists under `/mnt/data_4tb/voting-service-web/backups/`, with gzip integrity and `pg_restore --list` catalog checks performed. Full restore rehearsal remains pending.
+- The Step 33 staging smoke required a DB-only `StagingSmokeOperator` role because the seeded `ElectionManager` role intentionally forbids approval and result publication permissions. This role is retained only as staging drift for internal beta convenience and must be removed or replaced through a separate RBAC design step before production.
+- Step 36 removed the two failed `ready_for_review` `Staging Smoke Vote step33-*` drafts from staging. The successful published smoke election remains as audit evidence.
+- A compressed staging PostgreSQL backup snapshot exists under `/mnt/data_4tb/voting-service-web/backups/`. Gzip integrity, `pg_restore --list`, and full isolated restore rehearsal have passed. The rehearsal restored `voting-service-web-staging-20260629T141827Z.dump.gz` into a temporary PostgreSQL container and confirmed migrations, key tables, RBAC baseline counts, and `unique_current_ballot_per_group`.
 - Render staging documents are archived as an alternative path only; no Render resource has been created.
 - Production candidate remains AWS ECS/Fargate + RDS PostgreSQL or an equivalent managed container/app platform with managed PostgreSQL, KMS, secret store, backup/PITR, and redacted logging.
 - No staging or production cloud resources have been created.
@@ -76,13 +82,14 @@ WHERE is_current = true;
 - Real MFA/WebAuthn is not implemented; step-up is represented by a password-confirmation based MVP boundary.
 - Report file generation for PDF, CSV, and Excel is not implemented.
 - KMS-backed field encryption, key rotation, and production secret-management adapters are not implemented.
-- Backup/restore workflows are not implemented.
+- Backup/restore workflows are documented and have one successful staging restore rehearsal, but offsite backup, encryption-at-rest policy, and recurring restore drills remain pending.
 - Advanced audit log search/export review UI is not implemented.
 - DB emergency access workflow is documented and permissioned, but not implemented as an operational console.
 - Incident management UI and advanced incident workflows remain skeletal.
 - Production monitoring, APM redaction validation, and access-log redaction validation are not complete.
 - Staging monitoring and reverse-proxy access-log redaction validation are planned but not complete. App/PostgreSQL log leakage quick checks passed for the bring-up smoke.
-- Full restore rehearsal into a separate non-production database remains pending.
+- Full restore rehearsal into a separate temporary PostgreSQL database passed once for the current staging snapshot. Recurring restore drills remain pending.
+- Failed Step 33 staging draft cleanup is complete. The successful published smoke election remains as short-term staging evidence.
 - Docker image build and staging Compose startup have been executed on the office Linux server.
 - Production deployment target is planned at the architecture level but not provisioned.
 
@@ -135,7 +142,7 @@ WHERE is_current = true;
 - Provision the internal beta staging target only after approval, using `docs/staging-deployment-plan.md`.
 - Use `docs/self-hosted-staging-runbook.md` as the execution checklist for self-hosted staging.
 - Before self-hosted provisioning, complete the pre-flight checklist without writing real secrets to docs or chat.
-- Run a real restore rehearsal from the staging backup snapshot before relying on beta data.
-- Keep `https://voting.kryp.xyz` staging limited to non-production or explicitly approved low-risk beta data until restore rehearsal, monitoring, and remaining production blockers are addressed.
+- Move staging backups to encrypted offsite storage and schedule recurring restore drills before relying on beta data long-term.
+- Keep `https://voting.kryp.xyz` staging limited to non-production or explicitly approved low-risk beta data until monitoring, offsite/encrypted backups, recurring restore drills, and remaining production blockers are addressed.
 - Add provider-specific delivery adapters only after token redaction tests exist for each provider.
 - Add real MFA/WebAuthn before any production administrator access.

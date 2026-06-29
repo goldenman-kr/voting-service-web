@@ -43,23 +43,23 @@ Do not paste secrets, database URLs, passwords, invite tokens, session tokens, o
 - Step 27: Render path stopped; staging direction changed to self-hosted Linux server.
 - Step 28: Dockerfile, `docker-compose.staging.yml`, `.env.staging.example`, backup script example, reverse proxy examples, and self-hosted runbook updates completed.
 - Step 29-32: Office Linux server pre-flight, staging env creation, Docker Compose app/PostgreSQL bring-up, migration deploy, RBAC seed, initial admin bootstrap, RBAC admin permission repair, HTTPS smoke at `https://voting.kryp.xyz`, app/PostgreSQL log leakage quick check, and local compressed PostgreSQL backup snapshot completed.
+- Step 33: Full staging MVP smoke passed through admin election creation, question/options, voter registry import, review/approve/schedule/open, invitation prepare/send stub, invite/identify, ballot submit, revote, close/tally/confirm/publish, published result viewing, DB sanity checks, and app/PostgreSQL log leakage review.
+- Step 34: Staging test-data inventory, cleanup policy, RBAC drift review, and restore rehearsal preparation completed. Destructive cleanup was not run.
+- Step 35: Full restore rehearsal passed from the compressed staging backup into an isolated temporary PostgreSQL container with no host port exposure. Temporary restore resources were removed afterward.
+- Step 36: The two failed Step 33 draft smoke elections were cleaned up from staging, the successful published smoke election was preserved, and `StagingSmokeOperator` was retained as documented DB-only staging drift.
 
 ## C. Next Step For Server Agent
 
-Next step: **restore rehearsal and beta operational hardening**.
+Next step: **staging operational hardening**.
 
 The server agent must not inspect or modify Caddy unless the operator explicitly asks. Caddy is user-managed and proxies `voting.kryp.xyz` to `127.0.0.1:3334`.
 
 Check:
 
-- OS, CPU architecture, disk, and memory.
-- Docker and Docker Compose availability.
-- Port state for `80`, `443`, `3000`, `5432`, `5433`, `8080`, and `8088`.
-- Existing Caddy or Nginx installation.
-- Existing Docker containers.
-- Domain/subdomain, DNS control, and HTTPS plan.
-- Backup storage location and offsite option.
-- PostgreSQL strategy.
+- The successful published `Staging Smoke Vote step33-*` election remains in staging as smoke evidence.
+- The two failed Step 33 `ready_for_review` draft smoke elections have been removed.
+- Step 33 added a DB-only `StagingSmokeOperator` role for smoke coverage. It is not in source guardrails or seed, remains staging-only drift, and must be removed or replaced through a separate RBAC design decision before production.
+- Full restore rehearsal passed from the local backup snapshot under `/mnt/data_4tb/voting-service-web/backups/`.
 
 ## D. Server Pre-flight Commands
 
@@ -161,8 +161,8 @@ The server agent must not:
 
 ## I. Candidate Follow-up Steps
 
-- Complete restore rehearsal from the staging backup snapshot.
-- Add backup encryption/offsite storage.
+- Add backup encryption/offsite storage and recurring restore drills.
+- Decide production RBAC role design for approval/publication duties and remove or replace `StagingSmokeOperator` before production.
 - Confirm reverse-proxy access-log redaction without exposing secrets.
 - Confirm remote CI after pushing staging runtime changes.
 
