@@ -337,7 +337,7 @@ Draft helper prepared in Step 28:
 scripts/backup-postgres-staging.sh.example
 ```
 
-Copy and review it on the server before use. It intentionally refuses production-looking database URLs and does not store database credentials in the file.
+Copy and review it on the server before use. It intentionally refuses production-looking database URLs and does not store database credentials in the file. The current template defaults to Docker Compose backup mode, which runs `pg_dump` inside the PostgreSQL container and keeps PostgreSQL off the host network.
 
 For Docker Postgres, also consider volume snapshot/backup. A dump is still needed for portable restore testing.
 
@@ -348,6 +348,17 @@ Current staging snapshot record:
 - Encryption: not yet encrypted; move to encrypted/offsite storage before relying on beta data.
 - Integrity checks performed: `gzip -t` and `pg_restore --list`.
 - Full restore rehearsal: passed once in Step 35 against an isolated temporary PostgreSQL container with no host port exposure.
+
+Step 37 backup hardening decision:
+
+- Recommended encryption: `age` file encryption with only the public recipient on the staging server.
+- Private key location: outside the staging server, controlled by the operator.
+- Recommended offsite path: encrypted backup copied by `rsync` to an existing NAS/separate server if available, or S3-compatible storage for longer-term beta/production alignment.
+- Current server tools: host `gzip`, `gpg`, and `rsync` are available; host `age`, `rclone`, and `pg_dump` were not available in PATH; the Docker PostgreSQL container has `pg_dump`.
+- Current automation state: `scripts/backup-postgres-staging.sh.example` supports Docker Compose backup, optional `age` encryption, and optional `rsync` offsite dry-run. A real server-local script must remain untracked.
+- Pending: install or otherwise provide `age`, provision an operator public recipient key, confirm offsite destination, create encrypted backup, and rehearse decrypt plus restore.
+
+See `docs/backup-and-restore-plan.md` for the comparison and hardening plan.
 
 ## Restore Rehearsal
 
@@ -366,6 +377,13 @@ Then verify:
 - no production data was used.
 
 Do not treat a backup as operationally reliable until this restore rehearsal has been completed and recorded.
+
+For encrypted/offsite backups, additionally verify:
+
+- decrypting the encrypted artifact without placing the private key on the staging server.
+- restoring the decrypted dump into an isolated temporary PostgreSQL container.
+- downloading or reading the offsite copy and restoring that artifact.
+- recurring restore drill evidence and cleanup of temporary restore resources.
 
 ## Smoke Test
 
