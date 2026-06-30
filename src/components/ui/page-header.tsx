@@ -6,12 +6,14 @@ import { StatusBadge } from "./status-badge";
 export function PageHeader({
   eyebrow,
   title,
+  titleActions,
   description,
   status,
   actions
 }: {
   eyebrow?: string;
   title: string;
+  titleActions?: ReactNode;
   description?: string;
   status?: ElectionStateValue;
   actions?: ReactNode;
@@ -23,6 +25,7 @@ export function PageHeader({
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-normal text-slate-950">{title}</h1>
           {status ? <StatusBadge status={status} /> : null}
+          {titleActions}
         </div>
         {description ? (
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{description}</p>

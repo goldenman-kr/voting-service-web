@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { AdminLoginForm } from "../../../components/admin/admin-login-form";
 import { PrivacyNotice } from "../../../components/ui/privacy-notice";
+import { PublicNav } from "../../../components/ui/public-nav";
 import { getCurrentAdminSessionFromCookies } from "../../../server/auth/current-admin";
 
 export const dynamic = "force-dynamic";
@@ -13,8 +14,9 @@ export default async function AdminLoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-950">
-      <div className="mx-auto grid max-w-md gap-5">
+    <main className="min-h-screen bg-slate-50 text-slate-950">
+      <PublicNav />
+      <div className="mx-auto grid max-w-md gap-5 px-4 py-10">
         <header>
           <p className="text-sm font-semibold text-blue-700">관리자 인증</p>
           <h1 className="mt-2 text-2xl font-semibold">Voting Admin 로그인</h1>

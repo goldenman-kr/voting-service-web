@@ -1,15 +1,17 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { PublicNav } from "../ui/public-nav";
+
 export function VoterShell({ children }: { children: ReactNode }) {
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-5 text-slate-950">
-      <div className="mx-auto grid max-w-md gap-5">
+    <main className="min-h-screen bg-slate-50 text-slate-950">
+      <PublicNav />
+      <div className="mx-auto grid max-w-4xl gap-5 px-4 py-5">
         <header className="flex items-center justify-between">
-          <Link href="/voter/invite" className="text-base font-semibold">
-            Voting
+          <Link href="/voter" className="text-base font-semibold">
+            투표자 포털
           </Link>
-          <span className="text-xs font-medium text-slate-500">모바일 우선</span>
         </header>
         {children}
       </div>

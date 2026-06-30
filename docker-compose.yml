@@ -1,14 +1,20 @@
 # Local development only. Do not reuse these credentials outside a developer machine.
+#
+# This stack is intentionally separated from staging. The local PostgreSQL port
+# is bound to 127.0.0.1 so an accidental `npm run db:up` on a server does not
+# publish PostgreSQL on a public interface.
+name: voting-service-web-local
+
 services:
   postgres:
     image: postgres:16
-    container_name: voting-service-web-postgres
+    container_name: voting-service-web-local-postgres
     environment:
       POSTGRES_DB: voting_service_web
       POSTGRES_USER: voting_app
       POSTGRES_PASSWORD: voting_app_dev_password_only
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${LOCAL_POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

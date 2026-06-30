@@ -1,7 +1,10 @@
 import { ElectionState } from "../../guardrails/index.js";
+import { parseEnv } from "../../lib/env";
+import { decodeVoterRegistryPayload } from "../../lib/voter-registry-fields";
 import type { ElectionStateValue } from "../../domain/elections/state-machine";
 import type { AdminSession } from "../auth/admin-session";
 import type { PrismaClientLike } from "../db/prisma";
+import { decryptPersonalValue } from "../privacy/personal-data-encryption";
 import { requirePermission } from "../rbac/authorize";
 
 export type AdminElectionListItem = Readonly<{
@@ -14,6 +17,7 @@ export type AdminElectionListItem = Readonly<{
   startsAt: Date;
   endsAt: Date;
   updatedAt: Date;
+  deletedAt?: Date | null;
   questionCount: number;
   eligibleVoterCount: number;
 }>;
@@ -29,18 +33,35 @@ export type AdminElectionDetail = AdminElectionListItem &
       maxCodeResends?: number | null;
     } | null;
     voterRegistry?: {
+      id: string;
+      managedRegistryId?: string | null;
       status: string;
       totalRows: number;
       validRows: number;
     } | null;
+    invitationSummary: {
+      total: number;
+      pending: number;
+      sent: number;
+      failed: number;
+      opened: number;
+      expired: number;
+      revoked: number;
+    };
+    resultSummary: {
+      latestResultStatus?: string | null;
+      publishedVersionCount: number;
+    };
     questions: readonly {
       id: string;
       title: string;
+      description?: string | null;
       questionType: string;
       displayOrder: number;
       options: readonly {
         id: string;
         label: string;
+        description?: string | null;
         displayOrder: number;
       }[];
     }[];
@@ -48,9 +69,38 @@ export type AdminElectionDetail = AdminElectionListItem &
 
 export type AdminElectionDashboard = Readonly<{
   totalCount: number;
+  preStartCount: number;
+  activeCount: number;
+  completedCount: number;
+  registryCount: number;
   byState: Readonly<Record<string, number>>;
   reviewWaiting: readonly AdminElectionListItem[];
   recent: readonly AdminElectionListItem[];
+}>;
+
+export type AdminVoterRegistrySummary = Readonly<{
+  id: string;
+  status: string;
+  sourceType: string;
+  totalRows: number;
+  validRows: number;
+  updatedAt: Date;
+  election: {
+    id: string;
+    title: string;
+    state: ElectionStateValue;
+    startsAt: Date;
+    endsAt: Date;
+  };
+}>;
+
+export type AdminEligibleVoterListRow = Readonly<{
+  householdNumber: string;
+  name: string;
+  identifierLast4: string;
+  birthDate6: string;
+  status: string;
+  createdAt: Date;
 }>;
 
 function assertAdminElectionRead(session: AdminSession): string {
@@ -71,6 +121,7 @@ function mapListItem(record: {
   startsAt: Date;
   endsAt: Date;
   updatedAt: Date;
+  deletedAt: Date | null;
   _count: { questions: number; eligibleVoters: number };
 }): AdminElectionListItem {
   return Object.freeze({
@@ -83,6 +134,7 @@ function mapListItem(record: {
     startsAt: record.startsAt,
     endsAt: record.endsAt,
     updatedAt: record.updatedAt,
+    deletedAt: record.deletedAt,
     questionCount: record._count.questions,
     eligibleVoterCount: record._count.eligibleVoters
   });
@@ -94,7 +146,7 @@ export async function listAdminElectionItems(
 ): Promise<AdminElectionListItem[]> {
   const organizationId = assertAdminElectionRead(session);
   const elections = await prisma.election.findMany({
-    where: { organizationId },
+    where: { organizationId, deletedAt: null },
     orderBy: { createdAt: "desc" },
     include: {
       _count: {
@@ -109,22 +161,135 @@ export async function getAdminElectionDashboard(
   prisma: PrismaClientLike,
   session: AdminSession
 ): Promise<AdminElectionDashboard> {
+  const organizationId = assertAdminElectionRead(session);
   const elections = await listAdminElectionItems(prisma, session);
+  const registryCount = await prisma.voterRegistry.count({
+    where: { election: { organizationId } }
+  });
   const byState = Object.fromEntries(
     [
       ElectionState.DRAFT,
       ElectionState.READY_FOR_REVIEW,
+      ElectionState.APPROVED,
+      ElectionState.SCHEDULED,
+      ElectionState.NOTICE,
       ElectionState.OPEN,
+      ElectionState.PAUSED,
       ElectionState.CLOSED,
+      ElectionState.TALLYING,
+      ElectionState.PENDING_CONFIRMATION,
+      ElectionState.CONFIRMED,
       ElectionState.PUBLISHED
     ].map((state) => [state, elections.filter((election) => election.state === state).length])
   );
+  const preStartStates = new Set<ElectionStateValue>([
+    ElectionState.DRAFT,
+    ElectionState.READY_FOR_REVIEW,
+    ElectionState.APPROVED,
+    ElectionState.SCHEDULED,
+    ElectionState.NOTICE
+  ]);
+  const completedStates = new Set<ElectionStateValue>([
+    ElectionState.CLOSED,
+    ElectionState.TALLYING,
+    ElectionState.PENDING_CONFIRMATION,
+    ElectionState.CONFIRMED,
+    ElectionState.PUBLISHED
+  ]);
 
   return Object.freeze({
     totalCount: elections.length,
+    preStartCount: elections.filter((election) => preStartStates.has(election.state)).length,
+    activeCount: elections.filter((election) => election.state === ElectionState.OPEN || election.state === ElectionState.PAUSED).length,
+    completedCount: elections.filter((election) => completedStates.has(election.state)).length,
+    registryCount,
     byState,
     reviewWaiting: elections.filter((election) => election.state === ElectionState.READY_FOR_REVIEW),
     recent: elections.slice(0, 10)
+  });
+}
+
+export async function listAdminVoterRegistrySummaries(
+  prisma: PrismaClientLike,
+  session: AdminSession
+): Promise<AdminVoterRegistrySummary[]> {
+  const organizationId = assertAdminElectionRead(session);
+  requirePermission(session, "voter_registry.read");
+  const registries = await prisma.voterRegistry.findMany({
+    where: { election: { organizationId, deletedAt: null } },
+    orderBy: { updatedAt: "desc" },
+    select: {
+      id: true,
+      status: true,
+      sourceType: true,
+      totalRows: true,
+      validRows: true,
+      updatedAt: true,
+      election: {
+        select: {
+          id: true,
+          title: true,
+          state: true,
+          startsAt: true,
+          endsAt: true
+        }
+      }
+    }
+  });
+
+  return registries.map((registry) => ({
+    id: registry.id,
+    status: registry.status,
+    sourceType: registry.sourceType,
+    totalRows: registry.totalRows,
+    validRows: registry.validRows,
+    updatedAt: registry.updatedAt,
+    election: {
+      id: registry.election.id,
+      title: registry.election.title,
+      state: registry.election.state as ElectionStateValue,
+      startsAt: registry.election.startsAt,
+      endsAt: registry.election.endsAt
+    }
+  }));
+}
+
+export async function listAdminEligibleVoterRows(
+  prisma: PrismaClientLike,
+  session: AdminSession,
+  electionId: string
+): Promise<AdminEligibleVoterListRow[]> {
+  const organizationId = assertAdminElectionRead(session);
+  requirePermission(session, "voter_registry.read");
+  const env = parseEnv();
+  const voters = await prisma.eligibleVoter.findMany({
+    where: {
+      electionId,
+      election: { organizationId, deletedAt: null },
+      status: "active"
+    },
+    orderBy: { createdAt: "asc" },
+    select: {
+      nameEncrypted: true,
+      phoneEncrypted: true,
+      externalIdentifierEncrypted: true,
+      status: true,
+      createdAt: true
+    }
+  });
+
+  return voters.map((voter) => {
+    const payload = decodeVoterRegistryPayload(
+      decryptPersonalValue(voter.externalIdentifierEncrypted, env.ENCRYPTION_KEY)
+    );
+    return {
+      householdNumber: payload?.householdNumber ?? "기존 형식",
+      name: payload?.name ?? decryptPersonalValue(voter.nameEncrypted, env.ENCRYPTION_KEY) ?? "표시 제한",
+      identifierLast4: payload?.identifierLast4 ?? decryptPersonalValue(voter.phoneEncrypted, env.ENCRYPTION_KEY) ?? "표시 제한",
+      birthDate6: payload?.birthDate6 ?? "기존 형식",
+      status: voter.status,
+      createdAt: voter.createdAt
+    };
   });
 }
 
@@ -135,7 +300,7 @@ export async function getAdminElectionDetail(
 ): Promise<AdminElectionDetail | null> {
   const organizationId = assertAdminElectionRead(session);
   const election = await prisma.election.findFirst({
-    where: { id: electionId, organizationId },
+    where: { id: electionId, organizationId, deletedAt: null },
     include: {
       authenticationPolicy: true,
       voterRegistry: true,
@@ -157,6 +322,37 @@ export async function getAdminElectionDetail(
   if (!election) {
     return null;
   }
+  const [invitationGroups, latestResult, publishedVersionCount] = await Promise.all([
+    prisma.invitation.groupBy({
+      by: ["status"],
+      where: { electionId },
+      _count: { _all: true }
+    }),
+    prisma.result.findFirst({
+      where: { electionId },
+      orderBy: { createdAt: "desc" },
+      select: { status: true }
+    }),
+    prisma.resultVersion.count({
+      where: { electionId, status: "published" }
+    })
+  ]);
+  const invitationSummary = {
+    total: 0,
+    pending: 0,
+    sent: 0,
+    failed: 0,
+    opened: 0,
+    expired: 0,
+    revoked: 0
+  };
+  for (const group of invitationGroups) {
+    const count = group._count._all;
+    invitationSummary.total += count;
+    if (group.status in invitationSummary) {
+      invitationSummary[group.status as keyof typeof invitationSummary] += count;
+    }
+  }
 
   return Object.freeze({
     ...mapListItem(election),
@@ -173,18 +369,27 @@ export async function getAdminElectionDetail(
     voterRegistry: election.voterRegistry
       ? {
           status: election.voterRegistry.status,
+          id: election.voterRegistry.id,
+          managedRegistryId: election.voterRegistry.managedRegistryId,
           totalRows: election.voterRegistry.totalRows,
           validRows: election.voterRegistry.validRows
         }
       : null,
+    invitationSummary,
+    resultSummary: {
+      latestResultStatus: latestResult?.status ?? null,
+      publishedVersionCount
+    },
     questions: election.questions.map((question) => ({
       id: question.id,
       title: question.title,
+      description: question.description,
       questionType: question.questionType,
       displayOrder: question.displayOrder,
       options: question.options.map((option) => ({
         id: option.id,
         label: option.label,
+        description: option.description,
         displayOrder: option.displayOrder
       }))
     }))

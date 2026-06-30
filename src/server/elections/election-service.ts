@@ -23,6 +23,12 @@ import type { AdminSession } from "../auth/admin-session";
 import { ApiError } from "../http/errors";
 import { requirePermission, requirePermissionWithStepUp } from "../rbac/authorize";
 import { redactSensitiveValues } from "../privacy/redaction";
+import { encryptPersonalValue } from "../privacy/personal-data-encryption";
+import {
+  canonicalVoterIdentifier,
+  encodedVoterRegistryPayload,
+  validateVoterRegistryFields
+} from "../../lib/voter-registry-fields";
 import type {
   ElectionRecord,
   ElectionRepository,
@@ -54,6 +60,7 @@ export type ElectionServiceContext = Readonly<{
   repository: ElectionRepository;
   auditRecorder?: AuditRecorder;
   hmacKey: string;
+  encryptionKey?: string;
   now?: Date;
 }>;
 
@@ -146,6 +153,9 @@ async function getScopedElection(
   if (!election) {
     throw notFoundError("election");
   }
+  if (election.deletedAt) {
+    throw notFoundError("election");
+  }
   assertOrganizationScope(context.session, election);
   return election;
 }
@@ -162,11 +172,40 @@ function createStoredTokenHash(hmacKey: string): string {
   return hmacOpaqueValue(randomBytes(32).toString("base64url"), hmacKey);
 }
 
-function protectPersonalValue(value: string | undefined, hmacKey: string): string | undefined {
+function protectPersonalValue(value: string | undefined, encryptionKey: string): string | undefined {
   if (!value) {
     return undefined;
   }
-  return `encrypted:${hmacValue(value, hmacKey).slice(0, 32)}`;
+  return encryptPersonalValue(value, encryptionKey);
+}
+
+function canonicalIdentifierForImportRow(row: EligibleVoterImportRow): {
+  canonicalIdentifier: string;
+  protectedPayload?: string;
+  name?: string;
+  identifierLast4?: string;
+} {
+  const registryFields = validateVoterRegistryFields({
+    householdNumber: row.householdNumber,
+    name: row.name,
+    identifierLast4: row.identifierLast4,
+    birthDate6: row.birthDate6
+  });
+  if (registryFields.ok && registryFields.fields) {
+    return {
+      canonicalIdentifier: canonicalVoterIdentifier(registryFields.fields),
+      protectedPayload: encodedVoterRegistryPayload(registryFields.fields),
+      name: registryFields.fields.name,
+      identifierLast4: registryFields.fields.identifierLast4
+    };
+  }
+  if (row.externalIdentifier?.trim()) {
+    return {
+      canonicalIdentifier: row.externalIdentifier,
+      name: row.name
+    };
+  }
+  throw validationError("voter registry row has invalid required fields");
 }
 
 function normalizeAuthPolicyInput(input: AuthenticationPolicyInput): AuthenticationPolicyInput & {
@@ -346,6 +385,29 @@ async function createVotingCredentialForEligibleVoter(
     credentialStatus: "active",
     authStatus: "not_started"
   });
+}
+
+async function ensureVotingCredentialsForElection(
+  context: ElectionServiceContext,
+  electionId: string
+): Promise<number> {
+  await assertVoterRegistryReady(context, electionId);
+  const voters = await context.repository.listEligibleVotersForElection(electionId);
+  let credentialsCreated = 0;
+
+  for (const voter of voters) {
+    const credential = await createVotingCredentialForEligibleVoter(context, electionId, voter.id);
+    if (!credential) continue;
+    credentialsCreated += 1;
+    await audit(context, {
+      eventType: "voting_credential.created",
+      targetType: "VotingCredential",
+      targetId: credential.id,
+      afterSummary: { electionId }
+    });
+  }
+
+  return credentialsCreated;
 }
 
 export async function createElectionDraft(
@@ -581,7 +643,8 @@ export async function importEligibleVoters(
 
   for (const [index, row] of input.rows.entries()) {
     const rowNumber = index + 1;
-    const externalIdentifierHmac = hmacValue(row.externalIdentifier, context.hmacKey);
+    const normalizedRow = canonicalIdentifierForImportRow(row);
+    const externalIdentifierHmac = hmacValue(normalizedRow.canonicalIdentifier, context.hmacKey);
     const duplicateInBatch = seen.has(externalIdentifierHmac);
     const duplicateExisting = await context.repository.findEligibleVoterByExternalIdentifierHmac(
       electionId,
@@ -601,10 +664,13 @@ export async function importEligibleVoters(
     await context.repository.createEligibleVoter({
       electionId,
       voterRegistryId: registry.id,
-      nameEncrypted: protectPersonalValue(row.name, context.hmacKey),
-      emailEncrypted: protectPersonalValue(row.email, context.hmacKey),
-      phoneEncrypted: protectPersonalValue(row.phone, context.hmacKey),
-      externalIdentifierEncrypted: protectPersonalValue(row.externalIdentifier, context.hmacKey),
+      nameEncrypted: protectPersonalValue(normalizedRow.name ?? row.name, context.encryptionKey ?? context.hmacKey),
+      emailEncrypted: protectPersonalValue(row.email, context.encryptionKey ?? context.hmacKey),
+      phoneEncrypted: protectPersonalValue(normalizedRow.identifierLast4 ?? row.phone, context.encryptionKey ?? context.hmacKey),
+      externalIdentifierEncrypted: protectPersonalValue(
+        normalizedRow.protectedPayload ?? normalizedRow.canonicalIdentifier,
+        context.encryptionKey ?? context.hmacKey
+      ),
       externalIdentifierHmac,
       searchHmac: row.email ? hmacValue(row.email, context.hmacKey) : undefined
     });
@@ -732,11 +798,79 @@ export async function openElection(
   rawInput: unknown,
   context: ElectionServiceContext
 ) {
-  return transitionElectionState(electionId, rawInput, context, ElectionState.OPEN, {
-    permissionCode: "election.open",
-    eventType: "election.opened",
-    changeType: "opened"
+  const input = electionTransitionInputSchema.parse(rawInput);
+  assertPermissionControls(context, "election.open", input.reason);
+  const election = await getScopedElection(context, electionId);
+  try {
+    assertElectionTransitionAllowed(election.state, ElectionState.OPEN);
+  } catch {
+    throw conflictError(`transition denied: ${election.state} -> ${ElectionState.OPEN}`);
+  }
+  const credentialsCreated = await ensureVotingCredentialsForElection(context, electionId);
+  const openedAt = nowFrom(context);
+  await context.repository.updateElectionState(electionId, ElectionState.OPEN, { startsAt: openedAt });
+  await context.repository.recordElectionStateHistory({
+    electionId,
+    fromState: election.state,
+    toState: ElectionState.OPEN,
+    requestedById: context.session.userId,
+    approvedById: context.session.userId,
+    reason: input.reason,
+    changeType: "opened",
+    changedAt: openedAt
   });
+  await audit(context, {
+    eventType: "election.opened",
+    targetType: "Election",
+    targetId: electionId,
+    reason: input.reason,
+    beforeSummary: { state: election.state, startsAt: election.startsAt },
+    afterSummary: { state: ElectionState.OPEN, startsAt: openedAt, credentialsCreated }
+  });
+  return { electionId, state: ElectionState.OPEN };
+}
+
+export async function deletePreStartElection(
+  electionId: string,
+  rawInput: unknown,
+  context: ElectionServiceContext
+) {
+  const input = electionTransitionInputSchema.parse(rawInput);
+  requirePermission(context.session, "election.delete_draft");
+  const election = await getScopedElection(context, electionId);
+  const now = nowFrom(context);
+  const deletableStates: readonly ElectionStateValue[] = [
+    ElectionState.DRAFT,
+    ElectionState.READY_FOR_REVIEW,
+    ElectionState.APPROVED,
+    ElectionState.SCHEDULED,
+    ElectionState.NOTICE
+  ];
+  if (!deletableStates.includes(election.state) || election.startsAt <= now) {
+    throw conflictError(`delete denied in ${election.state}`);
+  }
+  await context.repository.softDeleteElection({
+    electionId,
+    deletedAt: now,
+    deletionReason: input.reason || "관리자 시작 전 삭제"
+  });
+  await context.repository.recordElectionChangeHistory({
+    electionId,
+    changedArea: "election",
+    beforeSummary: { state: election.state, startsAt: election.startsAt },
+    afterSummary: { deletedAt: now },
+    changedById: context.session.userId,
+    changedAt: now
+  });
+  await audit(context, {
+    eventType: "election.deleted",
+    targetType: "Election",
+    targetId: electionId,
+    reason: input.reason,
+    beforeSummary: { state: election.state, startsAt: election.startsAt },
+    afterSummary: { deletedAt: now }
+  });
+  return { electionId, deletedAt: now };
 }
 
 export async function pauseElection(
@@ -787,7 +921,6 @@ export async function prepareInvitationsForElection(
   await assertVoterRegistryReady(context, electionId);
   const voters = await context.repository.listEligibleVotersForElection(electionId);
   let invitationsCreated = 0;
-  let credentialsCreated = 0;
 
   for (const voter of voters) {
     const invitationResult = await createInvitationForEligibleVoter(
@@ -799,21 +932,8 @@ export async function prepareInvitationsForElection(
     if (invitationResult.created) {
       invitationsCreated += 1;
     }
-    const credential = await createVotingCredentialForEligibleVoter(
-      context,
-      electionId,
-      voter.id
-    );
-    if (credential) {
-      credentialsCreated += 1;
-      await audit(context, {
-        eventType: "voting_credential.created",
-        targetType: "VotingCredential",
-        targetId: credential.id,
-        afterSummary: { electionId }
-      });
-    }
   }
+  const credentialsCreated = await ensureVotingCredentialsForElection(context, electionId);
 
   await audit(context, {
     eventType: "invitation.prepared",

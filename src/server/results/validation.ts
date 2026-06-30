@@ -8,19 +8,19 @@ export const optionalReasonSchema = z.object({
   reason: z.string().trim().optional()
 });
 
-export const publishResultInputSchema = reasonRequiredSchema.extend({
+export const publishResultInputSchema = optionalReasonSchema.extend({
   notice: z.string().trim().optional()
 });
 
-export const correctionRequestInputSchema = reasonRequiredSchema.extend({
+export const correctionRequestInputSchema = optionalReasonSchema.extend({
   notice: z.string().trim().optional()
 });
 
-export const approveCorrectionInputSchema = reasonRequiredSchema.extend({
+export const approveCorrectionInputSchema = optionalReasonSchema.extend({
   notice: z.string().trim().optional()
 });
 
-export const invalidateElectionInputSchema = reasonRequiredSchema.extend({
+export const invalidateElectionInputSchema = optionalReasonSchema.extend({
   notice: z.string().trim().optional()
 });
 

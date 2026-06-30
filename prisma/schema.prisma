@@ -364,6 +364,7 @@ model Organization {
   roles                         Role[]
   elections                     Election[]
   organizationAuthMethods       OrganizationAuthenticationMethod[]
+  managedVoterRegistries        ManagedVoterRegistry[]
   auditEvents                   AuditEvent[]
   retentionPolicies             RetentionPolicy[]
   deletionRequests              DeletionRequest[]
@@ -547,6 +548,8 @@ model Election {
   startsAt               DateTime                  @map("starts_at") @db.Timestamptz(6)
   endsAt                 DateTime                  @map("ends_at") @db.Timestamptz(6)
   timezone               String                    @default("Asia/Seoul")
+  deletedAt              DateTime?                 @map("deleted_at") @db.Timestamptz(6)
+  deletionReason         String?                   @map("deletion_reason") @db.Text
   createdAt              DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt              DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
   organization           Organization              @relation(fields: [organizationId], references: [id])
@@ -578,6 +581,7 @@ model Election {
   userRoles              UserRole[]
 
   @@index([organizationId, state])
+  @@index([organizationId, deletedAt])
   @@index([startsAt, endsAt])
   @@map("elections")
 }
@@ -705,20 +709,61 @@ model Option {
 }
 
 model VoterRegistry {
-  id              String          @id @default(uuid()) @db.Uuid
-  electionId      String          @unique @map("election_id") @db.Uuid
-  status          RegistryStatus  @default(draft)
-  sourceType      String          @map("source_type")
-  totalRows       Int             @default(0) @map("total_rows")
-  validRows       Int             @default(0) @map("valid_rows")
-  confirmedAt     DateTime?       @map("confirmed_at") @db.Timestamptz(6)
-  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
-  election        Election        @relation(fields: [electionId], references: [id])
-  imports         VoterRegistryImport[]
-  eligibleVoters  EligibleVoter[]
+  id                String                @id @default(uuid()) @db.Uuid
+  electionId        String                @unique @map("election_id") @db.Uuid
+  managedRegistryId String?               @map("managed_registry_id") @db.Uuid
+  status            RegistryStatus        @default(draft)
+  sourceType        String                @map("source_type")
+  totalRows         Int                   @default(0) @map("total_rows")
+  validRows         Int                   @default(0) @map("valid_rows")
+  confirmedAt       DateTime?             @map("confirmed_at") @db.Timestamptz(6)
+  createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  election          Election              @relation(fields: [electionId], references: [id])
+  managedRegistry   ManagedVoterRegistry? @relation(fields: [managedRegistryId], references: [id])
+  imports           VoterRegistryImport[]
+  eligibleVoters    EligibleVoter[]
 
+  @@index([managedRegistryId])
   @@map("voter_registries")
+}
+
+model ManagedVoterRegistry {
+  id                 String          @id @default(uuid()) @db.Uuid
+  organizationId     String          @map("organization_id") @db.Uuid
+  title              String
+  description        String?         @db.Text
+  status             RegistryStatus  @default(validated)
+  sourceType         String          @default("manual") @map("source_type")
+  totalRows          Int             @default(0) @map("total_rows")
+  validRows          Int             @default(0) @map("valid_rows")
+  lockedAt           DateTime?       @map("locked_at") @db.Timestamptz(6)
+  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization       Organization    @relation(fields: [organizationId], references: [id])
+  voters             ManagedVoter[]
+  electionRegistries VoterRegistry[]
+
+  @@index([organizationId, status])
+  @@index([updatedAt])
+  @@map("managed_voter_registries")
+}
+
+model ManagedVoter {
+  id                          String               @id @default(uuid()) @db.Uuid
+  managedRegistryId           String               @map("managed_registry_id") @db.Uuid
+  nameEncrypted               String?              @map("name_encrypted") @db.Text
+  phoneEncrypted              String?              @map("phone_encrypted") @db.Text
+  externalIdentifierEncrypted String?              @map("external_identifier_encrypted") @db.Text
+  externalIdentifierHmac      String               @map("external_identifier_hmac")
+  status                      RecordStatus         @default(active)
+  createdAt                   DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                   DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  registry                    ManagedVoterRegistry @relation(fields: [managedRegistryId], references: [id])
+
+  @@unique([managedRegistryId, externalIdentifierHmac])
+  @@index([managedRegistryId, status])
+  @@map("managed_voters")
 }
 
 model VoterRegistryImport {

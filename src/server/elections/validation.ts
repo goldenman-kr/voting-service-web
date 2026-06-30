@@ -104,11 +104,22 @@ export const authenticationPolicyInputSchema = z.object({
 });
 
 export const eligibleVoterImportRowSchema = z.object({
+  householdNumber: z.string().trim().regex(/^\d+$/).optional(),
   name: z.string().trim().min(1).max(200).optional(),
+  identifierLast4: z.string().trim().regex(/^\d{4}$/).optional(),
+  birthDate6: z.string().trim().regex(/^\d{6}$/).optional(),
   email: z.string().trim().email().max(320).optional(),
   phone: z.string().trim().min(5).max(40).optional(),
-  externalIdentifier: z.string().trim().min(1).max(200)
-});
+  externalIdentifier: z.string().trim().min(1).max(200).optional()
+}).refine(
+  (row) =>
+    Boolean(row.externalIdentifier) ||
+    Boolean(row.householdNumber && row.name && row.identifierLast4 && row.birthDate6),
+  {
+    message: "voter registry row requires canonical fields",
+    path: ["householdNumber"]
+  }
+);
 
 export const voterRegistryImportInputSchema = z.object({
   sourceType: z.string().trim().min(1).max(100).default("manual"),
@@ -131,12 +142,12 @@ export const invitationPrepareInputSchema = z.object({
 });
 
 export const invitationSendInputSchema = z.object({
-  reason: z.string().trim().min(1).max(1000),
+  reason: z.string().trim().max(1000).optional(),
   channel: z.enum(["app", "email", "sms", "kakao"]).default("email")
 });
 
 export const invitationResendInputSchema = z.object({
-  reason: z.string().trim().min(1).max(1000),
+  reason: z.string().trim().max(1000).optional(),
   eligibleVoterId: z.string().uuid().optional(),
   channel: z.enum(["app", "email", "sms", "kakao"]).default("email")
 });

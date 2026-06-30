@@ -62,6 +62,8 @@ function mapElection(record: {
   startsAt: Date;
   endsAt: Date;
   timezone: string;
+  deletedAt?: Date | null;
+  deletionReason?: string | null;
 }): ElectionRecord {
   return Object.freeze({
     id: record.id,
@@ -75,7 +77,9 @@ function mapElection(record: {
     noticeStartsAt: record.noticeStartsAt,
     startsAt: record.startsAt,
     endsAt: record.endsAt,
-    timezone: record.timezone
+    timezone: record.timezone,
+    deletedAt: record.deletedAt,
+    deletionReason: record.deletionReason
   });
 }
 
@@ -239,7 +243,7 @@ export class PrismaElectionRepository implements ElectionRepository {
 
   async listElections(organizationId: string): Promise<ElectionRecord[]> {
     const elections = await this.prisma.election.findMany({
-      where: { organizationId },
+      where: { organizationId, deletedAt: null },
       orderBy: { createdAt: "desc" }
     });
     return elections.map(mapElection);
@@ -267,10 +271,27 @@ export class PrismaElectionRepository implements ElectionRepository {
     return mapElection(election);
   }
 
-  async updateElectionState(electionId: string, state: ElectionStateValue): Promise<void> {
+  async updateElectionState(
+    electionId: string,
+    state: ElectionStateValue,
+    updates: { startsAt?: Date } = {}
+  ): Promise<void> {
     await this.prisma.election.update({
       where: { id: electionId },
-      data: { state: state as ElectionState }
+      data: {
+        state: state as ElectionState,
+        ...(updates.startsAt !== undefined ? { startsAt: updates.startsAt } : {})
+      }
+    });
+  }
+
+  async softDeleteElection(input: Parameters<ElectionRepository["softDeleteElection"]>[0]): Promise<void> {
+    await this.prisma.election.update({
+      where: { id: input.electionId },
+      data: {
+        deletedAt: input.deletedAt,
+        deletionReason: input.deletionReason
+      }
     });
   }
 

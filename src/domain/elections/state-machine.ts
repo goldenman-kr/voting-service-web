@@ -4,12 +4,16 @@ export type ElectionStateValue = (typeof ElectionState)[keyof typeof ElectionSta
 
 export const ALLOWED_ELECTION_TRANSITIONS: Readonly<Record<ElectionStateValue, readonly ElectionStateValue[]>> =
   Object.freeze({
-    [ElectionState.DRAFT]: Object.freeze([ElectionState.READY_FOR_REVIEW]),
+    [ElectionState.DRAFT]: Object.freeze([
+      ElectionState.READY_FOR_REVIEW,
+      ElectionState.OPEN
+    ]),
     [ElectionState.READY_FOR_REVIEW]: Object.freeze([
       ElectionState.DRAFT,
-      ElectionState.APPROVED
+      ElectionState.APPROVED,
+      ElectionState.OPEN
     ]),
-    [ElectionState.APPROVED]: Object.freeze([ElectionState.SCHEDULED]),
+    [ElectionState.APPROVED]: Object.freeze([ElectionState.SCHEDULED, ElectionState.OPEN]),
     [ElectionState.SCHEDULED]: Object.freeze([ElectionState.NOTICE, ElectionState.OPEN]),
     [ElectionState.NOTICE]: Object.freeze([ElectionState.OPEN]),
     [ElectionState.OPEN]: Object.freeze([

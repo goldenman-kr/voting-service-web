@@ -5,9 +5,9 @@ import type { AdminSession } from "../../server/auth/admin-session";
 import { AdminLogoutButton } from "./admin-logout-button";
 
 const navItems = [
-  { href: "/admin", label: "대시보드" },
-  { href: "/admin/elections", label: "투표 목록" },
-  { href: "/admin/elections/new", label: "투표 생성" }
+  { href: "/admin/elections", label: "투표 관리" },
+  { href: "/admin/elections/new", label: "투표 생성" },
+  { href: "/admin/voter-registries", label: "선거인명부 관리" }
 ];
 
 function adminDisplayName(admin?: AdminSession): string {
@@ -24,6 +24,14 @@ export function AdminShell({ children, admin }: { children: ReactNode; admin?: A
             Voting Admin
           </Link>
           <p className="mt-1 text-xs text-slate-500">폐쇄형 명부 기반 투표 운영</p>
+          <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
+            <Link href="/" className="rounded-md border border-slate-200 px-2 py-1 hover:bg-slate-50">
+              홈
+            </Link>
+            <Link href="/voter" className="rounded-md border border-slate-200 px-2 py-1 hover:bg-slate-50">
+              투표하러가기
+            </Link>
+          </div>
           {admin ? (
             <section className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3">
               <p className="text-xs font-semibold text-slate-500">현재 사용자</p>
@@ -33,6 +41,12 @@ export function AdminShell({ children, admin }: { children: ReactNode; admin?: A
             </section>
           ) : null}
           <nav className="mt-6 flex gap-2 lg:flex-col">
+            <Link
+              href="/admin"
+              className="rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            >
+              대시보드
+            </Link>
             {navItems.map((item) => (
               <Link
                 key={item.href}

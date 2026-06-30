@@ -174,6 +174,9 @@ Secret rules:
 Current repository `docker-compose.yml` is local-development only and starts PostgreSQL only.
 
 Do not reuse it as a production/staging deployment file without review.
+Do not run `npm run db:up` to manage staging. That script is reserved for the
+separate local-development Compose project and must not replace the staging
+`postgres` container or volume.
 
 Draft file prepared in Step 28: `docker-compose.staging.yml`.
 

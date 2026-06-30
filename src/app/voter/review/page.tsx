@@ -26,8 +26,8 @@ export default async function VoterReviewPage() {
     <VoterShell>
       <PageHeader
         eyebrow="제출 전 확인"
-        title="제출 후에도 마감 전까지 다시 투표할 수 있습니다"
-        description="마지막으로 접수 완료된 제출만 공식 집계에 사용됩니다."
+        title="제출 후에는 투표참여가 완료되며 다시 수정할 수 없습니다."
+        description="제출 전 선택 내용을 마지막으로 확인해 주세요."
       />
       <WarningBanner title="익명투표 제출 안내">
         제출 후 완료 여부와 제한된 확인 정보만 표시합니다. 이전 선택 내용은 다시 표시하지 않습니다.

@@ -75,6 +75,15 @@ function forbiddenState(internalReason: string) {
   });
 }
 
+function revoteDisabled(internalReason: string) {
+  return new ApiError({
+    status: 409,
+    code: "conflict",
+    userMessage: "이미 투표참여가 완료되어 다시 수정할 수 없습니다.",
+    internalReason
+  });
+}
+
 function protectFreeText(value: string, hmacKey: string): string {
   return `encrypted:${createHmac("sha256", hmacKey).update(value).digest("hex")}`;
 }
@@ -233,7 +242,7 @@ async function getOrCreateAnonymousBallotGroup({
   if (context.ballotGroupToken) {
     const tokenHash = hashBallotGroupToken(context.ballotGroupToken, context.hmacKey);
     const existing = await repository.findAnonymousBallotGroupByTokenHash(election.id, tokenHash);
-    if (existing) {
+    if (existing && existing.submissionCount === 0 && !existing.currentBallotId) {
       return { group: existing };
     }
   }
@@ -335,6 +344,13 @@ export async function submitAnonymousBallot(
     repository.listQuestionsWithOptions(session.electionId)
   ]);
   ensureSubmitAllowed(election);
+  const credential = await repository.findVotingCredential(session.votingCredentialId);
+  if (!credential) {
+    throw createAuthenticationError("credential not found for voter session");
+  }
+  if (credential.hasVoted) {
+    throw revoteDisabled("revote disabled for completed credential");
+  }
   const pass = await getOrCreateAnonymousVotingPass(repository, election.id, session.votingCredentialId);
   const { group, tokenToStore } = await getOrCreateAnonymousBallotGroup({
     repository,
@@ -436,10 +452,7 @@ export async function submitRevote(
   rawInput: unknown,
   context: VoterRequestContext
 ): Promise<SubmitBallotServiceResult> {
-  if (!context.ballotGroupToken) {
-    throw badRequest("revote requires client-held ballot group token");
-  }
-  return submitAnonymousBallot(repository, rawInput, context);
+  throw revoteDisabled("revote endpoint disabled");
 }
 
 export const voterBallotCookiePolicies = Object.freeze({

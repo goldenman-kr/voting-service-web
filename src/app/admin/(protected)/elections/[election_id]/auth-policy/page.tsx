@@ -29,8 +29,8 @@ export default async function AdminAuthPolicyPage({ params }: Params) {
   return (
     <div className="grid gap-6">
       <PageHeader
-        eyebrow="인증 정책"
-        title="AuthenticationPolicy 설정"
+        eyebrow="투표 참여 인증 방식"
+        title="투표 참여 인증 방식 설정"
         description="MVP 기본값은 초대 링크 + 유권자 식별자 확인입니다. 1회성 코드는 투표별 선택 옵션입니다."
         status={election.state}
       />

@@ -245,16 +245,16 @@ describe("admin password and DB-backed session policy", () => {
       repository,
       context: { hmacKey, now }
     });
-    expect(() => requirePermissionWithStepUp(login.session, "election.open", now)).toThrow();
+    expect(() => requirePermissionWithStepUp(login.session, "result.publish", now)).toThrow();
     const stepUp = await createPasswordStepUpGrant({
       sessionToken: login.sessionCookie.value,
       password,
-      permissionCodes: ["election.open"],
-      purpose: "open election",
+      permissionCodes: ["result.publish"],
+      purpose: "publish result",
       repository,
       context: { hmacKey, now: new Date("2026-01-01T00:05:00.000Z") }
     });
-    expect(stepUp.session.stepUp?.permissionCodes).toEqual(["election.open"]);
+    expect(stepUp.session.stepUp?.permissionCodes).toEqual(["result.publish"]);
     const stepUpToken = stepUp.stepUpCookie.value;
     expect(repository.grants.has(hashAdminOpaqueToken(stepUpToken, hmacKey))).toBe(true);
     expect(JSON.stringify(stepUp)).not.toContain(hashAdminOpaqueToken(stepUpToken, hmacKey));

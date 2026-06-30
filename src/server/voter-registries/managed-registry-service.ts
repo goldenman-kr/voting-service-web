@@ -1,0 +1,498 @@
+import { createHmac } from "node:crypto";
+
+import {
+  canonicalVoterIdentifier,
+  decodeVoterRegistryPayload,
+  encodedVoterRegistryPayload,
+  parseVoterRegistryTextRows,
+  validateVoterRegistryFields,
+  type VoterRegistryFields
+} from "../../lib/voter-registry-fields";
+import type { AdminSession } from "../auth/admin-session";
+import type { PrismaClientLike } from "../db/prisma";
+import { encryptPersonalValue } from "../privacy/personal-data-encryption";
+import { requirePermission } from "../rbac/authorize";
+
+export type RegistryActionResult = Readonly<{
+  ok: boolean;
+  message?: string;
+  registryId?: string;
+}>;
+
+function organizationIdFor(session: AdminSession): string {
+  if (!session.organizationId) {
+    throw new Error("admin session missing organization scope");
+  }
+  return session.organizationId;
+}
+
+function hmacValue(value: string, hmacKey: string): string {
+  return createHmac("sha256", hmacKey).update(value.trim().toLowerCase()).digest("hex");
+}
+
+function protectedPayload(fields: VoterRegistryFields, encryptionKey: string): {
+  nameEncrypted?: string;
+  phoneEncrypted?: string;
+  externalIdentifierEncrypted?: string;
+} {
+  return {
+    nameEncrypted: encryptPersonalValue(fields.name, encryptionKey),
+    phoneEncrypted: encryptPersonalValue(fields.identifierLast4, encryptionKey),
+    externalIdentifierEncrypted: encryptPersonalValue(encodedVoterRegistryPayload(fields), encryptionKey)
+  };
+}
+
+export function parseValidatedRows(raw: string): {
+  ok: boolean;
+  fields: VoterRegistryFields[];
+  message?: string;
+} {
+  const rows = parseVoterRegistryTextRows(raw);
+  if (rows.length === 0) {
+    return { ok: false, fields: [], message: "선거인 명부를 1명 이상 입력해 주세요." };
+  }
+  const fields: VoterRegistryFields[] = [];
+  for (const row of rows) {
+    const validation = validateVoterRegistryFields(row);
+    if (!validation.ok || !validation.fields) {
+      return {
+        ok: false,
+        fields: [],
+        message: `선거인 명부 ${row.rowNumber}행의 호수번호, 이름, 식별번호, 생년월일을 확인해 주세요.`
+      };
+    }
+    fields.push(validation.fields);
+  }
+  const identifiers = fields.map((field) => canonicalVoterIdentifier(field).toLowerCase());
+  if (new Set(identifiers).size !== identifiers.length) {
+    return { ok: false, fields: [], message: "선거인 명부에 중복된 선거인 정보가 있습니다." };
+  }
+  return { ok: true, fields };
+}
+
+async function assertEditableRegistry(
+  prisma: PrismaClientLike,
+  session: AdminSession,
+  registryId: string
+) {
+  requirePermission(session, "voter_registry.import");
+  const organizationId = organizationIdFor(session);
+  const registry = await prisma.managedVoterRegistry.findFirst({
+    where: { id: registryId, organizationId },
+    include: {
+      electionRegistries: {
+        select: {
+          election: {
+            select: {
+              state: true,
+              startsAt: true
+            }
+          }
+        }
+      }
+    }
+  });
+  if (!registry) {
+    return { ok: false as const, message: "명부를 찾을 수 없습니다." };
+  }
+  const lockedByStartedElection = registry.electionRegistries.some((entry) =>
+    ["open", "paused", "closed", "tallying", "pending_confirmation", "confirmed", "published", "invalidated"].includes(entry.election.state) ||
+    entry.election.startsAt <= new Date()
+  );
+  if (lockedByStartedElection) {
+    return { ok: false as const, message: "이미 시작된 투표에서 사용 중인 명부는 수정할 수 없습니다." };
+  }
+  return { ok: true as const, registry };
+}
+
+async function refreshCounts(prisma: PrismaClientLike, registryId: string): Promise<void> {
+  const [totalRows, validRows] = await Promise.all([
+    prisma.managedVoter.count({ where: { managedRegistryId: registryId } }),
+    prisma.managedVoter.count({ where: { managedRegistryId: registryId, status: "active" } })
+  ]);
+  await prisma.managedVoterRegistry.update({
+    where: { id: registryId },
+    data: {
+      totalRows,
+      validRows,
+      status: validRows > 0 ? "validated" : "draft"
+    }
+  });
+}
+
+async function syncEditableElectionSnapshots(prisma: PrismaClientLike, registryId: string): Promise<void> {
+  const now = new Date();
+  const source = await prisma.managedVoterRegistry.findUnique({
+    where: { id: registryId },
+    include: {
+      voters: { where: { status: "active" } },
+      electionRegistries: {
+        where: {
+          election: {
+            deletedAt: null,
+            startsAt: { gt: now },
+            state: { in: ["draft", "ready_for_review", "approved", "scheduled", "notice"] }
+          }
+        },
+        select: {
+          id: true,
+          electionId: true
+        }
+      }
+    }
+  });
+  if (!source || source.electionRegistries.length === 0) return;
+
+  for (const registry of source.electionRegistries) {
+    await prisma.$transaction(async (tx) => {
+      await tx.eligibleVoter.updateMany({
+        where: { electionId: registry.electionId },
+        data: { status: "disabled" }
+      });
+      for (const voter of source.voters) {
+        await tx.eligibleVoter.upsert({
+          where: {
+            electionId_externalIdentifierHmac: {
+              electionId: registry.electionId,
+              externalIdentifierHmac: voter.externalIdentifierHmac
+            }
+          },
+          create: {
+            electionId: registry.electionId,
+            voterRegistryId: registry.id,
+            nameEncrypted: voter.nameEncrypted,
+            phoneEncrypted: voter.phoneEncrypted,
+            externalIdentifierEncrypted: voter.externalIdentifierEncrypted,
+            externalIdentifierHmac: voter.externalIdentifierHmac,
+            status: "active"
+          },
+          update: {
+            voterRegistryId: registry.id,
+            nameEncrypted: voter.nameEncrypted,
+            phoneEncrypted: voter.phoneEncrypted,
+            externalIdentifierEncrypted: voter.externalIdentifierEncrypted,
+            status: "active"
+          }
+        });
+      }
+      await tx.voterRegistry.update({
+        where: { id: registry.id },
+        data: {
+          totalRows: source.voters.length,
+          validRows: source.voters.length,
+          status: source.voters.length > 0 ? "validated" : "draft"
+        }
+      });
+    });
+  }
+}
+
+export async function createManagedRegistry({
+  prisma,
+  session,
+  title,
+  description,
+  rows,
+  hmacKey,
+  encryptionKey
+}: {
+  prisma: PrismaClientLike;
+  session: AdminSession;
+  title: string;
+  description?: string;
+  rows: string;
+  hmacKey: string;
+  encryptionKey: string;
+}): Promise<RegistryActionResult> {
+  requirePermission(session, "voter_registry.import");
+  const organizationId = organizationIdFor(session);
+  if (!title.trim()) {
+    return { ok: false, message: "명부 제목을 입력해 주세요." };
+  }
+  const parsed = parseValidatedRows(rows);
+  if (!parsed.ok) {
+    return { ok: false, message: parsed.message };
+  }
+  const registry = await prisma.managedVoterRegistry.create({
+    data: {
+      organizationId,
+      title: title.trim(),
+      description: description?.trim() || undefined,
+      status: "validated",
+      sourceType: "manual",
+      totalRows: parsed.fields.length,
+      validRows: parsed.fields.length,
+      voters: {
+        create: parsed.fields.map((fields) => ({
+          ...protectedPayload(fields, encryptionKey || hmacKey),
+          externalIdentifierHmac: hmacValue(canonicalVoterIdentifier(fields), hmacKey),
+          status: "active"
+        }))
+      }
+    }
+  });
+  return { ok: true, registryId: registry.id, message: "새 명부를 만들었습니다." };
+}
+
+export async function updateManagedRegistryTitle({
+  prisma,
+  session,
+  registryId,
+  title
+}: {
+  prisma: PrismaClientLike;
+  session: AdminSession;
+  registryId: string;
+  title: string;
+}): Promise<RegistryActionResult> {
+  const editable = await assertEditableRegistry(prisma, session, registryId);
+  if (!editable.ok) return editable;
+  const trimmedTitle = title.trim();
+  if (!trimmedTitle) {
+    return { ok: false, message: "명부 제목을 입력해 주세요." };
+  }
+  if (trimmedTitle.length > 120) {
+    return { ok: false, message: "명부 제목은 120자 이하로 입력해 주세요." };
+  }
+  await prisma.managedVoterRegistry.update({
+    where: { id: registryId },
+    data: { title: trimmedTitle }
+  });
+  return { ok: true, message: "명부 제목을 수정했습니다." };
+}
+
+export async function addManagedVoter({
+  prisma,
+  session,
+  registryId,
+  fields,
+  hmacKey,
+  encryptionKey
+}: {
+  prisma: PrismaClientLike;
+  session: AdminSession;
+  registryId: string;
+  fields: Partial<VoterRegistryFields>;
+  hmacKey: string;
+  encryptionKey: string;
+}): Promise<RegistryActionResult> {
+  const editable = await assertEditableRegistry(prisma, session, registryId);
+  if (!editable.ok) return editable;
+  const validation = validateVoterRegistryFields(fields);
+  if (!validation.ok || !validation.fields) {
+    return { ok: false, message: "호수번호, 이름, 식별번호, 생년월일을 확인해 주세요." };
+  }
+  const externalIdentifierHmac = hmacValue(canonicalVoterIdentifier(validation.fields), hmacKey);
+  const duplicate = await prisma.managedVoter.findFirst({
+    where: { managedRegistryId: registryId, externalIdentifierHmac }
+  });
+  if (duplicate) {
+    return { ok: false, message: "중복된 선거인 정보가 있습니다." };
+  }
+  await prisma.managedVoter.create({
+    data: {
+      managedRegistryId: registryId,
+      ...protectedPayload(validation.fields, encryptionKey || hmacKey),
+      externalIdentifierHmac,
+      status: "active"
+    }
+  });
+  await refreshCounts(prisma, registryId);
+  await syncEditableElectionSnapshots(prisma, registryId);
+  return { ok: true, message: "선거인을 추가했습니다." };
+}
+
+export async function updateManagedVoter({
+  prisma,
+  session,
+  registryId,
+  voterId,
+  fields,
+  hmacKey,
+  encryptionKey
+}: {
+  prisma: PrismaClientLike;
+  session: AdminSession;
+  registryId: string;
+  voterId: string;
+  fields: Partial<VoterRegistryFields>;
+  hmacKey: string;
+  encryptionKey: string;
+}): Promise<RegistryActionResult> {
+  const editable = await assertEditableRegistry(prisma, session, registryId);
+  if (!editable.ok) return editable;
+  const validation = validateVoterRegistryFields(fields);
+  if (!validation.ok || !validation.fields) {
+    return { ok: false, message: "호수번호, 이름, 식별번호, 생년월일을 확인해 주세요." };
+  }
+  const existing = await prisma.managedVoter.findFirst({
+    where: { id: voterId, managedRegistryId: registryId }
+  });
+  if (!existing) {
+    return { ok: false, message: "선거인을 찾을 수 없습니다." };
+  }
+  const externalIdentifierHmac = hmacValue(canonicalVoterIdentifier(validation.fields), hmacKey);
+  const duplicate = await prisma.managedVoter.findFirst({
+    where: { managedRegistryId: registryId, externalIdentifierHmac, NOT: { id: voterId } }
+  });
+  if (duplicate) {
+    return { ok: false, message: "중복된 선거인 정보가 있습니다." };
+  }
+  await prisma.managedVoter.update({
+    where: { id: voterId },
+    data: {
+      ...protectedPayload(validation.fields, encryptionKey || hmacKey),
+      externalIdentifierHmac,
+      status: "active"
+    }
+  });
+  await refreshCounts(prisma, registryId);
+  await syncEditableElectionSnapshots(prisma, registryId);
+  return { ok: true, message: "선거인 정보를 수정했습니다." };
+}
+
+export async function deleteManagedVoter({
+  prisma,
+  session,
+  registryId,
+  voterId
+}: {
+  prisma: PrismaClientLike;
+  session: AdminSession;
+  registryId: string;
+  voterId: string;
+}): Promise<RegistryActionResult> {
+  const editable = await assertEditableRegistry(prisma, session, registryId);
+  if (!editable.ok) return editable;
+  const voter = await prisma.managedVoter.findFirst({
+    where: { id: voterId, managedRegistryId: registryId }
+  });
+  if (!voter) {
+    return { ok: false, message: "선거인을 찾을 수 없습니다." };
+  }
+  await prisma.managedVoter.update({
+    where: { id: voterId },
+    data: { status: "disabled" }
+  });
+  await refreshCounts(prisma, registryId);
+  await syncEditableElectionSnapshots(prisma, registryId);
+  return { ok: true, message: "선거인을 명부에서 제외했습니다." };
+}
+
+export async function cloneManagedRegistry({
+  prisma,
+  session,
+  registryId
+}: {
+  prisma: PrismaClientLike;
+  session: AdminSession;
+  registryId: string;
+}): Promise<RegistryActionResult> {
+  requirePermission(session, "voter_registry.import");
+  const organizationId = organizationIdFor(session);
+  const source = await prisma.managedVoterRegistry.findFirst({
+    where: { id: registryId, organizationId },
+    include: { voters: { where: { status: "active" } } }
+  });
+  if (!source) {
+    return { ok: false, message: "복제할 명부를 찾을 수 없습니다." };
+  }
+  const clone = await prisma.managedVoterRegistry.create({
+    data: {
+      organizationId,
+      title: `${source.title} (사본)`,
+      description: source.description,
+      status: source.voters.length > 0 ? "validated" : "draft",
+      sourceType: "clone",
+      totalRows: source.voters.length,
+      validRows: source.voters.length,
+      voters: {
+        create: source.voters.map((voter) => ({
+          nameEncrypted: voter.nameEncrypted,
+          phoneEncrypted: voter.phoneEncrypted,
+          externalIdentifierEncrypted: voter.externalIdentifierEncrypted,
+          externalIdentifierHmac: voter.externalIdentifierHmac,
+          status: "active"
+        }))
+      }
+    }
+  });
+  return { ok: true, registryId: clone.id, message: "명부를 복제했습니다." };
+}
+
+export async function linkManagedRegistryToElection({
+  prisma,
+  session,
+  electionId,
+  registryId
+}: {
+  prisma: PrismaClientLike;
+  session: AdminSession;
+  electionId: string;
+  registryId: string;
+}): Promise<RegistryActionResult> {
+  requirePermission(session, "voter_registry.import");
+  const organizationId = organizationIdFor(session);
+  const [election, source] = await Promise.all([
+    prisma.election.findFirst({ where: { id: electionId, organizationId }, select: { id: true } }),
+    prisma.managedVoterRegistry.findFirst({
+      where: { id: registryId, organizationId },
+      include: { voters: { where: { status: "active" } } }
+    })
+  ]);
+  if (!election || !source) {
+    return { ok: false, message: "투표와 명부 정보를 확인해 주세요." };
+  }
+  if (source.voters.length === 0) {
+    return { ok: false, message: "연결할 선거인이 1명 이상 필요합니다." };
+  }
+  await prisma.$transaction(async (tx) => {
+    const registry = await tx.voterRegistry.upsert({
+      where: { electionId },
+      create: {
+        electionId,
+        managedRegistryId: registryId,
+        status: "validated",
+        sourceType: "managed",
+        totalRows: source.voters.length,
+        validRows: source.voters.length,
+        confirmedAt: new Date()
+      },
+      update: {
+        managedRegistryId: registryId,
+        status: "validated",
+        sourceType: "managed",
+        totalRows: source.voters.length,
+        validRows: source.voters.length,
+        confirmedAt: new Date()
+      }
+    });
+    await tx.eligibleVoter.deleteMany({ where: { electionId, invitations: { none: {} }, votingCredentials: { none: {} } } });
+    await tx.eligibleVoter.createMany({
+      data: source.voters.map((voter) => ({
+        electionId,
+        voterRegistryId: registry.id,
+        nameEncrypted: voter.nameEncrypted,
+        phoneEncrypted: voter.phoneEncrypted,
+        externalIdentifierEncrypted: voter.externalIdentifierEncrypted,
+        externalIdentifierHmac: voter.externalIdentifierHmac,
+        status: "active"
+      })),
+      skipDuplicates: true
+    });
+  });
+  return { ok: true, message: "선거인 명부를 투표에 연결했습니다." };
+}
+
+export function voterFieldsFromForm(formData: FormData): Partial<VoterRegistryFields> {
+  return {
+    householdNumber: String(formData.get("householdNumber") ?? ""),
+    name: String(formData.get("name") ?? ""),
+    identifierLast4: String(formData.get("identifierLast4") ?? ""),
+    birthDate6: String(formData.get("birthDate6") ?? "")
+  };
+}
+
+export function decodeManagedVoterPayload(raw: string | undefined | null): VoterRegistryFields | null {
+  return decodeVoterRegistryPayload(raw);
+}

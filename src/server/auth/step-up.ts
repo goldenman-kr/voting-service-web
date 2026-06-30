@@ -1,4 +1,4 @@
-import { ControlRequirement, PERMISSION_BY_CODE, RiskLevel } from "../../guardrails/index.js";
+import { ControlRequirement, PERMISSION_BY_CODE } from "../../guardrails/index.js";
 import type { AdminSession } from "./admin-session";
 import { createStepUpRequiredError } from "../http/errors";
 
@@ -22,9 +22,7 @@ export function isStepUpRequiredForPermission(permissionCode: string): boolean {
   }
   return (
     permission.stepUp === ControlRequirement.YES ||
-    permission.stepUp === ControlRequirement.CONDITIONAL ||
-    permission.risk === RiskLevel.HIGH ||
-    permission.risk === RiskLevel.CRITICAL
+    permission.stepUp === ControlRequirement.CONDITIONAL
   );
 }
 

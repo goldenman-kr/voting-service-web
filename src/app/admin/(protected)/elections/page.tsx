@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { AdminElectionTable } from "../../../../components/admin/admin-election-table";
+import { AdminElectionSections } from "../../../../components/admin/admin-election-table";
 import { PageHeader } from "../../../../components/ui/page-header";
 import { getCurrentAdminSessionFromCookies } from "../../../../server/auth/current-admin";
 import { getPrismaClient } from "../../../../server/db/prisma";
@@ -23,7 +23,7 @@ export default async function AdminElectionsPage() {
           </Link>
         }
       />
-      <AdminElectionTable elections={elections} />
+      <AdminElectionSections elections={elections} />
     </div>
   );
 }

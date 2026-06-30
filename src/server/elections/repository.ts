@@ -49,6 +49,8 @@ export type ElectionRecord = Readonly<{
   startsAt: Date;
   endsAt: Date;
   timezone: string;
+  deletedAt?: Date | null;
+  deletionReason?: string | null;
 }>;
 
 export type QuestionRecord = Readonly<{
@@ -207,7 +209,16 @@ export type ElectionRepository = {
     electionId: string,
     input: ElectionDraftUpdateInput
   ): Promise<ElectionRecord>;
-  updateElectionState(electionId: string, state: ElectionStateValue): Promise<void>;
+  updateElectionState(
+    electionId: string,
+    state: ElectionStateValue,
+    updates?: { startsAt?: Date }
+  ): Promise<void>;
+  softDeleteElection(input: {
+    electionId: string;
+    deletedAt: Date;
+    deletionReason?: string;
+  }): Promise<void>;
 
   createQuestion(electionId: string, input: QuestionInput): Promise<QuestionRecord>;
   updateQuestion(questionId: string, input: QuestionUpdateInput): Promise<QuestionRecord>;

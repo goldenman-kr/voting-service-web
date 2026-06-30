@@ -86,11 +86,11 @@ export const authenticationMethods = Object.freeze([
   },
   {
     method: AuthenticationMethod.INVITE_LINK_WITH_IDENTIFIER,
-    label: "초대 링크 + 유권자 식별자 확인",
+    label: "선거인 명부 확인",
     enabled: true,
     cost: "비용 없음",
     availability: "MVP 기본값",
-    description: "이름과 조직 내 외부 식별자로 유권자를 확인합니다."
+    description: "호수번호, 이름, 식별번호, 생년월일로 유권자를 확인합니다."
   },
   {
     method: AuthenticationMethod.EMAIL_CODE,

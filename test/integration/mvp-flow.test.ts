@@ -218,7 +218,7 @@ class MvpFlowRepository {
   }
 
   async listElections(organizationId: string) {
-    return [...this.elections.values()].filter((election) => election.organizationId === organizationId);
+    return [...this.elections.values()].filter((election) => election.organizationId === organizationId && !election.deletedAt);
   }
 
   async updateElectionDraft(electionId: string, input: any) {
@@ -227,9 +227,18 @@ class MvpFlowRepository {
     return updated;
   }
 
-  async updateElectionState(electionId: string, state: string) {
+  async updateElectionState(electionId: string, state: string, updates: { startsAt?: Date } = {}) {
     const election = this.elections.get(electionId)!;
-    this.elections.set(electionId, { ...election, state: state as ElectionRecord["state"] });
+    this.elections.set(electionId, { ...election, state: state as ElectionRecord["state"], ...updates });
+  }
+
+  async softDeleteElection(input: { electionId: string; deletedAt: Date; deletionReason?: string }) {
+    const election = this.elections.get(input.electionId)!;
+    this.elections.set(input.electionId, {
+      ...election,
+      deletedAt: input.deletedAt,
+      deletionReason: input.deletionReason
+    });
   }
 
   async createQuestion(electionId: string, input: any) {
@@ -829,13 +838,14 @@ describe("MVP end-to-end flow with in-memory boundaries", () => {
       { answers: [{ questionId: question.id, optionIds: [optionA.id] }] },
       voterContext
     );
-    const second = await submitRevote(
-      repository,
-      { answers: [{ questionId: question.id, optionIds: [optionB.id] }] },
-      { ...voterContext, ballotGroupToken: first.ballotGroupCookie!.value, now: new Date("2026-01-01T00:05:00.000Z") }
-    );
-
-    expect(second.response.current_ballot_replaced).toBe(true);
+    await expect(
+      submitRevote(
+        repository,
+        { answers: [{ questionId: question.id, optionIds: [optionB.id] }] },
+        { ...voterContext, ballotGroupToken: first.ballotGroupCookie!.value, now: new Date("2026-01-01T00:05:00.000Z") }
+      )
+    ).rejects.toThrow(/다시 수정할 수 없습니다/);
+    expect(first.response.current_ballot_replaced).toBe(false);
     expect(repository.ballots.filter((ballot) => ballot.isCurrent)).toHaveLength(1);
     expect(JSON.stringify([...repository.groups.values()])).not.toContain(invite.voterSession.eligibleVoterId);
     expect(JSON.stringify([...repository.groups.values()])).not.toContain(invite.voterSession.votingCredentialId);
@@ -851,6 +861,7 @@ describe("MVP end-to-end flow with in-memory boundaries", () => {
     expect(tally.tally_eligible_ballot_count).toBe(1);
     expect(published.result_version.status).toBe("published");
     expect(publicResult.result_version.status).toBe("published");
+    expect(publicResult.result_version.notice).toBe("official");
     expect(completion).toMatchObject({ completed: true });
     const serializedPublicResult = JSON.stringify(publicResult);
     expect(serializedPublicResult).not.toContain("ballot");
@@ -867,9 +878,18 @@ describe("operational exception and audit coverage regression", () => {
     const context = adminContext(repository, auditRecorder);
     const { election } = await createElectionDraft(draftInput(), context);
     const question = await createQuestion(election.id, { title: "Q", questionType: "single_choice", required: true, displayOrder: 1 }, context);
+    await importEligibleVoters(
+      election.id,
+      {
+        sourceType: "manual",
+        rows: [{ householdNumber: "7", name: "Alice", identifierLast4: "0001", birthDate6: "900101" }],
+        reason: "initial registry"
+      },
+      context
+    );
 
-    await expect(openElection(election.id, { reason: "skip states" }, context)).rejects.toThrow(/현재 투표 상태/);
-    repository.elections.set(election.id, { ...election, state: ElectionState.OPEN });
+    const opened = await openElection(election.id, { reason: "start now" }, context);
+    expect(opened.state).toBe(ElectionState.OPEN);
     await expect(updateOption(election.id, question.id, "missing-option", { label: "blocked" }, context)).rejects.toThrow();
 
     expect(canOverwritePublishedResult()).toBe(false);
@@ -990,13 +1010,13 @@ describe("privacy and UI smoke regression", () => {
     }
   });
 
-  it("applies small anonymous result disclosure restrictions", () => {
+  it("allows small anonymous result counts for election outcome visibility", () => {
     const evaluation = evaluateAnonymousResultPrivacyRisk({
       votingMode: "anonymous",
       eligibleVoterCount: 8,
       items: [{ questionId: "q", optionId: "o", voteCount: 8 }]
     });
-    expect(evaluation.canPublishCounts).toBe(false);
-    expect(evaluation.requiredAction).toBe("block_counts");
+    expect(evaluation.canPublishCounts).toBe(true);
+    expect(evaluation.requiredAction).toBe("none");
   });
 });
