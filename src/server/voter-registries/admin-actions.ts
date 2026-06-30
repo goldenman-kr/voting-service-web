@@ -12,6 +12,7 @@ import {
   cloneManagedRegistry,
   createManagedRegistry,
   deleteManagedVoter,
+  updateManagedRegistryTitle,
   updateManagedVoter,
   voterFieldsFromForm
 } from "./managed-registry-service";
@@ -87,6 +88,27 @@ export async function addManagedVoterAction(
       fields: voterFieldsFromForm(formData),
       hmacKey: current.hmacKey,
       encryptionKey: current.encryptionKey
+    });
+    revalidatePath(`/admin/voter-registries/${registryId}`);
+    revalidatePath("/admin/voter-registries");
+    return { ok: result.ok, message: result.message };
+  } catch (error) {
+    return { ok: false, message: safeMessage(error) };
+  }
+}
+
+export async function updateManagedRegistryTitleAction(
+  _previous: VoterRegistryActionState = initialFailure,
+  formData: FormData
+): Promise<VoterRegistryActionState> {
+  const registryId = value(formData, "registryId");
+  try {
+    const current = await context();
+    const result = await updateManagedRegistryTitle({
+      prisma: current.prisma,
+      session: current.session,
+      registryId,
+      title: value(formData, "title")
     });
     revalidatePath(`/admin/voter-registries/${registryId}`);
     revalidatePath("/admin/voter-registries");

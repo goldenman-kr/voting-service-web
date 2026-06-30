@@ -57,11 +57,11 @@ export const ELECTION_STATE_UI: Readonly<Record<ElectionStateValue, ElectionStat
     },
     [ElectionState.OPEN]: {
       label: "진행 중",
-      description: "투표자가 제출할 수 있습니다. 위험 작업에는 사유와 추가 확인이 필요합니다.",
+      description: "투표자가 제출할 수 있습니다. 운영 작업에는 사유 입력이 필요합니다.",
       tone: "success",
       adminCta: "진행 현황 보기",
       voterCta: "투표 참여",
-      warning: "중단, 조기 종료는 사유 입력과 추가 인증이 필요합니다.",
+      warning: "중단, 조기 종료는 사유 입력 후 바로 실행됩니다.",
       hiddenActions: ["결과 확정", "결과 공개"]
     },
     [ElectionState.PAUSED]: {

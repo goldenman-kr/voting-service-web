@@ -21,6 +21,11 @@ type DraftPayload = Readonly<{
   answers: readonly DraftAnswer[];
 }>;
 
+type DetailOption = Readonly<{
+  label: string;
+  description?: string | null;
+}>;
+
 function answerName(questionId: string): string {
   return `answer:${questionId}`;
 }
@@ -63,8 +68,8 @@ function questionInstruction(question: VoterQuestionView): string {
   return "하나만 선택";
 }
 
-async function submitDraft(draft: DraftPayload, isRevote: boolean) {
-  const response = await fetch(isRevote ? "/api/v1/voter/ballots/revote" : "/api/v1/voter/ballots", {
+async function submitDraft(draft: DraftPayload) {
+  const response = await fetch("/api/v1/voter/ballots", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(draft)
@@ -87,70 +92,110 @@ export function VoterBallotForm({
 }) {
   const router = useRouter();
   const [error, setError] = useState<string>();
+  const [detailOption, setDetailOption] = useState<DetailOption>();
+
+  if (completion?.completed) {
+    return (
+      <section className="rounded-md border border-emerald-200 bg-emerald-50 p-5 text-sm leading-6 text-emerald-950">
+        투표참여가 완료되었습니다. 제출 후에는 다시 수정할 수 없습니다.
+      </section>
+    );
+  }
 
   return (
-    <form
-      className="grid gap-5"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const draft = draftFromForm(election, event.currentTarget);
-        const missing = election.questions.find(
-          (question, index) =>
-            question.required &&
-            draft.answers[index] &&
-            draft.answers[index].optionIds.length === 0 &&
-            !draft.answers[index].freeText
-        );
-        if (missing) {
-          setError("필수 문항을 확인해 주세요.");
-          return;
-        }
-        window.sessionStorage.setItem(draftStorageKey, JSON.stringify(draft));
-        router.push("/voter/review");
-      }}
-    >
-      {completion?.completed ? (
-        <p className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-950">
-          마감 전 다시 제출하면 마지막으로 접수된 투표만 공식 집계됩니다. 이전 선택 내용은 표시하지 않습니다.
-        </p>
-      ) : null}
-      {election.questions.map((question) => (
-        <fieldset key={question.id} className="grid gap-3 rounded-md border border-slate-200 bg-white p-5">
-          <legend className="text-base font-semibold text-slate-950">{question.title}</legend>
-          {question.description ? <p className="text-sm leading-6 text-slate-600">{question.description}</p> : null}
-          <p className="text-xs font-medium text-slate-500">{questionInstruction(question)}</p>
-          {question.question_type === "free_text" ? (
-            <textarea
-              name={freeTextName(question.id)}
-              rows={5}
-              required={question.required}
-              maxLength={5000}
-              className="rounded-md border border-slate-300 px-3 py-2 text-base"
-            />
-          ) : (
-            question.options.map((option) => (
-              <label
-                key={option.id}
-                className="flex min-h-14 items-center gap-3 rounded-md border border-slate-200 bg-white px-4 py-3 text-base font-medium"
+    <>
+      <form
+        className="grid gap-5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const draft = draftFromForm(election, event.currentTarget);
+          const missing = election.questions.find(
+            (question, index) =>
+              question.required &&
+              draft.answers[index] &&
+              draft.answers[index].optionIds.length === 0 &&
+              !draft.answers[index].freeText
+          );
+          if (missing) {
+            setError("필수 문항을 확인해 주세요.");
+            return;
+          }
+          window.sessionStorage.setItem(draftStorageKey, JSON.stringify(draft));
+          router.push("/voter/review");
+        }}
+      >
+        {election.questions.map((question) => (
+          <fieldset key={question.id} className="grid gap-3 rounded-md border border-slate-200 bg-white p-5">
+            <legend className="text-base font-semibold text-slate-950">{question.title}</legend>
+            {question.description ? <p className="text-sm leading-6 text-slate-600">{question.description}</p> : null}
+            <p className="text-xs font-medium text-slate-500">{questionInstruction(question)}</p>
+            {question.question_type === "free_text" ? (
+              <textarea
+                name={freeTextName(question.id)}
+                rows={5}
+                required={question.required}
+                maxLength={5000}
+                className="rounded-md border border-slate-300 px-3 py-2 text-base"
+              />
+            ) : (
+              question.options.map((option) => {
+                const inputId = `${answerName(question.id)}:${option.id}`;
+                return (
+                  <div
+                    key={option.id}
+                    className="flex min-h-14 items-center gap-3 rounded-md border border-slate-200 bg-white px-4 py-3 text-base font-medium"
+                  >
+                    <input
+                      id={inputId}
+                      type={question.question_type === "multiple_choice" ? "checkbox" : "radio"}
+                      name={answerName(question.id)}
+                      value={option.id}
+                      required={question.required && question.question_type !== "multiple_choice"}
+                      className="h-5 w-5"
+                    />
+                    <label htmlFor={inputId} className="min-w-0 flex-1 cursor-pointer">
+                      {option.label}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setDetailOption(option)}
+                      className="shrink-0 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700"
+                    >
+                      자세히
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </fieldset>
+        ))}
+        {error ? <p className="text-sm text-red-700">{error}</p> : null}
+        <button type="submit" className="min-h-12 w-full rounded-md bg-blue-700 px-4 py-3 text-base font-semibold text-white">
+          제출 전 확인
+        </button>
+      </form>
+      {detailOption ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="option-detail-title" className="grid w-full max-w-lg gap-4 rounded-md bg-white p-5 shadow-xl">
+            <div>
+              <h2 id="option-detail-title" className="text-lg font-semibold text-slate-950">{detailOption.label}</h2>
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                {detailOption.description || "등록된 자세한 설명이 없습니다."}
+              </p>
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setDetailOption(undefined)}
+                className="rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white"
               >
-                <input
-                  type={question.question_type === "multiple_choice" ? "checkbox" : "radio"}
-                  name={answerName(question.id)}
-                  value={option.id}
-                  required={question.required && question.question_type !== "multiple_choice"}
-                  className="h-5 w-5"
-                />
-                <span>{option.label}</span>
-              </label>
-            ))
-          )}
-        </fieldset>
-      ))}
-      {error ? <p className="text-sm text-red-700">{error}</p> : null}
-      <button type="submit" className="min-h-12 w-full rounded-md bg-blue-700 px-4 py-3 text-base font-semibold text-white">
-        제출 전 확인
-      </button>
-    </form>
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -187,6 +232,14 @@ export function VoterReviewSubmit({
     );
   }
 
+  if (isRevote) {
+    return (
+      <section className="rounded-md border border-emerald-200 bg-emerald-50 p-5 text-sm leading-6 text-emerald-950">
+        투표참여가 완료되었습니다. 제출 후에는 다시 수정할 수 없습니다.
+      </section>
+    );
+  }
+
   return (
     <section className="grid gap-4">
       <div className="grid gap-3 rounded-md border border-slate-200 bg-white p-5">
@@ -210,7 +263,7 @@ export function VoterReviewSubmit({
         onClick={async () => {
           setPending(true);
           try {
-            await submitDraft(draft, isRevote);
+            await submitDraft(draft);
             clearDraft();
             router.push("/voter/complete");
           } catch (submissionError) {
@@ -220,7 +273,7 @@ export function VoterReviewSubmit({
         }}
         className="min-h-12 w-full rounded-md bg-blue-700 px-4 py-3 text-base font-semibold text-white disabled:bg-slate-400"
       >
-        {pending ? "제출 중" : isRevote ? "다시 제출" : "제출"}
+        {pending ? "제출 중" : "제출"}
       </button>
       <button
         type="button"

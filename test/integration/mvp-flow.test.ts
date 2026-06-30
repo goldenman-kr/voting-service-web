@@ -838,13 +838,14 @@ describe("MVP end-to-end flow with in-memory boundaries", () => {
       { answers: [{ questionId: question.id, optionIds: [optionA.id] }] },
       voterContext
     );
-    const second = await submitRevote(
-      repository,
-      { answers: [{ questionId: question.id, optionIds: [optionB.id] }] },
-      { ...voterContext, ballotGroupToken: first.ballotGroupCookie!.value, now: new Date("2026-01-01T00:05:00.000Z") }
-    );
-
-    expect(second.response.current_ballot_replaced).toBe(true);
+    await expect(
+      submitRevote(
+        repository,
+        { answers: [{ questionId: question.id, optionIds: [optionB.id] }] },
+        { ...voterContext, ballotGroupToken: first.ballotGroupCookie!.value, now: new Date("2026-01-01T00:05:00.000Z") }
+      )
+    ).rejects.toThrow(/다시 수정할 수 없습니다/);
+    expect(first.response.current_ballot_replaced).toBe(false);
     expect(repository.ballots.filter((ballot) => ballot.isCurrent)).toHaveLength(1);
     expect(JSON.stringify([...repository.groups.values()])).not.toContain(invite.voterSession.eligibleVoterId);
     expect(JSON.stringify([...repository.groups.values()])).not.toContain(invite.voterSession.votingCredentialId);
@@ -876,6 +877,15 @@ describe("operational exception and audit coverage regression", () => {
     const context = adminContext(repository, auditRecorder);
     const { election } = await createElectionDraft(draftInput(), context);
     const question = await createQuestion(election.id, { title: "Q", questionType: "single_choice", required: true, displayOrder: 1 }, context);
+    await importEligibleVoters(
+      election.id,
+      {
+        sourceType: "manual",
+        rows: [{ householdNumber: "7", name: "Alice", identifierLast4: "0001", birthDate6: "900101" }],
+        reason: "initial registry"
+      },
+      context
+    );
 
     const opened = await openElection(election.id, { reason: "start now" }, context);
     expect(opened.state).toBe(ElectionState.OPEN);

@@ -159,15 +159,21 @@ describe("UI guardrails", () => {
     expect(detailPage).toContain("생년월일");
     expect(detailPage).toContain("ManagedVoterRowActions");
     expect(detailPage).toContain("AddManagedVoterDialog");
+    expect(detailPage).toContain("ManagedRegistryTitleActions");
     expect(detailPage).toContain("이 명부가 사용된 투표");
     expect(detailPage).toContain("usedElections");
     expect(detailPage).toContain("투표 보기");
     expect(detailPage).toContain("유권자와 투표 내용을 연결하는 정보는 표시하지 않습니다");
     expect(forms).toContain("선거인 추가");
     expect(forms).toContain("선거인 수정");
+    expect(forms).toContain("제목 수정");
+    expect(forms).toContain("updateManagedRegistryTitleAction");
     expect(forms).toContain("삭제");
+    expect(forms).toContain("이미 시작된 투표에서 사용 중인 명부는 제목을 수정할 수 없습니다.");
     expect(forms).toContain("이미 시작된 투표에서 사용 중인 명부는 선거인을 수정하거나 삭제할 수 없습니다.");
     expect(forms).toContain("VoterRegistryFileImportControl");
+    expect(service).toContain("updateManagedRegistryTitle");
+    expect(service).toContain("명부 제목은 120자 이하로 입력해 주세요.");
     expect(service).toContain("cloneManagedRegistry");
     expect(service).toContain("title: `${source.title} (사본)`");
     expect(service).toContain("linkManagedRegistryToElection");
@@ -353,7 +359,9 @@ describe("UI guardrails", () => {
     expect(inviteSource).not.toContain("회원번호/사번/학번");
     expect(inviteSource).toContain("인증코드는 MVP 기본 흐름에서 사용하지 않습니다.");
     expect(ballotSource).toContain("/api/v1/voter/ballots");
-    expect(ballotSource).toContain("/api/v1/voter/ballots/revote");
+    expect(ballotSource).not.toContain("/api/v1/voter/ballots/revote");
+    expect(ballotSource).toContain("제출 후에는 다시 수정할 수 없습니다.");
+    expect(ballotSource).toContain("자세히");
   });
 
   it("voter registry management uses required household identifier fields and local file parsing", () => {
@@ -416,6 +424,7 @@ describe("UI guardrails", () => {
     expect(source).not.toContain("approve");
     expect(detailPage).toContain("ElectionStateCtaPanel");
     expect(resultsPage).toContain("ResultOperationPanel");
+    expect(resultsPage).not.toContain("StepUpPanel");
     expect(resultsPage).toContain("ReportExportSkeleton");
   });
 });

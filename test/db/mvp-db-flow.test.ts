@@ -294,18 +294,18 @@ describeDb("MVP Prisma repository flow", () => {
       expect(firstSubmission.ballotGroupCookie?.value).toBeTruthy();
       expect(JSON.stringify(firstSubmission.response)).not.toContain(firstSubmission.ballotGroupCookie?.value);
 
-      const revoteSubmission = await submitRevote(
-        ballotRepository,
-        {
-          answers: [{ questionId: question.id, optionIds: [option.id] }]
-        },
-        {
-          ...voterContext,
-          ballotGroupToken: firstSubmission.ballotGroupCookie?.value
-        }
-      );
-      expect(revoteSubmission.response.accepted).toBe(true);
-      expect(revoteSubmission.response.current_ballot_replaced).toBe(true);
+      await expect(
+        submitRevote(
+          ballotRepository,
+          {
+            answers: [{ questionId: question.id, optionIds: [option.id] }]
+          },
+          {
+            ...voterContext,
+            ballotGroupToken: firstSubmission.ballotGroupCookie?.value
+          }
+        )
+      ).rejects.toThrow(/다시 수정할 수 없습니다/);
 
       const currentBallotCount = await prisma.ballot.count({
         where: { electionId, isCurrent: true }

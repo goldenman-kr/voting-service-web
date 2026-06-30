@@ -41,25 +41,37 @@ describe("RBAC authorization helpers", () => {
     expect(getPermissionRiskLevel("role.assign")).toBe("critical");
     expect(isHighOrCriticalPermission("role.assign")).toBe(true);
     expect(isStepUpRequiredForPermission("role.assign")).toBe(true);
+    expect(getPermissionRiskLevel("election.open")).toBe("high");
+    expect(isHighOrCriticalPermission("election.open")).toBe(true);
+    expect(isStepUpRequiredForPermission("election.open")).toBe(false);
+    expect(isStepUpRequiredForPermission("election.pause")).toBe(false);
+    expect(isStepUpRequiredForPermission("election.resume")).toBe(false);
+    expect(isStepUpRequiredForPermission("election.close")).toBe(false);
+    expect(isStepUpRequiredForPermission("result.tally")).toBe(false);
+    expect(isStepUpRequiredForPermission("result.confirm")).toBe(false);
+    expect(isStepUpRequiredForPermission("result.publish")).toBe(false);
+    expect(isStepUpRequiredForPermission("result.correct.request")).toBe(false);
+    expect(isStepUpRequiredForPermission("result.correct.approve")).toBe(false);
+    expect(isStepUpRequiredForPermission("election.invalidate")).toBe(false);
     expect(isStepUpRequiredForPermission("election.read")).toBe(false);
   });
 
-  it("requires valid step-up for high-risk permissions", () => {
+  it("requires valid step-up for permissions that still opt in to step-up", () => {
     const now = new Date("2026-01-01T00:00:00.000Z");
     const publisher = createMockAdminSession({
-      roles: [Role.RESULT_PUBLISHER],
+      roles: [Role.ORGANIZATION_OWNER],
       stepUp: {
         verifiedAt: now,
         expiresAt: new Date("2026-01-01T00:05:00.000Z"),
-        permissionCodes: ["result.publish"]
+        permissionCodes: ["role.assign"]
       }
     });
 
-    expect(isStepUpValid(publisher.stepUp, now, "result.publish")).toBe(true);
-    expect(() => requirePermissionWithStepUp(publisher, "result.publish", now)).not.toThrow();
+    expect(isStepUpValid(publisher.stepUp, now, "role.assign")).toBe(true);
+    expect(() => requirePermissionWithStepUp(publisher, "role.assign", now)).not.toThrow();
 
-    const withoutStepUp = createMockAdminSession({ roles: [Role.RESULT_PUBLISHER] });
-    expect(() => requirePermissionWithStepUp(withoutStepUp, "result.publish", now)).toThrow(
+    const withoutStepUp = createMockAdminSession({ roles: [Role.ORGANIZATION_OWNER] });
+    expect(() => requirePermissionWithStepUp(withoutStepUp, "role.assign", now)).toThrow(
       /추가 인증/
     );
   });

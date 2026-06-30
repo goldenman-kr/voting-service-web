@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import {
   AddManagedVoterDialog,
+  ManagedRegistryTitleActions,
   ManagedVoterRowActions
 } from "../../../../../components/admin/managed-voter-registry-forms";
 import { PageHeader } from "../../../../../components/ui/page-header";
@@ -38,6 +39,13 @@ export default async function ManagedVoterRegistryDetailPage({ params }: Params)
       <PageHeader
         eyebrow="선거인명부 관리"
         title={registry.title}
+        titleActions={
+          <ManagedRegistryTitleActions
+            registryId={registry.id}
+            title={registry.title}
+            editable={registry.editable}
+          />
+        }
         description={registry.description || "독립 선거인명부 상세"}
         actions={
           <Link href="/admin/voter-registries" className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700">

@@ -36,7 +36,7 @@ import {
 const NOW = new Date("2026-06-01T12:00:00.000Z");
 const ENDS_AT = new Date("2026-06-01T11:00:00.000Z");
 
-function adminSession() {
+function adminSession({ includeStepUp = true }: { includeStepUp?: boolean } = {}) {
   return createMockAdminSession({
     permissions: [
       "result.read",
@@ -49,20 +49,22 @@ function adminSession() {
       "report.export.request",
       "report.export.download"
     ],
-    stepUp: {
-      verifiedAt: new Date("2026-06-01T11:50:00.000Z"),
-      expiresAt: new Date("2026-06-01T12:30:00.000Z"),
-      permissionCodes: [
-        "result.tally",
-        "result.confirm",
-        "result.publish",
-        "result.correct.request",
-        "result.correct.approve",
-        "election.invalidate",
-        "report.export.request",
-        "report.export.download"
-      ]
-    }
+    stepUp: includeStepUp
+      ? {
+          verifiedAt: new Date("2026-06-01T11:50:00.000Z"),
+          expiresAt: new Date("2026-06-01T12:30:00.000Z"),
+          permissionCodes: [
+            "result.tally",
+            "result.confirm",
+            "result.publish",
+            "result.correct.request",
+            "result.correct.approve",
+            "election.invalidate",
+            "report.export.request",
+            "report.export.download"
+          ]
+        }
+      : undefined
   });
 }
 
@@ -457,6 +459,29 @@ describe("result tally service", () => {
 });
 
 describe("result version and publication service", () => {
+  it("runs result screen operations without step-up while keeping permission and reason checks", async () => {
+    const repository = new InMemoryResultRepository();
+    const auditRecorder = new InMemoryAuditRecorder();
+    const context = {
+      session: adminSession({ includeStepUp: false }),
+      repository,
+      auditRecorder,
+      now: NOW
+    };
+
+    await tallyElectionResult("election-1", {}, context);
+    await confirmResult("election-1", { reason: "review complete" }, context);
+    await publishResult("election-1", { reason: "publish approved", notice: "official" }, context);
+    await requestCorrection("election-1", { reason: "published typo", notice: "correction requested" }, context);
+    const invalidated = await invalidateElectionResult(
+      "election-1",
+      { reason: "material error", notice: "voided" },
+      context
+    );
+
+    expect(invalidated.election_state).toBe(ElectionState.INVALIDATED);
+  });
+
   it("creates a confirmed ResultVersion and forbids published overwrite paths", async () => {
     const { repository, context } = createContext();
     await tallyElectionResult("election-1", {}, context);

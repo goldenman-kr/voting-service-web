@@ -210,7 +210,7 @@ export function ReportExportSkeleton() {
     <section className="rounded-md border border-slate-200 bg-white p-5">
       <h2 className="text-base font-semibold text-slate-950">보고서 export</h2>
       <p className="mt-2 text-sm leading-6 text-slate-600">
-        보고서 export는 목적 입력, step-up, 승인, 워터마크, 만료 링크가 필요한 후속 작업입니다.
+        보고서 export는 목적 입력, 승인, 워터마크, 만료 링크가 필요한 후속 작업입니다.
       </p>
       <button
         type="button"

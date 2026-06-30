@@ -1,4 +1,3 @@
-import { AnonymousVotingNotice } from "../../../components/ui/anonymous-voting-notice";
 import { ErrorState } from "../../../components/ui/error-state";
 import { PageHeader } from "../../../components/ui/page-header";
 import { VoterBallotForm } from "../../../components/voter/voter-ballot-flow";
@@ -30,7 +29,6 @@ export default async function VoterBallotPage() {
         description="선택 후 제출 전 확인 화면에서 한 번 더 확인합니다."
         status={election.state}
       />
-      {election.voting_mode === "anonymous" ? <AnonymousVotingNotice audience="voter" /> : null}
       <VoterBallotForm election={election} completion={completion} />
     </VoterShell>
   );

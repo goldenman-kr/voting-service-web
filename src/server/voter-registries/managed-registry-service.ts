@@ -234,6 +234,33 @@ export async function createManagedRegistry({
   return { ok: true, registryId: registry.id, message: "새 명부를 만들었습니다." };
 }
 
+export async function updateManagedRegistryTitle({
+  prisma,
+  session,
+  registryId,
+  title
+}: {
+  prisma: PrismaClientLike;
+  session: AdminSession;
+  registryId: string;
+  title: string;
+}): Promise<RegistryActionResult> {
+  const editable = await assertEditableRegistry(prisma, session, registryId);
+  if (!editable.ok) return editable;
+  const trimmedTitle = title.trim();
+  if (!trimmedTitle) {
+    return { ok: false, message: "명부 제목을 입력해 주세요." };
+  }
+  if (trimmedTitle.length > 120) {
+    return { ok: false, message: "명부 제목은 120자 이하로 입력해 주세요." };
+  }
+  await prisma.managedVoterRegistry.update({
+    where: { id: registryId },
+    data: { title: trimmedTitle }
+  });
+  return { ok: true, message: "명부 제목을 수정했습니다." };
+}
+
 export async function addManagedVoter({
   prisma,
   session,

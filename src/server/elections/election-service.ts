@@ -387,6 +387,29 @@ async function createVotingCredentialForEligibleVoter(
   });
 }
 
+async function ensureVotingCredentialsForElection(
+  context: ElectionServiceContext,
+  electionId: string
+): Promise<number> {
+  await assertVoterRegistryReady(context, electionId);
+  const voters = await context.repository.listEligibleVotersForElection(electionId);
+  let credentialsCreated = 0;
+
+  for (const voter of voters) {
+    const credential = await createVotingCredentialForEligibleVoter(context, electionId, voter.id);
+    if (!credential) continue;
+    credentialsCreated += 1;
+    await audit(context, {
+      eventType: "voting_credential.created",
+      targetType: "VotingCredential",
+      targetId: credential.id,
+      afterSummary: { electionId }
+    });
+  }
+
+  return credentialsCreated;
+}
+
 export async function createElectionDraft(
   rawInput: unknown,
   context: ElectionServiceContext
@@ -783,6 +806,7 @@ export async function openElection(
   } catch {
     throw conflictError(`transition denied: ${election.state} -> ${ElectionState.OPEN}`);
   }
+  const credentialsCreated = await ensureVotingCredentialsForElection(context, electionId);
   const openedAt = nowFrom(context);
   await context.repository.updateElectionState(electionId, ElectionState.OPEN, { startsAt: openedAt });
   await context.repository.recordElectionStateHistory({
@@ -801,7 +825,7 @@ export async function openElection(
     targetId: electionId,
     reason: input.reason,
     beforeSummary: { state: election.state, startsAt: election.startsAt },
-    afterSummary: { state: ElectionState.OPEN, startsAt: openedAt }
+    afterSummary: { state: ElectionState.OPEN, startsAt: openedAt, credentialsCreated }
   });
   return { electionId, state: ElectionState.OPEN };
 }
@@ -897,7 +921,6 @@ export async function prepareInvitationsForElection(
   await assertVoterRegistryReady(context, electionId);
   const voters = await context.repository.listEligibleVotersForElection(electionId);
   let invitationsCreated = 0;
-  let credentialsCreated = 0;
 
   for (const voter of voters) {
     const invitationResult = await createInvitationForEligibleVoter(
@@ -909,21 +932,8 @@ export async function prepareInvitationsForElection(
     if (invitationResult.created) {
       invitationsCreated += 1;
     }
-    const credential = await createVotingCredentialForEligibleVoter(
-      context,
-      electionId,
-      voter.id
-    );
-    if (credential) {
-      credentialsCreated += 1;
-      await audit(context, {
-        eventType: "voting_credential.created",
-        targetType: "VotingCredential",
-        targetId: credential.id,
-        afterSummary: { electionId }
-      });
-    }
   }
+  const credentialsCreated = await ensureVotingCredentialsForElection(context, electionId);
 
   await audit(context, {
     eventType: "invitation.prepared",

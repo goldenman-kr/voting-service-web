@@ -626,13 +626,23 @@ describe("admin election service", () => {
 
   it("allows direct Draft to Open transition and rewrites startsAt to now", async () => {
     const repository = new InMemoryElectionRepository();
-    const context = createStepUpContext(repository, [Role.ELECTION_MANAGER, Role.ELECTION_APPROVER]);
+    const context = createContext(repository);
     const { election } = await createElectionDraft(draftInput(), context);
+    await importEligibleVoters(
+      election.id,
+      {
+        sourceType: "manual",
+        rows: [{ householdNumber: "7", name: "Alice", identifierLast4: "0001", birthDate6: "900101" }],
+        reason: "initial registry"
+      },
+      context
+    );
 
     const result = await openElection(election.id, { reason: "start now" }, context);
 
     expect(result.state).toBe(ElectionState.OPEN);
     expect(repository.elections.get(election.id)?.startsAt).toEqual(now);
+    expect([...repository.credentials.values()]).toHaveLength(1);
   });
 
   it("soft deletes draft elections only before they start", async () => {
@@ -648,7 +658,12 @@ describe("admin election service", () => {
 
   it("allows Open to Paused to Open and Open or Paused to Closed", async () => {
     const repository = new InMemoryElectionRepository();
-    const context = createStepUpContext(repository, [Role.ELECTION_MANAGER, Role.ELECTION_APPROVER]);
+    const context = createContext(repository, {
+      session: createMockAdminSession({
+        roles: [Role.ELECTION_MANAGER],
+        permissions: ["election.create", "election.pause", "election.resume", "election.close"]
+      })
+    });
     const { election } = await createElectionDraft(draftInput(), context);
     repository.elections.set(election.id, { ...election, state: ElectionState.OPEN });
 
@@ -695,6 +710,15 @@ describe("admin election service", () => {
     const context = createStepUpContext(repository, [Role.ELECTION_APPROVER]);
     const managerContext = createContext(repository);
     const { election } = await createElectionDraft(draftInput(), managerContext);
+    await importEligibleVoters(
+      election.id,
+      {
+        sourceType: "manual",
+        rows: [{ householdNumber: "7", name: "Alice", identifierLast4: "0001", birthDate6: "900101" }],
+        reason: "initial registry"
+      },
+      managerContext
+    );
     await requestElectionReview(election.id, { reason: "ready" }, managerContext);
     await approveElectionReview(election.id, { reason: "reviewed" }, context);
 

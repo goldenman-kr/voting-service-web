@@ -4,7 +4,6 @@ import {
   ReportExportSkeleton,
   ResultOperationPanel
 } from "../../../../../../components/admin/admin-operation-forms";
-import { StepUpPanel } from "../../../../../../components/admin/step-up-panel";
 import { EmptyState } from "../../../../../../components/ui/empty-state";
 import { ErrorState } from "../../../../../../components/ui/error-state";
 import { PageHeader } from "../../../../../../components/ui/page-header";
@@ -94,17 +93,6 @@ export default async function AdminResultsPage({ params }: Params) {
           <EmptyState title="아직 집계 결과가 없습니다" description="종료 이후 결과 집계를 실행하면 집계 단위 결과가 표시됩니다." />
         )}
       </section>
-      <StepUpPanel
-        permissionCodes={[
-          "result.tally",
-          "result.confirm",
-          "result.publish",
-          "result.correct.request",
-          "election.invalidate",
-          "report.export.request"
-        ]}
-        purpose="결과 집계, 확정, 공개, 정정, 무효 또는 보고서 export"
-      />
       <ResultOperationPanel electionId={election.id} state={election.state} />
       <ReportExportSkeleton />
     </div>

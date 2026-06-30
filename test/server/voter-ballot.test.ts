@@ -313,21 +313,21 @@ describe("voter anonymous ballot service", () => {
     });
   });
 
-  it("revotes with client-held token, creates a new Ballot, and keeps only the last accepted current", async () => {
+  it("rejects revotes after a completed submission", async () => {
     const repository = new InMemoryBallotRepository();
     const first = await submitAnonymousBallot(repository, answer(optionAId), context());
-    const second = await submitRevote(
-      repository,
-      answer(optionBId),
-      context({ ballotGroupToken: first.ballotGroupCookie!.value, now: new Date("2026-01-01T00:01:00.000Z") })
-    );
 
-    expect(second.response.current_ballot_replaced).toBe(true);
+    await expect(
+      submitRevote(
+        repository,
+        answer(optionBId),
+        context({ ballotGroupToken: first.ballotGroupCookie!.value, now: new Date("2026-01-01T00:01:00.000Z") })
+      )
+    ).rejects.toThrow(/다시 수정할 수 없습니다/);
     expect(repository.groups.size).toBe(1);
-    expect(repository.ballots).toHaveLength(2);
+    expect(repository.ballots).toHaveLength(1);
     expect(repository.ballots.filter((ballot) => ballot.isCurrent)).toHaveLength(1);
-    expect(repository.ballots[0]).toMatchObject({ isCurrent: false, acceptanceStatus: "superseded" });
-    expect(repository.ballots[1]).toMatchObject({ isCurrent: true, acceptanceStatus: "accepted" });
+    expect(repository.ballots[0]).toMatchObject({ isCurrent: true, acceptanceStatus: "accepted" });
   });
 
   it("matches official tally eligibility criteria", async () => {

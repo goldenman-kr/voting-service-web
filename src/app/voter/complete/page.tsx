@@ -1,5 +1,4 @@
 import { PageHeader } from "../../../components/ui/page-header";
-import { AnonymousVotingNotice } from "../../../components/ui/anonymous-voting-notice";
 import { ErrorState } from "../../../components/ui/error-state";
 import { VoterSecondaryLink, VoterShell } from "../../../components/voter/voter-shell";
 import { getCurrentVoterCompletionStatus } from "../../../server/voters/voter-ui-data";
@@ -45,8 +44,6 @@ export default async function VoterCompletePage() {
           <span className="font-semibold">{completion.receipt_preview ?? "제한 표시"}</span>
         </div>
       </section>
-      <AnonymousVotingNotice audience="voter" />
-      <VoterSecondaryLink href="/voter/ballot">마감 전 다시 투표</VoterSecondaryLink>
       <VoterSecondaryLink href="/voter/results">결과 보기</VoterSecondaryLink>
     </VoterShell>
   );
