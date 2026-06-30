@@ -67,7 +67,7 @@ export default async function AdminResultsPage({ params }: Params) {
         description="결과는 집계 단위로만 표시하며 공개 이후 덮어쓰지 않습니다."
         status={election.state}
       />
-      <WarningBanner title="Published 이후 정책">
+      <WarningBanner title="결과 공개 이후 정책">
         공개된 결과는 조용히 수정하거나 삭제하지 않습니다. 정정은 새 버전과 공지로 처리하고, 중대한 오류는 무효 기록으로 남깁니다.
       </WarningBanner>
       {privacy?.riskLevel ? (
@@ -92,7 +92,7 @@ export default async function AdminResultsPage({ params }: Params) {
             ))}
           </div>
         ) : (
-          <EmptyState title="아직 집계 결과가 없습니다" description="Closed 이후 결과 집계를 실행하면 집계 단위 결과가 표시됩니다." />
+          <EmptyState title="아직 집계 결과가 없습니다" description="종료 이후 결과 집계를 실행하면 집계 단위 결과가 표시됩니다." />
         )}
       </section>
       <AuditNotice eventType="결과 확정, 공개, 보고서 요청" riskLevel="high" />

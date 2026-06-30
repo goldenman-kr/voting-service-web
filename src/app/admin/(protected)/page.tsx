@@ -27,10 +27,12 @@ export default async function AdminDashboardPage() {
           </Link>
         }
       />
-      <section className="grid gap-4 md:grid-cols-3">
-        <MetricCard label="전체 투표" value={dashboard.totalCount} hint="권한 범위 내 투표" />
-        <MetricCard label="검수 대기" value={dashboard.byState[ElectionState.READY_FOR_REVIEW] ?? 0} hint="승인자 확인 필요" />
-        <MetricCard label="진행 중" value={dashboard.byState[ElectionState.OPEN] ?? 0} hint="투표 참여 가능 상태" />
+      <section className="grid gap-4 md:grid-cols-5">
+        <MetricCard label="전체 투표" value={dashboard.totalCount} hint="현재 조직에서 관리 중인 모든 투표입니다." />
+        <MetricCard label="시작 전 투표" value={dashboard.preStartCount} hint="작성, 검수, 승인, 예약 단계의 투표입니다." />
+        <MetricCard label="현재 진행 중" value={dashboard.activeCount} hint="유권자가 참여할 수 있거나 일시중단된 투표입니다." />
+        <MetricCard label="완료된 투표" value={dashboard.completedCount} hint="마감 이후 집계, 확정, 공개 단계의 투표입니다." />
+        <MetricCard label="관리 중인 명부" value={dashboard.registryCount} hint="투표에 연결된 선거인 명부 수입니다." />
       </section>
       <section className="grid gap-4 md:grid-cols-4">
         <MetricCard label="Draft" value={dashboard.byState[ElectionState.DRAFT] ?? 0} />

@@ -26,8 +26,8 @@ export default async function AdminVotersPage({ params }: Params) {
     <div className="grid gap-6">
       <PageHeader
         eyebrow="명부 관리"
-        title="유권자 명부 등록/검증"
-        description="Election별 독립 명부를 검증하고 확정합니다."
+        title="선거인 명부 등록/검증"
+        description="투표별 독립 명부를 검증하고 확정합니다."
         status={election.state}
       />
       <PrivacyNotice />

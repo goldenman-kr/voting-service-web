@@ -8,7 +8,7 @@ import {
   isAvailableInMvp,
   type AuthenticationMethodValue
 } from "../../domain/auth-policy/authentication-policy";
-import { ElectionState } from "../../guardrails/index.js";
+import { AuthenticationMethod, ElectionState } from "../../guardrails/index.js";
 import { parseEnv } from "../../lib/env";
 import { getCurrentAdminSessionFromCookies } from "../auth/current-admin";
 import { getPrismaClient } from "../db/prisma";
@@ -30,6 +30,9 @@ import {
   resendInvitation,
   resumeElection,
   scheduleElection,
+  updateElectionDraft,
+  updateOption,
+  updateQuestion,
   type ElectionServiceContext
 } from "./election-service";
 import { getAdminElectionDetail } from "./admin-election-view";
@@ -65,6 +68,30 @@ function safeMessage(error: unknown): string {
   return normalizeApiError(error).userMessage;
 }
 
+function validateBasicInfoInput(formData: FormData): string | null {
+  const requiredFields = [
+    ["title", "투표 제목"],
+    ["electionType", "투표 유형"],
+    ["startsAt", "시작일시"],
+    ["endsAt", "종료일시"]
+  ] as const;
+  for (const [key, label] of requiredFields) {
+    if (!value(formData, key)) {
+      return `${label}을 입력해 주세요.`;
+    }
+  }
+
+  const startsAt = new Date(value(formData, "startsAt"));
+  const endsAt = new Date(value(formData, "endsAt"));
+  if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+    return "시작일시와 종료일시를 확인해 주세요.";
+  }
+  if (endsAt <= startsAt) {
+    return "종료일시는 시작일시보다 뒤여야 합니다.";
+  }
+  return null;
+}
+
 export async function createElectionDraftAction(
   _previous: AdminActionState,
   formData: FormData
@@ -91,6 +118,411 @@ export async function createElectionDraftAction(
 
   revalidatePath("/admin");
   revalidatePath("/admin/elections");
+  redirect(`/admin/elections/${electionId}`);
+}
+
+export async function updateElectionBasicInfoAction(
+  _previous: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  const electionId = value(formData, "electionId");
+  if (!electionId) {
+    return { ok: false, message: "수정할 투표를 찾을 수 없습니다." };
+  }
+  const validationMessage = validateBasicInfoInput(formData);
+  if (validationMessage) {
+    return { ok: false, message: validationMessage };
+  }
+
+  try {
+    const context = await serviceContext();
+    const detail = await getAdminElectionDetail(getPrismaClient(), context.session, electionId);
+    if (!detail) {
+      return { ok: false, message: "투표 정보를 찾을 수 없습니다." };
+    }
+    if (detail.state !== ElectionState.DRAFT) {
+      return {
+        ok: false,
+        message: "초안 상태의 투표만 통합 편집 화면에서 수정할 수 있습니다."
+      };
+    }
+    if (detail.startsAt <= new Date()) {
+      return {
+        ok: false,
+        message: "시작일시가 지난 투표는 통합 편집 화면에서 수정할 수 없습니다."
+      };
+    }
+    await updateElectionDraft(
+      electionId,
+      {
+        title: value(formData, "title"),
+        description: optionalValue(formData, "description"),
+        electionType: value(formData, "electionType") || "representative_election",
+        startsAt: value(formData, "startsAt"),
+        endsAt: value(formData, "endsAt"),
+        timezone: "Asia/Seoul",
+        reason: "통합 편집 마법사 기본 정보 수정"
+      },
+      context
+    );
+  } catch (error) {
+    return { ok: false, message: safeMessage(error) };
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/elections");
+  revalidatePath(`/admin/elections/${electionId}`);
+  revalidatePath(`/admin/elections/${electionId}/edit`);
+  return {
+    ok: true,
+    message: "기본 정보가 저장되었습니다. 투표를 시작하기 전에 상세 화면에서 제목, 일정, 문항, 선택 항목, 선거인 명부를 다시 확인해 주세요."
+  };
+}
+
+function rawValues(formData: FormData, key: string): string[] {
+  return formData.getAll(key).map((entry) => String(entry ?? "").trim());
+}
+
+function nonEmptyValues(formData: FormData, key: string): string[] {
+  return rawValues(formData, key).filter(Boolean);
+}
+
+const wizardEnabledAuthMethods = new Set<string>([
+  AuthenticationMethod.INVITE_LINK_ONLY,
+  AuthenticationMethod.INVITE_LINK_WITH_IDENTIFIER
+]);
+
+export async function updateElectionAuthPolicyFromWizardAction(
+  _previous: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  const electionId = value(formData, "electionId");
+  const method = value(formData, "method") || getDefaultAuthenticationMethod();
+  if (!electionId) {
+    return { ok: false, message: "수정할 투표를 찾을 수 없습니다." };
+  }
+  if (!wizardEnabledAuthMethods.has(method) || !isAvailableInMvp(method as AuthenticationMethodValue)) {
+    return {
+      ok: false,
+      message: "현재 MVP에서 사용할 수 없는 인증 방식입니다."
+    };
+  }
+
+  try {
+    const context = await serviceContext();
+    const detail = await getAdminElectionDetail(getPrismaClient(), context.session, electionId);
+    if (!detail) {
+      return { ok: false, message: "투표 정보를 찾을 수 없습니다." };
+    }
+    if (detail.state !== ElectionState.DRAFT) {
+      return {
+        ok: false,
+        message: "초안 상태의 투표만 투표 참여 인증 방식을 수정할 수 있습니다."
+      };
+    }
+    if (detail.startsAt <= new Date()) {
+      return {
+        ok: false,
+        message: "시작일시가 지난 투표는 투표 참여 인증 방식을 수정할 수 없습니다."
+      };
+    }
+
+    await configureAuthenticationPolicy(
+      electionId,
+      {
+        method,
+        isEnabled: true,
+        reason: "통합 편집 마법사 투표 참여 인증 방식 수정"
+      },
+      context
+    );
+  } catch (error) {
+    return { ok: false, message: safeMessage(error) };
+  }
+
+  revalidatePath(`/admin/elections/${electionId}`);
+  revalidatePath(`/admin/elections/${electionId}/edit`);
+  revalidatePath(`/admin/elections/${electionId}/auth-policy`);
+  return {
+    ok: true,
+    message: "투표 참여 인증 방식을 저장했습니다. 모든 항목이 준비되면 상세 화면에서 검수 요청을 진행할 수 있습니다."
+  };
+}
+
+export async function updateElectionQuestionsAndOptionsAction(
+  _previous: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  const electionId = value(formData, "electionId");
+  if (!electionId) {
+    return { ok: false, message: "수정할 투표를 찾을 수 없습니다." };
+  }
+
+  try {
+    const context = await serviceContext();
+    const detail = await getAdminElectionDetail(getPrismaClient(), context.session, electionId);
+    if (!detail) {
+      return { ok: false, message: "투표 정보를 찾을 수 없습니다." };
+    }
+    if (detail.state !== ElectionState.DRAFT) {
+      return {
+        ok: false,
+        message: "초안 상태의 투표만 문항과 선택 항목을 수정할 수 있습니다."
+      };
+    }
+    if (detail.startsAt <= new Date()) {
+      return {
+        ok: false,
+        message: "시작일시가 지난 투표는 문항과 선택 항목을 수정할 수 없습니다."
+      };
+    }
+
+    const submittedQuestionIds = rawValues(formData, "questionId");
+    const activeQuestionIds = new Set(detail.questions.map((question) => question.id));
+    if (
+      submittedQuestionIds.length !== detail.questions.length ||
+      submittedQuestionIds.some((questionId) => !activeQuestionIds.has(questionId))
+    ) {
+      return { ok: false, message: "문항 구성을 확인해 주세요." };
+    }
+
+    for (const question of detail.questions) {
+      const questionTitle = value(formData, `questionTitle:${question.id}`);
+      const questionDescription = value(formData, `questionDescription:${question.id}`);
+      if (!questionTitle) {
+        return { ok: false, message: "질문 제목을 입력해 주세요." };
+      }
+
+      const submittedOptionIds = rawValues(formData, `optionId:${question.id}`);
+      const existingOptionIds = new Set(question.options.map((option) => option.id));
+      if (
+        submittedOptionIds.length !== question.options.length ||
+        submittedOptionIds.some((optionId) => !existingOptionIds.has(optionId))
+      ) {
+        return { ok: false, message: "선택 항목 구성을 확인해 주세요." };
+      }
+
+      const newOptionLabels = rawValues(formData, `newOptionLabel:${question.id}`);
+      const newOptionDescriptions = rawValues(formData, `newOptionDescription:${question.id}`);
+      const appendedOptions = newOptionLabels
+        .map((label, index) => ({
+          label,
+          description: newOptionDescriptions[index] || undefined
+        }))
+        .filter((option) => option.label.length > 0);
+
+      if (
+        newOptionLabels.some((label, index) => !label && (newOptionDescriptions[index] ?? "").length > 0)
+      ) {
+        return { ok: false, message: "새 선택 항목의 제목을 입력해 주세요." };
+      }
+
+      const existingLabels = question.options.map((option) => value(formData, `optionLabel:${option.id}`));
+      if (existingLabels.some((label) => !label)) {
+        return { ok: false, message: "기존 선택 항목 제목을 입력해 주세요." };
+      }
+
+      const finalLabels = [...existingLabels, ...appendedOptions.map((option) => option.label)];
+      if (question.questionType !== "free_text" && finalLabels.length < 2) {
+        return { ok: false, message: "선택 항목은 최소 2개 이상 유지해야 합니다." };
+      }
+      if (new Set(finalLabels.map((label) => label.toLowerCase())).size !== finalLabels.length) {
+        return { ok: false, message: "선택 항목 제목이 중복되지 않도록 입력해 주세요." };
+      }
+
+      await updateQuestion(
+        electionId,
+        question.id,
+        {
+          title: questionTitle,
+          description: questionDescription,
+          reason: "통합 편집 마법사 문항 문구 수정"
+        },
+        context
+      );
+
+      for (const option of question.options) {
+        await updateOption(
+          electionId,
+          question.id,
+          option.id,
+          {
+            label: value(formData, `optionLabel:${option.id}`),
+            description: value(formData, `optionDescription:${option.id}`),
+            reason: "통합 편집 마법사 선택 항목 문구 수정"
+          },
+          context
+        );
+      }
+
+      const nextDisplayOrder =
+        question.options.length === 0
+          ? 0
+          : Math.max(...question.options.map((option) => option.displayOrder)) + 1;
+      for (const [index, option] of appendedOptions.entries()) {
+        await createOption(
+          electionId,
+          question.id,
+          {
+            label: option.label,
+            description: option.description,
+            displayOrder: nextDisplayOrder + index
+          },
+          context
+        );
+      }
+    }
+  } catch (error) {
+    return { ok: false, message: safeMessage(error) };
+  }
+
+  revalidatePath(`/admin/elections/${electionId}`);
+  revalidatePath(`/admin/elections/${electionId}/edit`);
+  revalidatePath(`/admin/elections/${electionId}/questions`);
+  return {
+    ok: true,
+    message: "문항/선택 항목이 저장되었습니다. 투표를 시작하기 전에 상세 화면에서 제목, 일정, 문항, 선택 항목, 선거인 명부를 다시 확인해 주세요."
+  };
+}
+
+function values(formData: FormData, key: string): string[] {
+  return nonEmptyValues(formData, key);
+}
+
+function validateWizardInput(formData: FormData): string | null {
+  const requiredFields = [
+    ["title", "투표 제목"],
+    ["electionType", "투표 유형"],
+    ["startsAt", "시작일시"],
+    ["endsAt", "종료일시"],
+    ["questionTitle", "질문 제목"],
+    ["voterRows", "선거인 명부"]
+  ] as const;
+  for (const [key, label] of requiredFields) {
+    if (!value(formData, key)) {
+      return `${label}을 입력해 주세요.`;
+    }
+  }
+
+  const startsAt = new Date(value(formData, "startsAt"));
+  const endsAt = new Date(value(formData, "endsAt"));
+  if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+    return "시작일시와 종료일시를 확인해 주세요.";
+  }
+  if (endsAt <= startsAt) {
+    return "종료일시는 시작일시보다 뒤여야 합니다.";
+  }
+
+  const optionTitles = values(formData, "optionTitle");
+  if (optionTitles.length < 2) {
+    return "선택 항목은 최소 2개 이상 입력해 주세요.";
+  }
+  if (new Set(optionTitles.map((title) => title.toLowerCase())).size !== optionTitles.length) {
+    return "선택 항목 제목이 중복되지 않도록 입력해 주세요.";
+  }
+
+  const voterRows = parseVoterRows(value(formData, "voterRows"));
+  if (voterRows.length === 0) {
+    return "선거인 명부를 1명 이상 입력해 주세요.";
+  }
+  if (voterRows.some((row) => !row.externalIdentifier)) {
+    return "각 선거인 행에는 이름과 외부 식별자를 입력해 주세요.";
+  }
+  const voterIdentifiers = voterRows.map((row) => row.externalIdentifier.toLowerCase());
+  if (new Set(voterIdentifiers).size !== voterIdentifiers.length) {
+    return "선거인 명부에 중복된 외부 식별자가 있습니다.";
+  }
+  if (voterRows.some((row) => row.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(row.email))) {
+    return "선거인 명부의 이메일 형식을 확인해 주세요.";
+  }
+
+  return null;
+}
+
+function missingWizardPermissions(permissions: readonly string[]): string[] {
+  const required = ["election.create", "question.write", "voter_registry.import"];
+  return required.filter((permission) => !permissions.includes(permission));
+}
+
+export async function createElectionWizardAction(
+  _previous: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  const validationMessage = validateWizardInput(formData);
+  if (validationMessage) {
+    return { ok: false, message: validationMessage };
+  }
+
+  let electionId: string | undefined;
+  try {
+    const context = await serviceContext();
+    const missingPermissions = missingWizardPermissions(context.session.permissions);
+    if (missingPermissions.length > 0) {
+      return {
+        ok: false,
+        message: "투표 생성, 문항 작성, 선거인 명부 등록 권한이 모두 필요합니다."
+      };
+    }
+
+    const result = await createElectionDraft(
+      {
+        title: value(formData, "title"),
+        description: optionalValue(formData, "description"),
+        electionType: value(formData, "electionType") || "representative_election",
+        votingMode: "anonymous",
+        startsAt: value(formData, "startsAt"),
+        endsAt: value(formData, "endsAt"),
+        timezone: "Asia/Seoul"
+      },
+      context
+    );
+    electionId = result.election.id;
+
+    const question = await createQuestion(
+      electionId,
+      {
+        title: value(formData, "questionTitle"),
+        description: optionalValue(formData, "questionDescription"),
+        questionType: "single_choice",
+        required: true,
+        minSelect: 1,
+        maxSelect: 1,
+        displayOrder: 0
+      },
+      context
+    );
+
+    const optionTitles = values(formData, "optionTitle");
+    const optionDescriptions = formData.getAll("optionDescription").map((entry) => String(entry ?? "").trim());
+    for (const [index, label] of optionTitles.entries()) {
+      await createOption(
+        electionId,
+        question.id,
+        {
+          label,
+          description: optionDescriptions[index] || undefined,
+          displayOrder: index
+        },
+        context
+      );
+    }
+
+    await importEligibleVoters(
+      electionId,
+      {
+        sourceType: "manual",
+        rows: parseVoterRows(value(formData, "voterRows")),
+        reason: "투표 생성 마법사 선거인 명부 등록"
+      },
+      context
+    );
+  } catch (error) {
+    return { ok: false, message: safeMessage(error) };
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/elections");
+  revalidatePath(`/admin/elections/${electionId}`);
   redirect(`/admin/elections/${electionId}`);
 }
 

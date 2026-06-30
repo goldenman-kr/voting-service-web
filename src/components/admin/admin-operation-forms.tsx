@@ -161,7 +161,7 @@ export function ResultOperationPanel({
       <div>
         <h2 className="text-base font-semibold text-slate-950">결과 운영 CTA</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          집계, 확정, 공개, 정정, 무효 처리는 상태 정책과 Published 이후 덮어쓰기 금지 원칙을 따릅니다.
+          집계, 확정, 공개, 정정, 무효 처리는 상태 정책과 결과 공개 이후 덮어쓰기 금지 원칙을 따릅니다.
         </p>
       </div>
       {operations.length > 0 ? (

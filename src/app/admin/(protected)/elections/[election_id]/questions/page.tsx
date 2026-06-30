@@ -24,12 +24,12 @@ export default async function AdminQuestionsPage({ params }: Params) {
     <div className="grid gap-6">
       <PageHeader
         eyebrow="문항 설정"
-        title="문항/선택지"
-        description="시작 전 검수 단계에서 문항과 선택지를 확인합니다."
+        title="문항/선택 항목"
+        description="시작 전 검수 단계에서 문항과 선택 항목을 확인합니다."
         status={election.state}
       />
       <WarningBanner>
-        시작된 투표의 문항과 선택지는 직접 수정하지 않습니다. 오류 발견 시 중단, 무효, 재실시 정책을 사용합니다.
+        시작된 투표의 문항과 선택 항목은 직접 수정하지 않습니다. 오류 발견 시 중단, 무효, 재실시 정책을 사용합니다.
       </WarningBanner>
       <FormSection title="문항 추가" description="MVP에서는 단일/복수 선택과 찬반 문항을 우선 지원합니다.">
         <QuestionOptionForm electionId={election.id} disabled={disabled} />
