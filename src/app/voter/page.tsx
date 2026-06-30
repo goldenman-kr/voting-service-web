@@ -2,7 +2,6 @@ import Link from "next/link";
 
 import { StatusBadge } from "../../components/ui/status-badge";
 import { PageHeader } from "../../components/ui/page-header";
-import { PrivacyNotice } from "../../components/ui/privacy-notice";
 import { VoterShell } from "../../components/voter/voter-shell";
 import { listVoterPortalElections, type VoterPortalElectionSummary } from "../../server/voters/voter-ui-data";
 
@@ -86,7 +85,6 @@ export default async function VoterDashboardPage() {
         elections={elections.completed}
         mode="results"
       />
-      <PrivacyNotice compact />
     </VoterShell>
   );
 }

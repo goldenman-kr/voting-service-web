@@ -24,14 +24,14 @@ function clean(value: unknown): string {
 
 export function normalizeHouseholdNumber(value: unknown): string {
   const raw = clean(value);
-  if (!/^\d{1,2}$/.test(raw)) return raw;
+  if (!/^\d+$/.test(raw)) return raw;
   return raw.replace(/^0+(?=\d)/, "");
 }
 
 export function normalizeVoterRegistryFields(input: Partial<VoterRegistryFields>): VoterRegistryFields {
   return {
     householdNumber: normalizeHouseholdNumber(input.householdNumber),
-    name: clean(input.name),
+    name: clean(input.name).replace(/\s+/g, ""),
     identifierLast4: clean(input.identifierLast4),
     birthDate6: clean(input.birthDate6)
   };
@@ -46,7 +46,7 @@ export function validateVoterRegistryFields(input: Partial<VoterRegistryFields>)
   const errors: string[] = [];
 
   if (!/^\d{1,2}$/.test(fields.householdNumber)) {
-    errors.push(`${fieldLabels.householdNumber}는 숫자 1~2자리로 입력해 주세요.`);
+    errors.push(`${fieldLabels.householdNumber}는 숫자로 입력하고 앞자리 0을 제외한 값은 1~2자리여야 합니다.`);
   }
   if (!fields.name) {
     errors.push(`${fieldLabels.name}을 입력해 주세요.`);

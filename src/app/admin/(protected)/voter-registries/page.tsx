@@ -34,8 +34,18 @@ export default async function AdminVoterRegistriesPage() {
       />
 
       {registries.length > 0 ? (
-        <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
-          <table className="w-full min-w-[920px] border-collapse text-left text-sm">
+        <div className="overflow-x-auto rounded-md border border-slate-200 bg-white">
+          <table className="w-full min-w-[980px] table-fixed border-collapse text-left text-sm">
+            <colgroup>
+              <col className="w-[24%]" />
+              <col className="w-[24%]" />
+              <col className="w-[6rem]" />
+              <col className="w-[9rem]" />
+              <col className="w-[9rem]" />
+              <col className="w-[8rem]" />
+              <col className="w-[8rem]" />
+              <col className="w-[10rem]" />
+            </colgroup>
             <thead className="bg-slate-100 text-xs font-semibold uppercase tracking-normal text-slate-600">
               <tr>
                 <th className="px-4 py-3">명부 제목</th>
@@ -50,21 +60,25 @@ export default async function AdminVoterRegistriesPage() {
             </thead>
             <tbody className="divide-y divide-slate-200">
               {registries.map((registry) => (
-                <tr key={registry.id}>
-                  <td className="px-4 py-4 font-medium text-slate-950">{registry.title}</td>
-                  <td className="px-4 py-4 text-slate-600">{registry.description || "-"}</td>
-                  <td className="px-4 py-4">{registry.validRows}/{registry.totalRows}명</td>
-                  <td className="px-4 py-4">{registry.used ? "시작된 투표에서 사용 중" : "시작된 투표 없음"}</td>
-                  <td className="px-4 py-4">
+                <tr key={registry.id} className="align-top">
+                  <td className="px-4 py-4 whitespace-normal break-words font-medium leading-6 text-slate-950 [word-break:keep-all]">
+                    {registry.title}
+                  </td>
+                  <td className="px-4 py-4 whitespace-normal break-words leading-6 text-slate-600 [word-break:keep-all]">
+                    {registry.description || "-"}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap">{registry.validRows}/{registry.totalRows}명</td>
+                  <td className="px-4 py-4 whitespace-normal leading-6 [word-break:keep-all]">{registry.used ? "시작된 투표에서 사용 중" : "시작된 투표 없음"}</td>
+                  <td className="px-4 py-4 whitespace-normal leading-6 [word-break:keep-all]">
                     {registry.editable ? (
                       <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800">수정 가능</span>
                     ) : (
                       <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">시작됨 · 수정 불가</span>
                     )}
                   </td>
-                  <td className="px-4 py-4 text-slate-600">{formatDate(registry.createdAt)}</td>
-                  <td className="px-4 py-4 text-slate-600">{formatDate(registry.updatedAt)}</td>
-                  <td className="px-4 py-4">
+                  <td className="px-4 py-4 whitespace-normal leading-6 text-slate-600 [word-break:keep-all]">{formatDate(registry.createdAt)}</td>
+                  <td className="px-4 py-4 whitespace-normal leading-6 text-slate-600 [word-break:keep-all]">{formatDate(registry.updatedAt)}</td>
+                  <td className="px-4 py-4 whitespace-nowrap">
                     <div className="flex flex-wrap gap-2">
                       <Link
                         href={`/admin/voter-registries/${registry.id}`}

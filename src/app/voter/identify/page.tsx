@@ -1,5 +1,5 @@
 import { PageHeader } from "../../../components/ui/page-header";
-import { PrivacyNotice } from "../../../components/ui/privacy-notice";
+import { VoterIdentifierNotice } from "../../../components/ui/voter-identifier-notice";
 import { VoterIdentifierForm } from "../../../components/voter/voter-auth-forms";
 import { VoterShell } from "../../../components/voter/voter-shell";
 
@@ -12,7 +12,7 @@ export default function VoterIdentifyPage() {
         description="MVP 기본 인증은 초대 링크와 유권자 식별자 확인입니다."
       />
       <VoterIdentifierForm />
-      <PrivacyNotice compact />
+      <VoterIdentifierNotice />
       <p className="text-sm leading-6 text-slate-600">5회 실패 시 15분 동안 다시 시도할 수 없습니다.</p>
     </VoterShell>
   );

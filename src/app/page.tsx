@@ -6,7 +6,7 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
       <PublicNav />
-      <section className="mx-auto grid max-w-6xl gap-8 px-4 py-8 md:grid-cols-[1.1fr_0.9fr] md:items-center md:py-12">
+      <section className="mx-auto grid max-w-6xl gap-8 px-4 py-8 md:py-12">
         <div className="grid gap-6">
           <div>
             <p className="text-sm font-semibold text-blue-700">폐쇄형 명부 기반 온라인 투표</p>
@@ -15,29 +15,13 @@ export default function HomePage() {
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-700">
               투표하러 가기를 누르시고, 투표 안내에 따라 초대 확인과 선거인 명부 인증을 완료하면 투표할 수
-              있습니다. 현재 MVP는 초대받은 유권자만 참여할 수 있는 방식으로 운영됩니다.
+              있습니다.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Link href="/voter" className="rounded-md bg-blue-700 px-5 py-3 text-sm font-semibold text-white">
               투표하러가기
             </Link>
-            <Link
-              href="/admin"
-              className="rounded-md border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800"
-            >
-              관리자 메뉴
-            </Link>
-          </div>
-        </div>
-        <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="grid aspect-[4/3] place-items-center rounded-md border border-dashed border-blue-200 bg-blue-50 text-center">
-            <div>
-              <p className="text-sm font-semibold text-blue-800">투표 이미지 영역</p>
-              <p className="mt-2 text-sm leading-6 text-blue-900">
-                실제 일러스트 또는 운영자가 승인한 이미지로 교체할 수 있습니다.
-              </p>
-            </div>
           </div>
         </div>
       </section>
@@ -79,14 +63,24 @@ export default function HomePage() {
         <article className="rounded-md border border-slate-200 bg-white p-5">
           <h2 className="text-base font-semibold">오픈소스 검토</h2>
           <p className="mt-3 text-sm leading-6 text-slate-700">
-            투표 시스템의 주요 동작 방식은 코드 검토를 전제로 관리합니다. 공개 저장소 링크는 운영 정책이
-            확정된 뒤 연결합니다.
+            투표 시스템의 주요 동작 방식은 공개 저장소에서 확인할 수 있습니다. 코드와 변경 이력을 검토해
+            운영 정책과 보안 원칙을 투명하게 관리합니다.
           </p>
-          <span className="mt-4 inline-block text-sm font-semibold text-slate-500">
-            GitHub 저장소 링크 준비 중
-          </span>
+          <a
+            href="https://github.com/goldenman-kr/voting-service-web"
+            className="mt-4 inline-block text-sm font-semibold text-blue-700 hover:text-blue-900"
+          >
+            GitHub 저장소 보기
+          </a>
         </article>
       </section>
+      <footer className="border-t border-slate-200 bg-white">
+        <div className="mx-auto grid max-w-6xl gap-2 px-4 py-6 text-sm leading-6 text-slate-600">
+          <p>© 2026 Goldenman Korea. All rights reserved.</p>
+          <p>온라인 선거시스템 담당자: 김은동(mrgold2@naver.com)</p>
+          <p>기술지원: kryp.xyz</p>
+        </div>
+      </footer>
     </main>
   );
 }

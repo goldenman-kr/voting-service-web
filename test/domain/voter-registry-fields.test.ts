@@ -10,8 +10,8 @@ import {
 describe("voter registry canonical fields", () => {
   it("validates required voter registry fields and preserves leading zero fields", () => {
     const result = validateVoterRegistryFields({
-      householdNumber: "07",
-      name: " 홍길동 ",
+      householdNumber: "0007",
+      name: " 홍 길동 ",
       identifierLast4: "0001",
       birthDate6: "090101"
     });
@@ -39,12 +39,12 @@ describe("voter registry canonical fields", () => {
   });
 
   it("parses header-based CSV text and formats canonical registry rows", () => {
-    const rows = parseVoterRegistryTextRows("이름,식별번호,호수번호,생년월일\n김영희,0423,12,880715");
+    const rows = parseVoterRegistryTextRows("이름,식별번호,호수번호,생년월일\n김영희,0423,0012,880715");
 
     expect(rows).toEqual([
       {
         rowNumber: 2,
-        householdNumber: "12",
+        householdNumber: "0012",
         name: "김영희",
         identifierLast4: "0423",
         birthDate6: "880715"

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { PageHeader } from "../../../../../components/ui/page-header";
-import { PrivacyNotice } from "../../../../../components/ui/privacy-notice";
+import { VoterIdentifierNotice } from "../../../../../components/ui/voter-identifier-notice";
 import { VoterShell } from "../../../../../components/voter/voter-shell";
 import { getPrismaClient } from "../../../../../server/db/prisma";
 import { verifyListedElectionVoterAction } from "../../../../../server/voters/public-actions";
@@ -48,12 +48,13 @@ export default async function VoterElectionVerifyPage({ params, searchParams }: 
           <input
             name="householdNumber"
             required
-            pattern="\d{1,2}"
-            maxLength={2}
+            pattern="\d+"
+            maxLength={8}
             className="min-h-12 rounded-md border border-slate-300 px-3 text-base"
             inputMode="numeric"
             autoComplete="off"
           />
+          <span className="text-xs font-normal leading-5 text-slate-500">숫자만 적어주세요 (예: 2,34,52)</span>
         </label>
         <label className="grid gap-2 text-sm font-medium text-slate-700">
           이름
@@ -63,6 +64,7 @@ export default async function VoterElectionVerifyPage({ params, searchParams }: 
             className="min-h-12 rounded-md border border-slate-300 px-3 text-base"
             autoComplete="name"
           />
+          <span className="text-xs font-normal leading-5 text-slate-500">한글이름을 빈칸없이 적어주세요 (예: 홍길동)</span>
         </label>
         <label className="grid gap-2 text-sm font-medium text-slate-700">
           식별번호
@@ -75,6 +77,7 @@ export default async function VoterElectionVerifyPage({ params, searchParams }: 
             inputMode="numeric"
             autoComplete="off"
           />
+          <span className="text-xs font-normal leading-5 text-slate-500">입주등록한 세대주의 전화번호 뒷4자리 (예: 1234)</span>
         </label>
         <label className="grid gap-2 text-sm font-medium text-slate-700">
           생년월일
@@ -87,12 +90,13 @@ export default async function VoterElectionVerifyPage({ params, searchParams }: 
             inputMode="numeric"
             autoComplete="off"
           />
+          <span className="text-xs font-normal leading-5 text-slate-500">6자리 연월일 (예: 781207)</span>
         </label>
         <button type="submit" className="min-h-12 rounded-md bg-blue-700 px-4 py-3 text-base font-semibold text-white">
           확인
         </button>
       </form>
-      <PrivacyNotice compact />
+      <VoterIdentifierNotice />
     </VoterShell>
   );
 }

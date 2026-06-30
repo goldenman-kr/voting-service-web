@@ -14,6 +14,19 @@ function readUiSource(relativePath: string): string {
 }
 
 describe("UI guardrails", () => {
+  it("public home page avoids MVP placeholder copy and exposes open-source/support information", () => {
+    const source = readUiSource("src/app/page.tsx");
+
+    expect(source).not.toContain("현재 MVP는 초대받은 유권자만 참여할 수 있는 방식으로 운영됩니다.");
+    expect(source).not.toContain("투표 이미지 영역");
+    expect(source).not.toContain(">관리자 메뉴</Link>");
+    expect(source).toContain("https://github.com/goldenman-kr/voting-service-web");
+    expect(source).toContain("GitHub 저장소 보기");
+    expect(source).toContain("© 2026 Goldenman Korea. All rights reserved.");
+    expect(source).toContain("김은동(mrgold2@naver.com)");
+    expect(source).toContain("기술지원: kryp.xyz");
+  });
+
   it("StatusBadge renders approved ElectionState values", () => {
     const states = [
       ElectionState.DRAFT,
@@ -121,7 +134,7 @@ describe("UI guardrails", () => {
 
     expect(authPolicyPage).toContain("투표 참여 인증 방식 설정");
     expect(authPolicyPage).not.toContain("AuthenticationPolicy 설정");
-    expect(tableSource).toContain("labelOf(electionTypeLabelMap, election.electionType)");
+    expect(tableSource).toContain("labelOf(electionTypeShortLabelMap, election.electionType)");
     expect(shellSource).toContain("/admin/voter-registries");
     expect(registryPage).toContain("독립 선거인명부");
     expect(registryPage).toContain("새 명부 만들기");
@@ -150,6 +163,9 @@ describe("UI guardrails", () => {
     expect(listPage).toContain("명부 관리");
     expect(listPage).toContain("복제하기");
     expect(listPage).toContain("시작됨 · 수정 불가");
+    expect(listPage).toContain("overflow-x-auto");
+    expect(listPage).toContain("table-fixed");
+    expect(listPage).toContain("[word-break:keep-all]");
     expect(listPage).not.toContain("새 투표 만들기");
     expect(newPage).toContain("새 명부 만들기");
     expect(newPage).toContain("CreateManagedVoterRegistryForm");
@@ -338,6 +354,7 @@ describe("UI guardrails", () => {
     const inviteSource = readUiSource("src/components/voter/voter-auth-forms.tsx");
     const voterPortalSource = readUiSource("src/app/voter/page.tsx");
     const voterVerifySource = readUiSource("src/app/voter/elections/[election_id]/verify/page.tsx");
+    const voterIdentifierNoticeSource = readUiSource("src/components/ui/voter-identifier-notice.tsx");
     const publicActionSource = readUiSource("src/server/voters/public-actions.ts");
     const ballotSource = readUiSource("src/components/voter/voter-ballot-flow.tsx");
 
@@ -347,10 +364,20 @@ describe("UI guardrails", () => {
     expect(voterPortalSource).toContain("현재 진행 중인 투표");
     expect(voterPortalSource).toContain("완료된 투표");
     expect(voterPortalSource).not.toContain("초대 확인 시작");
+    expect(voterPortalSource).not.toContain("PrivacyNotice");
+    expect(voterPortalSource).not.toContain("개인정보 최소 노출");
     expect(voterVerifySource).toContain("개인정보 활용 동의");
     expect(voterVerifySource).toContain("호수번호");
     expect(voterVerifySource).toContain("식별번호");
     expect(voterVerifySource).toContain("생년월일");
+    expect(voterVerifySource).toContain("VoterIdentifierNotice");
+    expect(voterIdentifierNoticeSource).toContain("중요 사항");
+    expect(voterIdentifierNoticeSource).toContain("식별번호는 세대주의 전화번호 뒷 4자리입니다");
+    expect(voterVerifySource).toContain("숫자만 적어주세요 (예: 2,34,52)");
+    expect(voterVerifySource).toContain("한글이름을 빈칸없이 적어주세요");
+    expect(voterVerifySource).toContain("입주등록한 세대주의 전화번호 뒷4자리");
+    expect(voterVerifySource).toContain("6자리 연월일");
+    expect(voterVerifySource).not.toContain("개인정보 최소 노출");
     expect(voterVerifySource).not.toContain("회원번호/사번/학번");
     expect(voterVerifySource).toContain("verifyListedElectionVoterAction");
     expect(publicActionSource).toContain("createVoterSession");
@@ -362,6 +389,13 @@ describe("UI guardrails", () => {
     expect(ballotSource).not.toContain("/api/v1/voter/ballots/revote");
     expect(ballotSource).toContain("제출 후에는 다시 수정할 수 없습니다.");
     expect(ballotSource).toContain("자세히");
+  });
+
+  it("voter shell uses a wider desktop layout without MVP copy", () => {
+    const shellSource = readUiSource("src/components/voter/voter-shell.tsx");
+
+    expect(shellSource).toContain("max-w-4xl");
+    expect(shellSource).not.toContain("초대 기반 MVP");
   });
 
   it("voter result pages render the published result notice above counts", () => {
@@ -445,12 +479,17 @@ describe("UI guardrails", () => {
     const source = readUiSource("src/components/admin/admin-election-table.tsx");
 
     expect(source).toContain("overflow-x-auto");
-    expect(source).toContain("min-w-[1120px]");
+    expect(source).toContain("min-w-[980px]");
     expect(source).toContain("table-fixed");
     expect(source).toContain("<colgroup>");
+    expect(source).toContain("w-[40%]");
+    expect(source).toContain("w-[5rem]");
+    expect(source).toContain("electionTypeShortLabelMap");
     expect(source).toContain("[word-break:keep-all]");
     expect(source).toContain("whitespace-nowrap");
     expect(source).toContain("시작</dt>");
     expect(source).toContain("종료</dt>");
+    expect(source).not.toContain(">문항</th>");
+    expect(source).not.toContain(">최근 수정</th>");
   });
 });

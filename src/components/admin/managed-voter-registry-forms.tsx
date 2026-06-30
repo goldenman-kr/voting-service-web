@@ -45,8 +45,8 @@ function VoterFields({
         <input
           name="householdNumber"
           required
-          pattern="\d{1,2}"
-          maxLength={2}
+          pattern="\d+"
+          maxLength={8}
           inputMode="numeric"
           defaultValue={voter?.householdNumber === "기존 형식" ? "" : voter?.householdNumber}
           disabled={disabled}

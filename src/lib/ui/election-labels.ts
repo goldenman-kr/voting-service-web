@@ -11,6 +11,13 @@ export const electionTypeLabelMap: Record<string, string> = Object.fromEntries(
   electionTypeLabels.map((type) => [type.value, type.label])
 );
 
+export const electionTypeShortLabelMap: Record<string, string> = {
+  representative_election: "선출",
+  yes_no_agenda: "찬반",
+  multiple_choice_agenda: "안건",
+  opinion_collection: "의견"
+};
+
 export const authMethodLabelMap: Record<string, string> = {
   [AuthenticationMethod.INVITE_LINK_ONLY]: "초대 기반 접근",
   [AuthenticationMethod.INVITE_LINK_WITH_IDENTIFIER]: "선거인 명부 확인",

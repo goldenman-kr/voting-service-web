@@ -130,12 +130,13 @@ export function VoterIdentifierForm() {
         <input
           name="householdNumber"
           required
-          pattern="\d{1,2}"
-          maxLength={2}
+          pattern="\d+"
+          maxLength={8}
           className="min-h-12 rounded-md border border-slate-300 px-3 text-base"
           inputMode="numeric"
           autoComplete="off"
         />
+        <span className="text-xs font-normal leading-5 text-slate-500">숫자만 적어주세요 (예: 2,34,52)</span>
       </label>
       <label className="grid gap-2 text-sm font-medium text-slate-700">
         이름
@@ -145,6 +146,7 @@ export function VoterIdentifierForm() {
           className="min-h-12 rounded-md border border-slate-300 px-3 text-base"
           autoComplete="name"
         />
+        <span className="text-xs font-normal leading-5 text-slate-500">한글이름을 빈칸없이 적어주세요 (예: 홍길동)</span>
       </label>
       <label className="grid gap-2 text-sm font-medium text-slate-700">
         식별번호
@@ -157,6 +159,7 @@ export function VoterIdentifierForm() {
           inputMode="numeric"
           autoComplete="off"
         />
+        <span className="text-xs font-normal leading-5 text-slate-500">입주등록한 세대주의 전화번호 뒷4자리 (예: 1234)</span>
       </label>
       <label className="grid gap-2 text-sm font-medium text-slate-700">
         생년월일
@@ -169,6 +172,7 @@ export function VoterIdentifierForm() {
           inputMode="numeric"
           autoComplete="off"
         />
+        <span className="text-xs font-normal leading-5 text-slate-500">6자리 연월일 (예: 781207)</span>
       </label>
       {state.error ? <p className="text-sm text-red-700">{state.error}</p> : null}
       <p className="text-sm leading-6 text-slate-600">인증코드는 MVP 기본 흐름에서 사용하지 않습니다.</p>

@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import type { ElectionStateValue } from "../../domain/elections/state-machine";
 import { ElectionState } from "../../guardrails/index.js";
-import { electionTypeLabelMap, labelOf } from "../../lib/ui/election-labels";
+import { electionTypeShortLabelMap, labelOf } from "../../lib/ui/election-labels";
 import type { AdminElectionListItem } from "../../server/elections/admin-election-view";
 import { DeletePreStartElectionForm } from "./delete-election-form";
 import { EmptyState } from "../ui/empty-state";
@@ -33,15 +33,13 @@ export function AdminElectionTable({ elections }: { elections: readonly AdminEle
 
   return (
     <div className="overflow-x-auto rounded-md border border-slate-200 bg-white">
-      <table className="w-full min-w-[1120px] table-fixed border-collapse text-left text-sm">
+      <table className="w-full min-w-[980px] table-fixed border-collapse text-left text-sm">
         <colgroup>
-          <col className="w-[32%]" />
+          <col className="w-[40%]" />
           <col className="w-[7rem]" />
-          <col className="w-[9rem]" />
-          <col className="w-[13rem]" />
-          <col className="w-[4.5rem]" />
           <col className="w-[5rem]" />
-          <col className="w-[10rem]" />
+          <col className="w-[14rem]" />
+          <col className="w-[5rem]" />
           <col className="w-[7rem]" />
         </colgroup>
         <thead className="bg-slate-100 text-xs font-semibold uppercase tracking-normal text-slate-600">
@@ -50,9 +48,7 @@ export function AdminElectionTable({ elections }: { elections: readonly AdminEle
             <th className="px-4 py-3">상태</th>
             <th className="px-4 py-3">유형</th>
             <th className="px-4 py-3">일정</th>
-            <th className="px-4 py-3">문항</th>
             <th className="px-4 py-3">유권자</th>
-            <th className="px-4 py-3">최근 수정</th>
             <th className="px-4 py-3">작업</th>
           </tr>
         </thead>
@@ -71,7 +67,7 @@ export function AdminElectionTable({ elections }: { elections: readonly AdminEle
                 <StatusBadge status={election.state as ElectionStateValue} size="sm" />
               </td>
               <td className="px-4 py-4 whitespace-normal leading-6 [word-break:keep-all]">
-                {labelOf(electionTypeLabelMap, election.electionType)}
+                {labelOf(electionTypeShortLabelMap, election.electionType)}
               </td>
               <td className="px-4 py-4 text-slate-600">
                 <dl className="grid gap-1 leading-6">
@@ -85,9 +81,7 @@ export function AdminElectionTable({ elections }: { elections: readonly AdminEle
                   </div>
                 </dl>
               </td>
-              <td className="px-4 py-4 text-center">{election.questionCount}</td>
               <td className="px-4 py-4 text-center">{election.eligibleVoterCount}</td>
-              <td className="px-4 py-4 whitespace-normal leading-6 text-slate-600 [word-break:keep-all]">{formatDate(election.updatedAt)}</td>
               <td className="px-4 py-4 whitespace-nowrap">
                 <div className="flex flex-wrap items-center gap-2">
                   <Link href={`/admin/elections/${election.id}`} className="font-semibold text-blue-700 hover:text-blue-900">

@@ -550,8 +550,7 @@ export function CreateElectionWizardForm({
                 placeholder={"호수번호,이름,식별번호,생년월일\n7,홍길동,0001,900101\n12,김영희,0423,880715"}
               />
               <FieldHelp>
-                호수번호는 숫자 1~2자리, 식별번호는 숫자 4자리, 생년월일은 숫자 6자리로 입력합니다.
-                식별번호와 생년월일의 앞자리 0은 그대로 유지합니다.
+                호수번호는 숫자만 입력합니다. 앞자리 0은 제거해 처리하고, 식별번호와 생년월일의 앞자리 0은 그대로 유지합니다.
               </FieldHelp>
             </label>
             <VoterRegistryFileImportControl rows={voterRows} onRowsChange={setVoterRows} disabled={pending} />

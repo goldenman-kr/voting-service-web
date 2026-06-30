@@ -104,7 +104,7 @@ export const authenticationPolicyInputSchema = z.object({
 });
 
 export const eligibleVoterImportRowSchema = z.object({
-  householdNumber: z.string().trim().regex(/^\d{1,2}$/).optional(),
+  householdNumber: z.string().trim().regex(/^\d+$/).optional(),
   name: z.string().trim().min(1).max(200).optional(),
   identifierLast4: z.string().trim().regex(/^\d{4}$/).optional(),
   birthDate6: z.string().trim().regex(/^\d{6}$/).optional(),

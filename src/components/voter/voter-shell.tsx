@@ -7,12 +7,11 @@ export function VoterShell({ children }: { children: ReactNode }) {
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
       <PublicNav />
-      <div className="mx-auto grid max-w-md gap-5 px-4 py-5">
+      <div className="mx-auto grid max-w-4xl gap-5 px-4 py-5">
         <header className="flex items-center justify-between">
           <Link href="/voter" className="text-base font-semibold">
             투표자 포털
           </Link>
-          <span className="text-xs font-medium text-slate-500">초대 기반 MVP</span>
         </header>
         {children}
       </div>
