@@ -29,14 +29,15 @@ export default async function AdminVoterRegistriesPage() {
         description="현재 시스템은 투표별 선거인명부를 사용합니다. 이 화면에서는 투표별 명부 상태를 확인하고 각 투표의 명부 관리 화면으로 이동할 수 있습니다."
         actions={
           <Link href="/admin/elections/new" className="rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white">
-            새 투표 만들기
+            새 명부 만들기
           </Link>
         }
       />
 
       <section className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-950">
-        공통 선거인명부 생성, 기존 명부 불러오기, 사용된 명부 잠금, 복제 기능은 현재 schema에 없습니다.
-        투표별 명부 구조를 공통 명부 구조로 확장하는 migration과 API 설계가 필요합니다.
+        현재 schema에서는 명부가 투표에 직접 연결됩니다. “새 명부 만들기”는 새 투표 생성 흐름에서 투표별
+        명부를 함께 만드는 방식으로 연결되며, 공통 명부 생성/불러오기/잠금/복제는 별도 migration과 API
+        설계가 필요합니다.
       </section>
 
       {registries.length > 0 ? (
@@ -78,7 +79,7 @@ export default async function AdminVoterRegistriesPage() {
           description="투표 생성 과정에서 명부를 입력하면 이 화면에 투표별 명부가 표시됩니다."
           action={
             <Link href="/admin/elections/new" className="rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white">
-              투표 생성
+              새 명부 만들기
             </Link>
           }
         />

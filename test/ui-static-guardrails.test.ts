@@ -89,6 +89,7 @@ describe("UI guardrails", () => {
     const tableSource = readUiSource("src/components/admin/admin-election-table.tsx");
     const shellSource = readUiSource("src/components/admin/admin-shell.tsx");
     const registryPage = readUiSource("src/app/admin/(protected)/voter-registries/page.tsx");
+    const electionVotersPage = readUiSource("src/app/admin/(protected)/elections/[election_id]/voters/page.tsx");
 
     expect(detailSource).toContain("투표 기본 정보");
     expect(detailSource).toContain("투표 참여 인증 방식");
@@ -119,7 +120,16 @@ describe("UI guardrails", () => {
     expect(tableSource).toContain("labelOf(electionTypeLabelMap, election.electionType)");
     expect(shellSource).toContain("/admin/voter-registries");
     expect(registryPage).toContain("선거인명부 현황");
-    expect(registryPage).toContain("투표별 명부 구조를 공통 명부 구조로 확장하는 migration과 API 설계가 필요합니다");
+    expect(registryPage).toContain("새 명부 만들기");
+    expect(registryPage).not.toContain("새 투표 만들기");
+    expect(registryPage).toContain("현재 schema에서는 명부가 투표에 직접 연결됩니다");
+    expect(electionVotersPage).toContain("유효한 선거인 목록");
+    expect(electionVotersPage).toContain("호수번호");
+    expect(electionVotersPage).toContain("식별번호");
+    expect(electionVotersPage).toContain("생년월일");
+    expect(electionVotersPage).not.toContain("Ballot ID");
+    expect(electionVotersPage).not.toContain("Vote ID");
+    expect(electionVotersPage).not.toContain("AnonymousBallotGroup ID");
   });
 
   it("admin draft edit route exposes Draft-only conservative question and option editing", () => {
@@ -280,12 +290,42 @@ describe("UI guardrails", () => {
     expect(voterPortalSource).toContain("완료된 투표");
     expect(voterPortalSource).not.toContain("초대 확인 시작");
     expect(voterVerifySource).toContain("개인정보 활용 동의");
+    expect(voterVerifySource).toContain("호수번호");
+    expect(voterVerifySource).toContain("식별번호");
+    expect(voterVerifySource).toContain("생년월일");
+    expect(voterVerifySource).not.toContain("회원번호/사번/학번");
     expect(voterVerifySource).toContain("verifyListedElectionVoterAction");
     expect(publicActionSource).toContain("createVoterSession");
+    expect(publicActionSource).toContain("canonicalVoterIdentifier");
     expect(publicActionSource).not.toContain("invite_token");
+    expect(inviteSource).not.toContain("회원번호/사번/학번");
     expect(inviteSource).toContain("인증코드는 MVP 기본 흐름에서 사용하지 않습니다.");
     expect(ballotSource).toContain("/api/v1/voter/ballots");
     expect(ballotSource).toContain("/api/v1/voter/ballots/revote");
+  });
+
+  it("voter registry management uses required household identifier fields and local file parsing", () => {
+    const formSource = readUiSource("src/components/admin/admin-election-forms.tsx");
+    const actionSource = readUiSource("src/server/elections/admin-actions.ts");
+    const serviceSource = readUiSource("src/server/elections/election-service.ts");
+    const validationSource = readUiSource("src/server/elections/validation.ts");
+
+    expect(formSource).toContain("호수번호,이름,식별번호,생년월일");
+    expect(formSource).toContain("CSV/XLSX 파일 불러오기");
+    expect(formSource).toContain("read-excel-file/browser");
+    expect(formSource).toContain("파일은 서버에 저장하지 않고 브라우저에서 먼저 읽습니다");
+    expect(formSource).toContain("파일 원본은 서버에 저장하지 않습니다");
+    expect(formSource).not.toContain("이름,외부식별자,이메일");
+    expect(formSource).not.toContain("외부 식별자");
+    expect(actionSource).toContain("parseVoterRegistryTextRows");
+    expect(actionSource).toContain("validateVoterRegistryFields");
+    expect(actionSource).toContain("canonicalVoterIdentifier");
+    expect(actionSource).toContain("중복된 선거인 정보");
+    expect(validationSource).toContain("householdNumber");
+    expect(validationSource).toContain("identifierLast4");
+    expect(validationSource).toContain("birthDate6");
+    expect(serviceSource).toContain("encodedVoterRegistryPayload");
+    expect(serviceSource).toContain("externalIdentifierHmac = hmacValue(normalizedRow.canonicalIdentifier");
   });
 
   it("user-facing UI avoids audit/logging guidance copy", () => {

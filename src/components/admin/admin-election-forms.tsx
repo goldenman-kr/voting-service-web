@@ -6,6 +6,14 @@ import { useActionState, useMemo, useState } from "react";
 import { AuthenticationMethod } from "../../guardrails/index.js";
 import { electionTypeLabels } from "../../lib/ui/election-labels";
 import {
+  formatVoterRegistryRows,
+  parseVoterRegistryTextRows,
+  validateVoterRegistryFields,
+  voterRegistryCsvHeader,
+  type ParsedVoterRegistryRow,
+  type VoterRegistryFields
+} from "../../lib/voter-registry-fields";
+import {
   configureAuthenticationPolicyAction,
   createElectionDraftAction,
   createElectionWizardAction,
@@ -117,10 +125,123 @@ function WizardStepIndicator({ currentStep }: { currentStep: number }) {
 }
 
 function rowsToVoterCount(rows: string): number {
-  return rows
-    .split(/\r?\n/)
-    .map((row) => row.trim())
-    .filter(Boolean).length;
+  return parseVoterRegistryTextRows(rows).filter((row) => validateVoterRegistryFields(row).ok).length;
+}
+
+function previewRowsFromText(text: string): ParsedVoterRegistryRow[] {
+  return parseVoterRegistryTextRows(text).slice(0, 20);
+}
+
+function VoterRegistryFileImportControl({
+  rows,
+  onRowsChange,
+  disabled
+}: {
+  rows: string;
+  onRowsChange: (value: string) => void;
+  disabled: boolean;
+}) {
+  const [previewRows, setPreviewRows] = useState<ParsedVoterRegistryRow[]>(() => previewRowsFromText(rows));
+  const [fileMessage, setFileMessage] = useState<string | null>(null);
+
+  async function parseFile(file: File) {
+    setFileMessage(null);
+    const lowerName = file.name.toLowerCase();
+    if (!lowerName.endsWith(".csv") && !lowerName.endsWith(".xlsx")) {
+      setFileMessage("CSV 또는 XLSX 파일만 불러올 수 있습니다.");
+      return;
+    }
+    if (file.size > 1024 * 1024) {
+      setFileMessage("파일은 1MB 이하만 불러올 수 있습니다.");
+      return;
+    }
+
+    try {
+      let text = "";
+      if (lowerName.endsWith(".csv")) {
+        text = await file.text();
+      } else {
+        const { default: readXlsxFile } = await import("read-excel-file/browser");
+        const sheets = await readXlsxFile(file);
+        const matrix = sheets[0]?.data ?? [];
+        text = matrix.map((row: unknown[]) => row.map((cell: unknown) => String(cell ?? "").trim()).join(",")).join("\n");
+      }
+      const parsed = parseVoterRegistryTextRows(text);
+      if (parsed.length === 0) {
+        setFileMessage("읽을 수 있는 명부 행이 없습니다.");
+        return;
+      }
+      onRowsChange(formatVoterRegistryRows(parsed as Partial<VoterRegistryFields>[]));
+      setPreviewRows(parsed.slice(0, 20));
+      const invalidCount = parsed.filter((row) => !validateVoterRegistryFields(row).ok).length;
+      setFileMessage(
+        invalidCount > 0
+          ? `파일을 불러왔습니다. 확인이 필요한 행 ${invalidCount}건이 있습니다.`
+          : `파일을 불러왔습니다. ${parsed.length}건을 확인해 주세요.`
+      );
+    } catch {
+      setFileMessage("파일을 읽을 수 없습니다. 형식과 컬럼명을 확인해 주세요.");
+    }
+  }
+
+  const preview = previewRowsFromText(rows);
+  const visibleRows = preview.length > 0 ? preview : previewRows;
+
+  return (
+    <div className="grid gap-3 rounded-md border border-slate-200 bg-white p-4">
+      <label className="grid gap-1 text-sm font-medium text-slate-700">
+        CSV/XLSX 파일 불러오기
+        <input
+          type="file"
+          accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          disabled={disabled}
+          onChange={(event) => {
+            const file = event.currentTarget.files?.[0];
+            if (file) void parseFile(file);
+            event.currentTarget.value = "";
+          }}
+          className="rounded-md border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100"
+        />
+      </label>
+      <p className="text-xs leading-5 text-slate-500">
+        파일은 서버에 저장하지 않고 브라우저에서 먼저 읽습니다. 컬럼은 {voterRegistryCsvHeader} 순서 또는 같은 이름의 헤더를 사용합니다.
+      </p>
+      {fileMessage ? <p className="rounded-md bg-slate-100 px-3 py-2 text-sm text-slate-700">{fileMessage}</p> : null}
+      {visibleRows.length > 0 ? (
+        <div className="overflow-hidden rounded-md border border-slate-200">
+          <table className="w-full min-w-[620px] border-collapse text-left text-xs">
+            <thead className="bg-slate-100 font-semibold text-slate-600">
+              <tr>
+                <th className="px-3 py-2">행</th>
+                <th className="px-3 py-2">호수번호</th>
+                <th className="px-3 py-2">이름</th>
+                <th className="px-3 py-2">식별번호</th>
+                <th className="px-3 py-2">생년월일</th>
+                <th className="px-3 py-2">상태</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {visibleRows.map((row) => {
+                const valid = validateVoterRegistryFields(row).ok;
+                return (
+                  <tr key={row.rowNumber}>
+                    <td className="px-3 py-2">{row.rowNumber}</td>
+                    <td className="px-3 py-2">{row.householdNumber ?? ""}</td>
+                    <td className="px-3 py-2">{row.name ?? ""}</td>
+                    <td className="px-3 py-2">{row.identifierLast4 ?? ""}</td>
+                    <td className="px-3 py-2">{row.birthDate6 ?? ""}</td>
+                    <td className={["px-3 py-2", valid ? "text-emerald-700" : "text-red-700"].join(" ")}>
+                      {valid ? "정상" : "확인 필요"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export function CreateElectionWizardForm() {
@@ -332,8 +453,8 @@ export function CreateElectionWizardForm() {
         <div className="rounded-md border border-slate-200 bg-white p-5">
           <h2 className="text-lg font-semibold text-slate-950">선거인 명부</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            현재 버전에서는 이 투표에 사용할 명부를 직접 입력합니다. 입력한 식별 정보는 선거인 확인용으로만
-            사용되며, 투표가 시작되면 명부 수정이 제한됩니다.
+            이 투표에 사용할 명부를 직접 입력하거나 CSV/XLSX 파일에서 불러옵니다. 입력한 정보는 선거인
+            확인용으로만 사용되며, 투표가 시작되면 명부 수정이 제한됩니다.
           </p>
         </div>
 
@@ -350,13 +471,14 @@ export function CreateElectionWizardForm() {
             value={voterRows}
             onChange={(event) => setVoterRows(event.target.value)}
             className="rounded-md border border-slate-300 px-3 py-2"
-            placeholder={"이름,외부식별자,이메일(선택)\n홍길동,101-0001,hong@example.com\n김영희,102-0002"}
+            placeholder={"호수번호,이름,식별번호,생년월일\n7,홍길동,0001,900101\n12,김영희,0423,880715"}
           />
           <FieldHelp>
-            현재 MVP는 이름, 외부 식별자, 선택 이메일 형식을 지원합니다. 호수번호, 전화번호 뒷 4자리,
-            생년월일 6자리 구조는 후속 schema 설계 후 적용합니다.
+            호수번호는 숫자 1~2자리, 식별번호는 숫자 4자리, 생년월일은 숫자 6자리로 입력합니다.
+            식별번호와 생년월일의 앞자리 0은 그대로 유지합니다.
           </FieldHelp>
         </label>
+        <VoterRegistryFileImportControl rows={voterRows} onRowsChange={setVoterRows} disabled={pending} />
 
         <div className="rounded-md border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-700">
           <p className="font-semibold text-slate-950">투표 참여 인증 방식</p>
@@ -922,6 +1044,7 @@ export function VoterRegistryImportForm({
   disabled: boolean;
 }) {
   const [state, action, pending] = useActionState(importVoterRegistryAction, initialState);
+  const [rows, setRows] = useState("");
   return (
     <form action={action} className="grid gap-4">
       <input type="hidden" name="electionId" value={electionId} />
@@ -929,14 +1052,19 @@ export function VoterRegistryImportForm({
         명부 입력
         <textarea
           name="rows"
+          value={rows}
+          onChange={(event) => setRows(event.target.value)}
           rows={8}
           disabled={disabled}
           required
-          placeholder={"이름,외부식별자,이메일(선택)\n홍길동,MEM-001,hong@example.com"}
+          placeholder={"호수번호,이름,식별번호,생년월일\n7,홍길동,0001,900101\n12,김영희,0423,880715"}
           className="rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100"
         />
       </label>
-      <p className="text-xs text-slate-500">오류 메시지에는 이름, 이메일, 외부 식별자 원문을 표시하지 않습니다.</p>
+      <VoterRegistryFileImportControl rows={rows} onRowsChange={setRows} disabled={disabled || pending} />
+      <p className="text-xs text-slate-500">
+        오류 메시지에는 입력한 개인정보 원문을 표시하지 않습니다. 파일 원본은 서버에 저장하지 않습니다.
+      </p>
       <ActionMessage state={state} />
       <button type="submit" disabled={disabled || pending} className="w-fit rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-400">
         {pending ? "검증 중" : "명부 등록/검증"}

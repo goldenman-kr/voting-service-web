@@ -10,6 +10,12 @@ import {
 } from "../../domain/auth-policy/authentication-policy";
 import { AuthenticationMethod, ElectionState } from "../../guardrails/index.js";
 import { parseEnv } from "../../lib/env";
+import {
+  canonicalVoterIdentifier,
+  parseVoterRegistryTextRows,
+  validateVoterRegistryFields,
+  type VoterRegistryFields
+} from "../../lib/voter-registry-fields";
 import { getCurrentAdminSessionFromCookies } from "../auth/current-admin";
 import { getPrismaClient } from "../db/prisma";
 import { normalizeApiError } from "../http/errors";
@@ -51,7 +57,8 @@ async function serviceContext(): Promise<ElectionServiceContext> {
   return {
     session: restored.session,
     repository: createPrismaElectionRepository(getPrismaClient()),
-    hmacKey: env.HMAC_KEY
+    hmacKey: env.HMAC_KEY,
+    encryptionKey: env.ENCRYPTION_KEY
   };
 }
 
@@ -424,15 +431,16 @@ function validateWizardInput(formData: FormData): string | null {
   if (voterRows.length === 0) {
     return "선거인 명부를 1명 이상 입력해 주세요.";
   }
-  if (voterRows.some((row) => !row.externalIdentifier)) {
-    return "각 선거인 행에는 이름과 외부 식별자를 입력해 주세요.";
+  const invalidRow = voterRows.find((row) => !validateVoterRegistryFields(row).ok);
+  if (invalidRow) {
+    return `선거인 명부 ${invalidRow.rowNumber}행의 호수번호, 이름, 식별번호, 생년월일을 확인해 주세요.`;
   }
-  const voterIdentifiers = voterRows.map((row) => row.externalIdentifier.toLowerCase());
+  const voterIdentifiers = voterRows.map((row) => {
+    const validated = validateVoterRegistryFields(row);
+    return validated.fields ? canonicalVoterIdentifier(validated.fields).toLowerCase() : "";
+  });
   if (new Set(voterIdentifiers).size !== voterIdentifiers.length) {
-    return "선거인 명부에 중복된 외부 식별자가 있습니다.";
-  }
-  if (voterRows.some((row) => row.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(row.email))) {
-    return "선거인 명부의 이메일 형식을 확인해 주세요.";
+    return "선거인 명부에 중복된 선거인 정보가 있습니다.";
   }
 
   return null;
@@ -592,19 +600,8 @@ export async function configureAuthenticationPolicyAction(
   return { ok: true, message: "인증 정책을 저장했습니다." };
 }
 
-function parseVoterRows(raw: string) {
-  return raw
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [name, externalIdentifier, email] = line.split(/,|\t/).map((entry) => entry.trim());
-      return {
-        name: name || undefined,
-        externalIdentifier,
-        email: email || undefined
-      };
-    });
+function parseVoterRows(raw: string): Array<Partial<VoterRegistryFields> & { rowNumber: number }> {
+  return parseVoterRegistryTextRows(raw);
 }
 
 export async function importVoterRegistryAction(
@@ -612,12 +609,30 @@ export async function importVoterRegistryAction(
   formData: FormData
 ): Promise<AdminActionState> {
   const electionId = value(formData, "electionId");
+  const rows = parseVoterRows(value(formData, "rows"));
+  if (rows.length === 0) {
+    return { ok: false, message: "선거인 명부를 1명 이상 입력해 주세요." };
+  }
+  const invalidRow = rows.find((row) => !validateVoterRegistryFields(row).ok);
+  if (invalidRow) {
+    return {
+      ok: false,
+      message: `선거인 명부 ${invalidRow.rowNumber}행의 호수번호, 이름, 식별번호, 생년월일을 확인해 주세요.`
+    };
+  }
+  const identifiers = rows.map((row) => {
+    const validated = validateVoterRegistryFields(row);
+    return validated.fields ? canonicalVoterIdentifier(validated.fields).toLowerCase() : "";
+  });
+  if (new Set(identifiers).size !== identifiers.length) {
+    return { ok: false, message: "선거인 명부에 중복된 선거인 정보가 있습니다." };
+  }
   try {
     const result = await importEligibleVoters(
       electionId,
       {
         sourceType: "manual",
-        rows: parseVoterRows(value(formData, "rows")),
+        rows,
         reason: "관리자 UI 명부 등록"
       },
       await serviceContext()

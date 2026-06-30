@@ -27,7 +27,7 @@ export default async function VoterElectionVerifyPage({ params, searchParams }: 
       <PageHeader
         eyebrow="선거인 확인"
         title={election.title}
-        description={election.description ?? "선거인 명부에 등록된 정보로 참여 자격을 확인합니다."}
+        description={election.description ?? "선거인 명부 확인을 위해 호수번호, 이름, 식별번호, 생년월일을 입력합니다."}
         status={election.state}
       />
       <form action={verifyListedElectionVoterAction} className="grid gap-4 rounded-md border border-slate-200 bg-white p-5">
@@ -39,19 +39,52 @@ export default async function VoterElectionVerifyPage({ params, searchParams }: 
         ) : null}
         <label className="flex items-start gap-3 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-950">
           <input name="privacyConsent" type="checkbox" required className="mt-1" />
-          <span>개인정보 활용 동의: 투표 참여 자격 확인을 위해 입력한 정보를 선거인 명부와 대조하는 데 동의합니다.</span>
+          <span>
+            개인정보 활용 동의: 입력한 정보는 투표 참여 자격 확인에만 사용되며 선거인 명부와 대조합니다.
+          </span>
+        </label>
+        <label className="grid gap-2 text-sm font-medium text-slate-700">
+          호수번호
+          <input
+            name="householdNumber"
+            required
+            pattern="\d{1,2}"
+            maxLength={2}
+            className="min-h-12 rounded-md border border-slate-300 px-3 text-base"
+            inputMode="numeric"
+            autoComplete="off"
+          />
         </label>
         <label className="grid gap-2 text-sm font-medium text-slate-700">
           이름
-          <input className="min-h-12 rounded-md border border-slate-300 px-3 text-base" autoComplete="name" />
-        </label>
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
-          회원번호/사번/학번
           <input
-            name="externalIdentifier"
+            name="name"
             required
             className="min-h-12 rounded-md border border-slate-300 px-3 text-base"
-            inputMode="text"
+            autoComplete="name"
+          />
+        </label>
+        <label className="grid gap-2 text-sm font-medium text-slate-700">
+          식별번호
+          <input
+            name="identifierLast4"
+            required
+            pattern="\d{4}"
+            maxLength={4}
+            className="min-h-12 rounded-md border border-slate-300 px-3 text-base"
+            inputMode="numeric"
+            autoComplete="off"
+          />
+        </label>
+        <label className="grid gap-2 text-sm font-medium text-slate-700">
+          생년월일
+          <input
+            name="birthDate6"
+            required
+            pattern="\d{6}"
+            maxLength={6}
+            className="min-h-12 rounded-md border border-slate-300 px-3 text-base"
+            inputMode="numeric"
             autoComplete="off"
           />
         </label>

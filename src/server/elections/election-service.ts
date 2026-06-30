@@ -23,6 +23,12 @@ import type { AdminSession } from "../auth/admin-session";
 import { ApiError } from "../http/errors";
 import { requirePermission, requirePermissionWithStepUp } from "../rbac/authorize";
 import { redactSensitiveValues } from "../privacy/redaction";
+import { encryptPersonalValue } from "../privacy/personal-data-encryption";
+import {
+  canonicalVoterIdentifier,
+  encodedVoterRegistryPayload,
+  validateVoterRegistryFields
+} from "../../lib/voter-registry-fields";
 import type {
   ElectionRecord,
   ElectionRepository,
@@ -54,6 +60,7 @@ export type ElectionServiceContext = Readonly<{
   repository: ElectionRepository;
   auditRecorder?: AuditRecorder;
   hmacKey: string;
+  encryptionKey?: string;
   now?: Date;
 }>;
 
@@ -162,11 +169,40 @@ function createStoredTokenHash(hmacKey: string): string {
   return hmacOpaqueValue(randomBytes(32).toString("base64url"), hmacKey);
 }
 
-function protectPersonalValue(value: string | undefined, hmacKey: string): string | undefined {
+function protectPersonalValue(value: string | undefined, encryptionKey: string): string | undefined {
   if (!value) {
     return undefined;
   }
-  return `encrypted:${hmacValue(value, hmacKey).slice(0, 32)}`;
+  return encryptPersonalValue(value, encryptionKey);
+}
+
+function canonicalIdentifierForImportRow(row: EligibleVoterImportRow): {
+  canonicalIdentifier: string;
+  protectedPayload?: string;
+  name?: string;
+  identifierLast4?: string;
+} {
+  const registryFields = validateVoterRegistryFields({
+    householdNumber: row.householdNumber,
+    name: row.name,
+    identifierLast4: row.identifierLast4,
+    birthDate6: row.birthDate6
+  });
+  if (registryFields.ok && registryFields.fields) {
+    return {
+      canonicalIdentifier: canonicalVoterIdentifier(registryFields.fields),
+      protectedPayload: encodedVoterRegistryPayload(registryFields.fields),
+      name: registryFields.fields.name,
+      identifierLast4: registryFields.fields.identifierLast4
+    };
+  }
+  if (row.externalIdentifier?.trim()) {
+    return {
+      canonicalIdentifier: row.externalIdentifier,
+      name: row.name
+    };
+  }
+  throw validationError("voter registry row has invalid required fields");
 }
 
 function normalizeAuthPolicyInput(input: AuthenticationPolicyInput): AuthenticationPolicyInput & {
@@ -581,7 +617,8 @@ export async function importEligibleVoters(
 
   for (const [index, row] of input.rows.entries()) {
     const rowNumber = index + 1;
-    const externalIdentifierHmac = hmacValue(row.externalIdentifier, context.hmacKey);
+    const normalizedRow = canonicalIdentifierForImportRow(row);
+    const externalIdentifierHmac = hmacValue(normalizedRow.canonicalIdentifier, context.hmacKey);
     const duplicateInBatch = seen.has(externalIdentifierHmac);
     const duplicateExisting = await context.repository.findEligibleVoterByExternalIdentifierHmac(
       electionId,
@@ -601,10 +638,13 @@ export async function importEligibleVoters(
     await context.repository.createEligibleVoter({
       electionId,
       voterRegistryId: registry.id,
-      nameEncrypted: protectPersonalValue(row.name, context.hmacKey),
-      emailEncrypted: protectPersonalValue(row.email, context.hmacKey),
-      phoneEncrypted: protectPersonalValue(row.phone, context.hmacKey),
-      externalIdentifierEncrypted: protectPersonalValue(row.externalIdentifier, context.hmacKey),
+      nameEncrypted: protectPersonalValue(normalizedRow.name ?? row.name, context.encryptionKey ?? context.hmacKey),
+      emailEncrypted: protectPersonalValue(row.email, context.encryptionKey ?? context.hmacKey),
+      phoneEncrypted: protectPersonalValue(normalizedRow.identifierLast4 ?? row.phone, context.encryptionKey ?? context.hmacKey),
+      externalIdentifierEncrypted: protectPersonalValue(
+        normalizedRow.protectedPayload ?? normalizedRow.canonicalIdentifier,
+        context.encryptionKey ?? context.hmacKey
+      ),
       externalIdentifierHmac,
       searchHmac: row.email ? hmacValue(row.email, context.hmacKey) : undefined
     });

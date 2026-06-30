@@ -1,7 +1,10 @@
 import { ElectionState } from "../../guardrails/index.js";
+import { parseEnv } from "../../lib/env";
+import { decodeVoterRegistryPayload } from "../../lib/voter-registry-fields";
 import type { ElectionStateValue } from "../../domain/elections/state-machine";
 import type { AdminSession } from "../auth/admin-session";
 import type { PrismaClientLike } from "../db/prisma";
+import { decryptPersonalValue } from "../privacy/personal-data-encryption";
 import { requirePermission } from "../rbac/authorize";
 
 export type AdminElectionListItem = Readonly<{
@@ -86,6 +89,15 @@ export type AdminVoterRegistrySummary = Readonly<{
     startsAt: Date;
     endsAt: Date;
   };
+}>;
+
+export type AdminEligibleVoterListRow = Readonly<{
+  householdNumber: string;
+  name: string;
+  identifierLast4: string;
+  birthDate6: string;
+  status: string;
+  createdAt: Date;
 }>;
 
 function assertAdminElectionRead(session: AdminSession): string {
@@ -235,6 +247,45 @@ export async function listAdminVoterRegistrySummaries(
       endsAt: registry.election.endsAt
     }
   }));
+}
+
+export async function listAdminEligibleVoterRows(
+  prisma: PrismaClientLike,
+  session: AdminSession,
+  electionId: string
+): Promise<AdminEligibleVoterListRow[]> {
+  const organizationId = assertAdminElectionRead(session);
+  requirePermission(session, "voter_registry.read");
+  const env = parseEnv();
+  const voters = await prisma.eligibleVoter.findMany({
+    where: {
+      electionId,
+      election: { organizationId },
+      status: "active"
+    },
+    orderBy: { createdAt: "asc" },
+    select: {
+      nameEncrypted: true,
+      phoneEncrypted: true,
+      externalIdentifierEncrypted: true,
+      status: true,
+      createdAt: true
+    }
+  });
+
+  return voters.map((voter) => {
+    const payload = decodeVoterRegistryPayload(
+      decryptPersonalValue(voter.externalIdentifierEncrypted, env.ENCRYPTION_KEY)
+    );
+    return {
+      householdNumber: payload?.householdNumber ?? "기존 형식",
+      name: payload?.name ?? decryptPersonalValue(voter.nameEncrypted, env.ENCRYPTION_KEY) ?? "표시 제한",
+      identifierLast4: payload?.identifierLast4 ?? decryptPersonalValue(voter.phoneEncrypted, env.ENCRYPTION_KEY) ?? "표시 제한",
+      birthDate6: payload?.birthDate6 ?? "기존 형식",
+      status: voter.status,
+      createdAt: voter.createdAt
+    };
+  });
 }
 
 export async function getAdminElectionDetail(

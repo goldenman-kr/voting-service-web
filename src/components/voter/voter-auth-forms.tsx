@@ -3,6 +3,8 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
+import { canonicalVoterIdentifier, validateVoterRegistryFields } from "../../lib/voter-registry-fields";
+
 type VoterFlowState = Readonly<{
   pending: boolean;
   error?: string;
@@ -96,14 +98,19 @@ export function VoterIdentifierForm() {
   const [state, setState] = useState<VoterFlowState>({ pending: false });
 
   async function submit(formData: FormData) {
-    const identifier = String(formData.get("externalIdentifier") ?? "").trim();
-    if (!identifier) {
+    const fields = validateVoterRegistryFields({
+      householdNumber: String(formData.get("householdNumber") ?? ""),
+      name: String(formData.get("name") ?? ""),
+      identifierLast4: String(formData.get("identifierLast4") ?? ""),
+      birthDate6: String(formData.get("birthDate6") ?? "")
+    });
+    if (!fields.ok || !fields.fields) {
       setState({ pending: false, error: genericError });
       return;
     }
     setState({ pending: true });
     try {
-      await postJson("/api/v1/voter/identifier/verify", { identifier });
+      await postJson("/api/v1/voter/identifier/verify", { identifier: canonicalVoterIdentifier(fields.fields) });
       router.push("/voter/election");
     } catch {
       setState({ pending: false, error: genericError });
@@ -119,15 +126,47 @@ export function VoterIdentifierForm() {
       }}
     >
       <label className="grid gap-2 text-sm font-medium text-slate-700">
-        이름
-        <input className="min-h-12 rounded-md border border-slate-300 px-3 text-base" autoComplete="name" />
+        호수번호
+        <input
+          name="householdNumber"
+          required
+          pattern="\d{1,2}"
+          maxLength={2}
+          className="min-h-12 rounded-md border border-slate-300 px-3 text-base"
+          inputMode="numeric"
+          autoComplete="off"
+        />
       </label>
       <label className="grid gap-2 text-sm font-medium text-slate-700">
-        회원번호/사번/학번
+        이름
         <input
-          name="externalIdentifier"
+          name="name"
+          required
           className="min-h-12 rounded-md border border-slate-300 px-3 text-base"
-          inputMode="text"
+          autoComplete="name"
+        />
+      </label>
+      <label className="grid gap-2 text-sm font-medium text-slate-700">
+        식별번호
+        <input
+          name="identifierLast4"
+          required
+          pattern="\d{4}"
+          maxLength={4}
+          className="min-h-12 rounded-md border border-slate-300 px-3 text-base"
+          inputMode="numeric"
+          autoComplete="off"
+        />
+      </label>
+      <label className="grid gap-2 text-sm font-medium text-slate-700">
+        생년월일
+        <input
+          name="birthDate6"
+          required
+          pattern="\d{6}"
+          maxLength={6}
+          className="min-h-12 rounded-md border border-slate-300 px-3 text-base"
+          inputMode="numeric"
           autoComplete="off"
         />
       </label>

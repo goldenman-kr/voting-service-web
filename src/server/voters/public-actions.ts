@@ -6,6 +6,7 @@ import { AuthStatus, CredentialEventType, CredentialStatus } from "@prisma/clien
 
 import { getDefaultAuthenticationMethod } from "../../domain/auth-policy/authentication-policy";
 import { parseEnv } from "../../lib/env";
+import { canonicalVoterIdentifier, validateVoterRegistryFields } from "../../lib/voter-registry-fields";
 import { VOTER_SESSION_COOKIE_POLICY, createVoterSession } from "../auth/voter-session";
 import { getPrismaClient } from "../db/prisma";
 import { hashVoterIdentifier } from "./voter-auth-service";
@@ -18,15 +19,20 @@ function genericVerifyFailure(electionId?: string): never {
 
 export async function verifyListedElectionVoterAction(formData: FormData) {
   const electionId = String(formData.get("electionId") ?? "").trim();
-  const identifier = String(formData.get("externalIdentifier") ?? "").trim();
+  const registryFields = validateVoterRegistryFields({
+    householdNumber: String(formData.get("householdNumber") ?? ""),
+    name: String(formData.get("name") ?? ""),
+    identifierLast4: String(formData.get("identifierLast4") ?? ""),
+    birthDate6: String(formData.get("birthDate6") ?? "")
+  });
   const consent = formData.get("privacyConsent") === "on";
-  if (!electionId || !identifier || !consent) {
+  if (!electionId || !registryFields.ok || !registryFields.fields || !consent) {
     genericVerifyFailure(electionId);
   }
 
   const env = parseEnv();
   const prisma = getPrismaClient();
-  const externalIdentifierHmac = hashVoterIdentifier(identifier, env.HMAC_KEY);
+  const externalIdentifierHmac = hashVoterIdentifier(canonicalVoterIdentifier(registryFields.fields), env.HMAC_KEY);
   const eligibleVoter = await prisma.eligibleVoter.findFirst({
     where: {
       electionId,
