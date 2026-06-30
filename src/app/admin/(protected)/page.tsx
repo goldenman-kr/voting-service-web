@@ -3,7 +3,6 @@ import Link from "next/link";
 import { MetricCard } from "../../../components/admin/admin-cards";
 import { AdminElectionTable } from "../../../components/admin/admin-election-table";
 import { PageHeader } from "../../../components/ui/page-header";
-import { AuditNotice } from "../../../components/ui/audit-notice";
 import { PrivacyNotice } from "../../../components/ui/privacy-notice";
 import { ElectionState } from "../../../guardrails/index.js";
 import { getCurrentAdminSessionFromCookies } from "../../../server/auth/current-admin";
@@ -20,7 +19,7 @@ export default async function AdminDashboardPage() {
       <PageHeader
         eyebrow="관리자 포털"
         title="대시보드"
-        description="MVP 운영 흐름 확인을 위한 기본 화면입니다. 모든 위험 작업은 사유와 감사 기록 안내를 동반합니다."
+        description="투표 운영 현황과 다음에 확인할 항목을 한눈에 볼 수 있습니다."
         actions={
           <Link href="/admin/elections/new" className="rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white">
             투표 생성
@@ -41,7 +40,6 @@ export default async function AdminDashboardPage() {
         <MetricCard label="검수 대기 항목" value={dashboard.reviewWaiting.length} />
       </section>
       <PrivacyNotice />
-      <AuditNotice eventType="상태 변경과 결과 공개" riskLevel="high" />
       <section className="grid gap-3">
         <h2 className="text-lg font-semibold">최근 투표</h2>
         <AdminElectionTable elections={dashboard.recent} />

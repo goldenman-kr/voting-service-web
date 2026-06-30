@@ -5,7 +5,6 @@ import {
   ResultOperationPanel
 } from "../../../../../../components/admin/admin-operation-forms";
 import { StepUpPanel } from "../../../../../../components/admin/step-up-panel";
-import { AuditNotice } from "../../../../../../components/ui/audit-notice";
 import { EmptyState } from "../../../../../../components/ui/empty-state";
 import { ErrorState } from "../../../../../../components/ui/error-state";
 import { PageHeader } from "../../../../../../components/ui/page-header";
@@ -95,7 +94,6 @@ export default async function AdminResultsPage({ params }: Params) {
           <EmptyState title="아직 집계 결과가 없습니다" description="종료 이후 결과 집계를 실행하면 집계 단위 결과가 표시됩니다." />
         )}
       </section>
-      <AuditNotice eventType="결과 확정, 공개, 보고서 요청" riskLevel="high" />
       <StepUpPanel
         permissionCodes={[
           "result.tally",

@@ -77,9 +77,9 @@ export default function HomePage() {
           </p>
         </article>
         <article className="rounded-md border border-slate-200 bg-white p-5">
-          <h2 className="text-base font-semibold">오픈소스 감사</h2>
+          <h2 className="text-base font-semibold">오픈소스 검토</h2>
           <p className="mt-3 text-sm leading-6 text-slate-700">
-            투표 시스템의 주요 동작 방식은 코드 감사를 전제로 관리합니다. 공개 저장소 링크는 운영 정책이
+            투표 시스템의 주요 동작 방식은 코드 검토를 전제로 관리합니다. 공개 저장소 링크는 운영 정책이
             확정된 뒤 연결합니다.
           </p>
           <span className="mt-4 inline-block text-sm font-semibold text-slate-500">

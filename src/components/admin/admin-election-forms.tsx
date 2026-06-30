@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useActionState, useMemo, useState } from "react";
 
 import { AuthenticationMethod } from "../../guardrails/index.js";
+import { electionTypeLabels } from "../../lib/ui/election-labels";
 import {
   configureAuthenticationPolicyAction,
   createElectionDraftAction,
@@ -38,13 +39,6 @@ const wizardSteps = [
   { id: 0, label: "1 기본 정보" },
   { id: 1, label: "2 문항/선택지" },
   { id: 2, label: "3 선거인 명부" }
-] as const;
-
-const electionTypeLabels = [
-  { value: "representative_election", label: "대표 선출" },
-  { value: "yes_no_agenda", label: "중요 안건 찬반" },
-  { value: "multiple_choice_agenda", label: "중요 안건 선택" },
-  { value: "opinion_collection", label: "기타 의견 수렴" }
 ] as const;
 
 type WizardOption = Readonly<{
@@ -137,8 +131,6 @@ export function CreateElectionWizardForm() {
   const [electionType, setElectionType] = useState("representative_election");
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
-  const [questionTitle, setQuestionTitle] = useState("");
-  const [questionDescription, setQuestionDescription] = useState("");
   const [options, setOptions] = useState<WizardOption[]>([
     { id: 1, title: "", description: "" },
     { id: 2, title: "", description: "" }
@@ -150,7 +142,7 @@ export function CreateElectionWizardForm() {
     [options]
   );
   const isStepOneComplete = Boolean(title.trim() && electionType && startsAt && endsAt && new Date(endsAt) > new Date(startsAt));
-  const isStepTwoComplete = Boolean(questionTitle.trim() && filledOptions.length >= 2);
+  const isStepTwoComplete = filledOptions.length >= 2;
   const isStepThreeComplete = rowsToVoterCount(voterRows) > 0;
   const canSubmit = isStepOneComplete && isStepTwoComplete && isStepThreeComplete && !pending;
 
@@ -158,7 +150,7 @@ export function CreateElectionWizardForm() {
     currentStep === 0 && !isStepOneComplete
       ? "투표 제목, 유형, 시작일시, 종료일시를 모두 입력하고 종료일시가 시작일시보다 뒤인지 확인해 주세요."
       : currentStep === 1 && !isStepTwoComplete
-        ? "질문 제목과 최소 2개의 선택 항목 제목을 입력해 주세요."
+        ? "최소 2개의 선택 항목 제목을 입력해 주세요."
         : currentStep === 2 && !isStepThreeComplete
           ? "선거인 명부를 1명 이상 입력해 주세요."
           : undefined;
@@ -272,9 +264,10 @@ export function CreateElectionWizardForm() {
         <div className="rounded-md border border-slate-200 bg-white p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-slate-950">문항과 선택 항목</h2>
+              <h2 className="text-lg font-semibold text-slate-950">선택 항목</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                이번 단계에서는 단일 선택 문항 1개를 만듭니다. 선택 항목은 최소 2개가 필요합니다.
+                투표 제목과 설명을 안건으로 사용합니다. 이 단계에서는 유권자가 고를 선택 항목만 입력합니다.
+                선택 항목은 최소 2개가 필요합니다.
               </p>
             </div>
             <span className="rounded-md bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
@@ -282,31 +275,6 @@ export function CreateElectionWizardForm() {
             </span>
           </div>
         </div>
-
-        <label className="grid gap-1 text-sm font-medium text-slate-700">
-          질문 제목
-          <input
-            name="questionTitle"
-            value={questionTitle}
-            onChange={(event) => setQuestionTitle(event.target.value)}
-            className="rounded-md border border-slate-300 px-3 py-2"
-            placeholder="예: 대표 후보를 선택해 주세요."
-          />
-          <FieldHelp>유권자가 무엇을 선택해야 하는지 한 문장으로 적어주세요.</FieldHelp>
-        </label>
-
-        <label className="grid gap-1 text-sm font-medium text-slate-700">
-          질문 설명
-          <textarea
-            name="questionDescription"
-            rows={3}
-            value={questionDescription}
-            onChange={(event) => setQuestionDescription(event.target.value)}
-            className="rounded-md border border-slate-300 px-3 py-2"
-            placeholder="선택 기준이나 참고할 내용을 적어주세요."
-          />
-          <FieldHelp>질문 설명은 현재 데이터 구조에 저장됩니다. 불필요한 개인정보는 넣지 마세요.</FieldHelp>
-        </label>
 
         <div className="grid gap-3">
           {options.map((option, index) => (
@@ -345,7 +313,7 @@ export function CreateElectionWizardForm() {
                   />
                 </label>
                 <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-600">
-                  사진 업로드는 후속 기능입니다. 이번 단계에서는 파일을 선택하거나 저장하지 않습니다.
+                  사진 업로드는 별도 storage 설계가 필요한 기능입니다. 파일 크기, 형식, 보관 위치를 확정한 뒤 제공합니다.
                 </div>
               </div>
             </section>
@@ -370,8 +338,8 @@ export function CreateElectionWizardForm() {
         </div>
 
         <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-950">
-          기존 명부 불러오기와 새 공통 명부 만들기는 후속 Phase 기능입니다. 이번 단계에서는 투표별 명부
-          입력만 저장합니다.
+          기존 구조는 투표별 명부만 지원합니다. 공통 명부 불러오기, 새 공통 명부 만들기, 복제는 schema와
+          migration을 포함해 별도 단계에서 구현해야 합니다.
         </div>
 
         <label className="grid gap-1 text-sm font-medium text-slate-700">
@@ -724,10 +692,11 @@ export function CreateElectionForm() {
       <label className="grid gap-1 text-sm font-medium text-slate-700">
         투표 유형
         <select name="electionType" className="rounded-md border border-slate-300 px-3 py-2">
-          <option value="representative_election">대표 선출</option>
-          <option value="yes_no_agenda">중요 안건 찬반</option>
-          <option value="multiple_choice_agenda">중요 안건 선택</option>
-          <option value="opinion_collection">기타 의견 수렴</option>
+          {electionTypeLabels.map((type) => (
+            <option key={type.value} value={type.value}>
+              {type.label}
+            </option>
+          ))}
         </select>
       </label>
       <input type="hidden" name="votingMode" value="anonymous" />

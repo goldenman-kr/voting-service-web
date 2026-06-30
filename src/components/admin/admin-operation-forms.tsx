@@ -6,7 +6,6 @@ import type { ElectionStateValue } from "../../domain/elections/state-machine";
 import { ElectionState } from "../../guardrails/index.js";
 import { electionOperationAction, type AdminActionState } from "../../server/elections/admin-actions";
 import { resultOperationAction, type ResultActionState } from "../../server/results/admin-actions";
-import { AuditNotice } from "../ui/audit-notice";
 import { WarningBanner } from "../ui/warning-banner";
 
 const initialElectionState: AdminActionState = { ok: false };
@@ -117,7 +116,7 @@ export function ElectionStateCtaPanel({
       <div>
         <h2 className="text-base font-semibold text-slate-950">운영 CTA</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          표시된 작업만 현재 상태에서 실행할 수 있습니다. 위험 작업은 step-up 권한과 감사 기록을 요구합니다.
+          표시된 작업만 현재 상태에서 실행할 수 있습니다. 위험 작업은 추가 확인 권한이 필요합니다.
         </p>
       </div>
       {operations.length > 0 ? (
@@ -171,7 +170,6 @@ export function ResultOperationPanel({
       ) : (
         <WarningBanner title="결과 작업 제한">현재 상태에서는 실행 가능한 결과 작업이 없습니다.</WarningBanner>
       )}
-      <AuditNotice eventType="결과 집계, 확정, 공개, 정정, 무효" riskLevel="high" />
     </section>
   );
 }

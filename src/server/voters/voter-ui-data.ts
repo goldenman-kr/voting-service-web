@@ -80,6 +80,15 @@ export type VoterDataResult<T> = Readonly<{
   error?: string;
 }>;
 
+export type VoterPortalElectionSummary = Readonly<{
+  id: string;
+  title: string;
+  description?: string | null;
+  state: ElectionStateValue;
+  startsAt: Date;
+  endsAt: Date;
+}>;
+
 async function voterRequestContext(): Promise<VoterRequestContext> {
   const env = parseEnv();
   const cookieStore = await cookies();
@@ -127,4 +136,37 @@ export async function getCurrentVoterResult(): Promise<VoterDataResult<VoterResu
   } catch (error) {
     return { error: normalizeApiError(error).userMessage };
   }
+}
+
+export async function listVoterPortalElections(): Promise<{
+  active: VoterPortalElectionSummary[];
+  completed: VoterPortalElectionSummary[];
+}> {
+  const prisma = getPrismaClient();
+  const elections = await prisma.election.findMany({
+    where: {
+      state: {
+        in: ["open", "closed", "tallying", "pending_confirmation", "confirmed", "published"]
+      }
+    },
+    orderBy: [{ state: "asc" }, { startsAt: "desc" }],
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      state: true,
+      startsAt: true,
+      endsAt: true
+    }
+  });
+  return {
+    active: elections.filter((election) => election.state === "open").map((election) => ({
+      ...election,
+      state: election.state as ElectionStateValue
+    })),
+    completed: elections.filter((election) => election.state !== "open").map((election) => ({
+      ...election,
+      state: election.state as ElectionStateValue
+    }))
+  };
 }

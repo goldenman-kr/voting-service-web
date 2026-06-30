@@ -395,7 +395,6 @@ function validateWizardInput(formData: FormData): string | null {
     ["electionType", "투표 유형"],
     ["startsAt", "시작일시"],
     ["endsAt", "종료일시"],
-    ["questionTitle", "질문 제목"],
     ["voterRows", "선거인 명부"]
   ] as const;
   for (const [key, label] of requiredFields) {
@@ -481,8 +480,8 @@ export async function createElectionWizardAction(
     const question = await createQuestion(
       electionId,
       {
-        title: value(formData, "questionTitle"),
-        description: optionalValue(formData, "questionDescription"),
+        title: value(formData, "title"),
+        description: optionalValue(formData, "description"),
         questionType: "single_choice",
         required: true,
         minSelect: 1,

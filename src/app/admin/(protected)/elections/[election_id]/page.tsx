@@ -6,13 +6,19 @@ import { RequestReviewForm } from "../../../../../components/admin/admin-electio
 import { ElectionStateCtaPanel } from "../../../../../components/admin/admin-operation-forms";
 import { StepUpPanel } from "../../../../../components/admin/step-up-panel";
 import { AnonymousVotingNotice } from "../../../../../components/ui/anonymous-voting-notice";
-import { AuditNotice } from "../../../../../components/ui/audit-notice";
 import { PageHeader } from "../../../../../components/ui/page-header";
 import { WarningBanner } from "../../../../../components/ui/warning-banner";
 import { ElectionAction, canPerformElectionAction } from "../../../../../domain/elections/actions";
 import type { ElectionStateValue } from "../../../../../domain/elections/state-machine";
 import { PolicyDecision } from "../../../../../domain/policy-decision";
 import { AuthenticationMethod, ElectionState } from "../../../../../guardrails/index.js";
+import {
+  authMethodLabelMap,
+  electionTypeLabelMap,
+  labelOf,
+  questionTypeLabelMap,
+  resultStatusLabelMap
+} from "../../../../../lib/ui/election-labels";
 import { getCurrentAdminSessionFromCookies } from "../../../../../server/auth/current-admin";
 import { getPrismaClient } from "../../../../../server/db/prisma";
 import { getAdminElectionDetail } from "../../../../../server/elections/admin-election-view";
@@ -21,48 +27,12 @@ type Params = {
   params: Promise<{ election_id: string }> | { election_id: string };
 };
 
-const electionTypeLabel: Record<string, string> = {
-  representative_election: "대표 선출",
-  yes_no_agenda: "중요 안건 찬반",
-  multiple_choice_agenda: "중요 안건 선택",
-  opinion_collection: "기타 의견 수렴"
-};
-
-const authMethodLabel: Record<string, string> = {
-  [AuthenticationMethod.INVITE_LINK_ONLY]: "초대 링크",
-  [AuthenticationMethod.INVITE_LINK_WITH_IDENTIFIER]: "초대 링크 + 선거인 확인",
-  [AuthenticationMethod.EMAIL_CODE]: "이메일 인증코드",
-  [AuthenticationMethod.SMS_CODE]: "문자 인증코드",
-  [AuthenticationMethod.KAKAO_MESSAGE]: "카카오 알림 인증",
-  [AuthenticationMethod.EXTERNAL_IDENTITY]: "외부 본인확인",
-  [AuthenticationMethod.SSO]: "통합 로그인",
-  [AuthenticationMethod.LEGAL_STRONG_AUTH]: "강화 본인확인"
-};
-
-const questionTypeLabel: Record<string, string> = {
-  single_choice: "하나만 선택",
-  multiple_choice: "여러 개 선택",
-  yes_no: "찬반 선택",
-  free_text: "서술형"
-};
-
-const resultStatusLabel: Record<string, string> = {
-  draft: "집계 준비 중",
-  tallied: "집계 완료",
-  discarded: "폐기됨"
-};
-
 function formatDateTime(date: Date): string {
   return new Intl.DateTimeFormat("ko-KR", {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: "Asia/Seoul"
   }).format(date);
-}
-
-function labelOf(labels: Record<string, string>, value: string | null | undefined, fallback = "미설정"): string {
-  if (!value) return fallback;
-  return labels[value] ?? value;
 }
 
 function isDraftEditPolicyAllowed(state: ElectionStateValue): boolean {
@@ -105,7 +75,7 @@ export default async function AdminElectionDetailPage({ params }: Params) {
       ? `${election.invitationSummary.total}건 준비, ${election.invitationSummary.sent}건 발송`
       : "아직 준비된 초대가 없습니다.";
   const resultStatus = election.resultSummary.latestResultStatus
-    ? labelOf(resultStatusLabel, election.resultSummary.latestResultStatus)
+    ? labelOf(resultStatusLabelMap, election.resultSummary.latestResultStatus)
     : election.resultSummary.publishedVersionCount > 0
       ? "공개됨"
       : "아직 결과 없음";
@@ -241,7 +211,7 @@ export default async function AdminElectionDetailPage({ params }: Params) {
       <section className="grid gap-3 rounded-md border border-slate-200 bg-white p-5">
         <h2 className="text-base font-semibold">투표 기본 정보</h2>
         <dl className="grid gap-3 text-sm md:grid-cols-2">
-          <div><dt className="font-semibold text-slate-500">투표 유형</dt><dd>{labelOf(electionTypeLabel, election.electionType)}</dd></div>
+          <div><dt className="font-semibold text-slate-500">투표 유형</dt><dd>{labelOf(electionTypeLabelMap, election.electionType)}</dd></div>
           <div><dt className="font-semibold text-slate-500">투표 방식</dt><dd>{election.votingMode === "anonymous" ? "익명 투표" : "기명 투표"}</dd></div>
           <div><dt className="font-semibold text-slate-500">시작일시</dt><dd>{formatDateTime(election.startsAt)}</dd></div>
           <div><dt className="font-semibold text-slate-500">종료일시</dt><dd>{formatDateTime(election.endsAt)}</dd></div>
@@ -255,11 +225,11 @@ export default async function AdminElectionDetailPage({ params }: Params) {
       <section className="grid gap-3 rounded-md border border-slate-200 bg-white p-5">
         <h2 className="text-base font-semibold">투표 참여 인증 방식</h2>
         <dl className="grid gap-3 text-sm md:grid-cols-2">
-          <div><dt className="font-semibold text-slate-500">현재 방식</dt><dd>{labelOf(authMethodLabel, authMethod)}</dd></div>
+          <div><dt className="font-semibold text-slate-500">현재 방식</dt><dd>{labelOf(authMethodLabelMap, authMethod)}</dd></div>
           <div><dt className="font-semibold text-slate-500">인증 상태</dt><dd>{election.authenticationPolicy?.isEnabled === false ? "비활성" : "활성"}</dd></div>
         </dl>
         <p className="text-sm leading-6 text-slate-600">
-          기본 방식은 초대 링크로 진입한 뒤 선거인 정보를 확인하는 흐름입니다. 관리자 화면에는 초대 링크 원문이나 인증용 내부 값이 표시되지 않습니다.
+          기본 방식은 선거인 명부 확인을 거쳐 참여 자격을 확인하는 흐름입니다. 관리자 화면에는 인증용 내부 값이 표시되지 않습니다.
         </p>
       </section>
 
@@ -282,7 +252,7 @@ export default async function AdminElectionDetailPage({ params }: Params) {
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="font-semibold text-slate-950">문항 {questionIndex + 1}. {question.title}</h3>
                   <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                    {labelOf(questionTypeLabel, question.questionType)}
+                    {labelOf(questionTypeLabelMap, question.questionType)}
                   </span>
                 </div>
                 {question.description ? (
@@ -376,7 +346,6 @@ export default async function AdminElectionDetailPage({ params }: Params) {
       />
       <ElectionStateCtaPanel electionId={election.id} state={election.state} />
       <AnonymousVotingNotice audience="admin" />
-      <AuditNotice eventType="중단, 재개, 종료, 무효 처리" riskLevel="critical" />
       <section className="grid gap-3 rounded-md border border-slate-200 bg-white p-5">
         <h2 className="text-base font-semibold">설정 바로가기</h2>
         <div className="flex flex-wrap gap-2">

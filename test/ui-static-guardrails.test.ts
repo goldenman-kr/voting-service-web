@@ -54,6 +54,10 @@ describe("UI guardrails", () => {
   it("admin election creation wizard exposes friendly three-step UX without future features enabled", () => {
     const formSource = readUiSource("src/components/admin/admin-election-forms.tsx");
     const actionSource = readUiSource("src/server/elections/admin-actions.ts");
+    const createWizardSource = formSource.slice(
+      formSource.indexOf("export function CreateElectionWizardForm"),
+      formSource.indexOf("export function EditElectionBasicInfoForm")
+    );
 
     expect(formSource).toContain("1 기본 정보");
     expect(formSource).toContain("2 문항/선택지");
@@ -61,8 +65,12 @@ describe("UI guardrails", () => {
     expect(formSource).toContain("isStepOneComplete");
     expect(formSource).toContain("isStepTwoComplete");
     expect(formSource).toContain("선택 항목은 최소 2개");
-    expect(formSource).toContain("사진 업로드는 후속 기능입니다");
-    expect(formSource).toContain("기존 명부 불러오기와 새 공통 명부 만들기는 후속 Phase 기능입니다");
+    expect(createWizardSource).not.toContain("questionTitle");
+    expect(createWizardSource).not.toContain("질문 제목");
+    expect(createWizardSource).not.toContain("질문 설명");
+    expect(actionSource).not.toContain("[\"questionTitle\", \"질문 제목\"]");
+    expect(actionSource).toContain("title: value(formData, \"title\")");
+    expect(formSource).toContain("공통 명부 불러오기, 새 공통 명부 만들기, 복제는 schema와");
     expect(formSource).toContain("투표 참여 인증 방식");
     expect(formSource).not.toContain("Ballot ID");
     expect(formSource).not.toContain("Vote ID");
@@ -78,6 +86,9 @@ describe("UI guardrails", () => {
   it("admin election detail uses friendly sections and draft-only edit entry", () => {
     const detailSource = readUiSource("src/app/admin/(protected)/elections/[election_id]/page.tsx");
     const authPolicyPage = readUiSource("src/app/admin/(protected)/elections/[election_id]/auth-policy/page.tsx");
+    const tableSource = readUiSource("src/components/admin/admin-election-table.tsx");
+    const shellSource = readUiSource("src/components/admin/admin-shell.tsx");
+    const registryPage = readUiSource("src/app/admin/(protected)/voter-registries/page.tsx");
 
     expect(detailSource).toContain("투표 기본 정보");
     expect(detailSource).toContain("투표 참여 인증 방식");
@@ -92,8 +103,8 @@ describe("UI guardrails", () => {
     expect(detailSource).toContain("편집하기");
     expect(detailSource).toContain("canUseExistingDraftEditPages");
     expect(detailSource).toContain("election.state === ElectionState.DRAFT");
-    expect(detailSource).toContain("초대 링크 + 선거인 확인");
-    expect(detailSource).toContain("관리자 화면에는 초대 링크 원문");
+    expect(detailSource).toContain("선거인 명부 확인");
+    expect(detailSource).toContain("관리자 화면에는 인증용 내부 값이 표시되지 않습니다");
     expect(detailSource).toContain("현재 상태에서는 문항, 선택 항목, 선거인 명부를 수정할 수 없습니다");
     expect(detailSource).toContain("검수 요청을 보내면 투표 설정을 확정하는 단계로 이동합니다");
     expect(detailSource).toContain("다시 작성 단계로 되돌리는 절차가 필요할 수 있습니다");
@@ -105,6 +116,10 @@ describe("UI guardrails", () => {
 
     expect(authPolicyPage).toContain("투표 참여 인증 방식 설정");
     expect(authPolicyPage).not.toContain("AuthenticationPolicy 설정");
+    expect(tableSource).toContain("labelOf(electionTypeLabelMap, election.electionType)");
+    expect(shellSource).toContain("/admin/voter-registries");
+    expect(registryPage).toContain("선거인명부 현황");
+    expect(registryPage).toContain("투표별 명부 구조를 공통 명부 구조로 확장하는 migration과 API 설계가 필요합니다");
   });
 
   it("admin draft edit route exposes Draft-only conservative question and option editing", () => {
@@ -209,6 +224,7 @@ describe("UI guardrails", () => {
       "src/app/admin/(protected)/elections/[election_id]/page.tsx",
       "src/app/admin/(protected)/elections/[election_id]/edit/page.tsx",
       "src/app/admin/(protected)/elections/[election_id]/results/page.tsx",
+      "src/app/admin/(protected)/voter-registries/page.tsx",
       "src/app/admin/login/page.tsx",
       "src/components/admin/admin-election-forms.tsx",
       "src/components/admin/admin-election-table.tsx",
@@ -216,6 +232,10 @@ describe("UI guardrails", () => {
       "src/components/admin/admin-operation-forms.tsx",
       "src/components/admin/step-up-panel.tsx",
       "src/app/voter/invite/page.tsx",
+      "src/app/voter/page.tsx",
+      "src/app/voter/elections/[election_id]/verify/page.tsx",
+      "src/app/voter/elections/[election_id]/ballot/page.tsx",
+      "src/app/voter/elections/[election_id]/results/page.tsx",
       "src/app/voter/identify/page.tsx",
       "src/app/voter/election/page.tsx",
       "src/app/voter/ballot/page.tsx",
@@ -248,14 +268,41 @@ describe("UI guardrails", () => {
 
   it("voter UI uses body-based endpoints and keeps code auth out of the MVP path", () => {
     const inviteSource = readUiSource("src/components/voter/voter-auth-forms.tsx");
+    const voterPortalSource = readUiSource("src/app/voter/page.tsx");
+    const voterVerifySource = readUiSource("src/app/voter/elections/[election_id]/verify/page.tsx");
+    const publicActionSource = readUiSource("src/server/voters/public-actions.ts");
     const ballotSource = readUiSource("src/components/voter/voter-ballot-flow.tsx");
 
     expect(inviteSource).toContain("/api/v1/voter/invitations/verify");
     expect(inviteSource).toContain("/api/v1/voter/identifier/verify");
     expect(inviteSource).not.toContain("/invitations/${");
+    expect(voterPortalSource).toContain("현재 진행 중인 투표");
+    expect(voterPortalSource).toContain("완료된 투표");
+    expect(voterPortalSource).not.toContain("초대 확인 시작");
+    expect(voterVerifySource).toContain("개인정보 활용 동의");
+    expect(voterVerifySource).toContain("verifyListedElectionVoterAction");
+    expect(publicActionSource).toContain("createVoterSession");
+    expect(publicActionSource).not.toContain("invite_token");
     expect(inviteSource).toContain("인증코드는 MVP 기본 흐름에서 사용하지 않습니다.");
     expect(ballotSource).toContain("/api/v1/voter/ballots");
     expect(ballotSource).toContain("/api/v1/voter/ballots/revote");
+  });
+
+  it("user-facing UI avoids audit/logging guidance copy", () => {
+    const sources = [
+      "src/app/page.tsx",
+      "src/app/admin/(protected)/page.tsx",
+      "src/app/admin/(protected)/elections/[election_id]/page.tsx",
+      "src/app/admin/(protected)/elections/[election_id]/results/page.tsx",
+      "src/components/admin/admin-operation-forms.tsx",
+      "src/components/voter/voter-shell.tsx",
+      "src/app/voter/page.tsx"
+    ].map(readUiSource);
+    const combined = sources.join("\n");
+
+    for (const label of ["감사 기록", "감사 이벤트", "AuditEvent", "감사 안내", "감사 로그"]) {
+      expect(combined).not.toContain(label);
+    }
   });
 
   it("admin operation UI exposes only guarded status/result actions", () => {

@@ -57,7 +57,7 @@ export const ELECTION_STATE_UI: Readonly<Record<ElectionStateValue, ElectionStat
     },
     [ElectionState.OPEN]: {
       label: "진행 중",
-      description: "투표자가 제출할 수 있습니다. 위험 작업에는 사유와 감사 기록이 필요합니다.",
+      description: "투표자가 제출할 수 있습니다. 위험 작업에는 사유와 추가 확인이 필요합니다.",
       tone: "success",
       adminCta: "진행 현황 보기",
       voterCta: "투표 참여",
@@ -129,7 +129,7 @@ export const ELECTION_STATE_UI: Readonly<Record<ElectionStateValue, ElectionStat
       tone: "danger",
       adminCta: "무효 기록 보기",
       voterCta: "무효 안내",
-      warning: "기존 공개 결과의 존재와 무효 공지는 감사 가능하게 유지됩니다.",
+      warning: "기존 공개 결과와 무효 공지는 이력으로 유지됩니다.",
       hiddenActions: ["투표 참여", "결과 덮어쓰기"]
     }
   });

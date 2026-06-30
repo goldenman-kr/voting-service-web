@@ -10,19 +10,13 @@ import { EmptyState } from "../../../../../../components/ui/empty-state";
 import { PageHeader } from "../../../../../../components/ui/page-header";
 import { WarningBanner } from "../../../../../../components/ui/warning-banner";
 import { ElectionState } from "../../../../../../guardrails/index.js";
+import { electionTypeLabelMap, labelOf } from "../../../../../../lib/ui/election-labels";
 import { getCurrentAdminSessionFromCookies } from "../../../../../../server/auth/current-admin";
 import { getPrismaClient } from "../../../../../../server/db/prisma";
 import { getAdminElectionDetail } from "../../../../../../server/elections/admin-election-view";
 
 type Params = {
   params: Promise<{ election_id: string }> | { election_id: string };
-};
-
-const electionTypeLabel: Record<string, string> = {
-  representative_election: "대표 선출",
-  yes_no_agenda: "중요 안건 찬반",
-  multiple_choice_agenda: "중요 안건 선택",
-  opinion_collection: "기타 의견 수렴"
 };
 
 function toDateTimeLocal(date: Date): string {
@@ -37,11 +31,6 @@ function toDateTimeLocal(date: Date): string {
   }).formatToParts(date);
   const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return `${byType.year}-${byType.month}-${byType.day}T${byType.hour}:${byType.minute}`;
-}
-
-function labelOf(labels: Record<string, string>, value: string | null | undefined, fallback = "미설정"): string {
-  if (!value) return fallback;
-  return labels[value] ?? value;
 }
 
 export default async function AdminElectionEditPage({ params }: Params) {
@@ -143,7 +132,7 @@ export default async function AdminElectionEditPage({ params }: Params) {
           <dl className="grid gap-3 text-sm sm:grid-cols-3">
             <div><dt className="font-semibold text-slate-500">문항 수</dt><dd>{election.questionCount}</dd></div>
             <div><dt className="font-semibold text-slate-500">선택 항목 수</dt><dd>{optionCount}</dd></div>
-            <div><dt className="font-semibold text-slate-500">투표 유형</dt><dd>{labelOf(electionTypeLabel, election.electionType)}</dd></div>
+            <div><dt className="font-semibold text-slate-500">투표 유형</dt><dd>{labelOf(electionTypeLabelMap, election.electionType)}</dd></div>
           </dl>
           <Link
             href={`/admin/elections/${election.id}/questions`}

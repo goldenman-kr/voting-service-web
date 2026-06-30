@@ -72,6 +72,22 @@ export type AdminElectionDashboard = Readonly<{
   recent: readonly AdminElectionListItem[];
 }>;
 
+export type AdminVoterRegistrySummary = Readonly<{
+  id: string;
+  status: string;
+  sourceType: string;
+  totalRows: number;
+  validRows: number;
+  updatedAt: Date;
+  election: {
+    id: string;
+    title: string;
+    state: ElectionStateValue;
+    startsAt: Date;
+    endsAt: Date;
+  };
+}>;
+
 function assertAdminElectionRead(session: AdminSession): string {
   requirePermission(session, "election.read");
   if (!session.organizationId) {
@@ -174,6 +190,51 @@ export async function getAdminElectionDashboard(
     reviewWaiting: elections.filter((election) => election.state === ElectionState.READY_FOR_REVIEW),
     recent: elections.slice(0, 10)
   });
+}
+
+export async function listAdminVoterRegistrySummaries(
+  prisma: PrismaClientLike,
+  session: AdminSession
+): Promise<AdminVoterRegistrySummary[]> {
+  const organizationId = assertAdminElectionRead(session);
+  requirePermission(session, "voter_registry.read");
+  const registries = await prisma.voterRegistry.findMany({
+    where: { election: { organizationId } },
+    orderBy: { updatedAt: "desc" },
+    select: {
+      id: true,
+      status: true,
+      sourceType: true,
+      totalRows: true,
+      validRows: true,
+      updatedAt: true,
+      election: {
+        select: {
+          id: true,
+          title: true,
+          state: true,
+          startsAt: true,
+          endsAt: true
+        }
+      }
+    }
+  });
+
+  return registries.map((registry) => ({
+    id: registry.id,
+    status: registry.status,
+    sourceType: registry.sourceType,
+    totalRows: registry.totalRows,
+    validRows: registry.validRows,
+    updatedAt: registry.updatedAt,
+    election: {
+      id: registry.election.id,
+      title: registry.election.title,
+      state: registry.election.state as ElectionStateValue,
+      startsAt: registry.election.startsAt,
+      endsAt: registry.election.endsAt
+    }
+  }));
 }
 
 export async function getAdminElectionDetail(

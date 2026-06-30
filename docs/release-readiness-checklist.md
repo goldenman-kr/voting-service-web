@@ -18,6 +18,12 @@ This checklist describes the current MVP readiness gates. It is intended for loc
 
 ## Local Development Workflow
 
+`npm run db:up` uses `docker-compose.yml`, which is for local development only.
+The local Compose project is named `voting-service-web-local` and binds PostgreSQL
+to `127.0.0.1:${LOCAL_POSTGRES_PORT:-5432}`. Do not use this script to manage
+self-hosted staging; staging must use `docker-compose.staging.yml` explicitly and
+must keep PostgreSQL without a host port mapping.
+
 1. Start PostgreSQL:
 
 ```bash

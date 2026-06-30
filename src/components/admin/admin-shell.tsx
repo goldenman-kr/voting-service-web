@@ -6,7 +6,8 @@ import { AdminLogoutButton } from "./admin-logout-button";
 
 const navItems = [
   { href: "/admin/elections", label: "투표 관리" },
-  { href: "/admin/elections/new", label: "투표 생성" }
+  { href: "/admin/elections/new", label: "투표 생성" },
+  { href: "/admin/voter-registries", label: "선거인명부 관리" }
 ];
 
 function adminDisplayName(admin?: AdminSession): string {
@@ -55,9 +56,6 @@ export function AdminShell({ children, admin }: { children: ReactNode; admin?: A
                 {item.label}
               </Link>
             ))}
-            <span className="rounded-md px-3 py-2 text-sm font-medium text-slate-400" title="공통 명부 관리는 후속 Phase에서 설계합니다.">
-              선거인명부 관리
-            </span>
           </nav>
           <div className="mt-6">
             <AdminLogoutButton />

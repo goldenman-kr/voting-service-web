@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import type { ElectionStateValue } from "../../domain/elections/state-machine";
 import { ElectionState } from "../../guardrails/index.js";
+import { electionTypeLabelMap, labelOf } from "../../lib/ui/election-labels";
 import type { AdminElectionListItem } from "../../server/elections/admin-election-view";
 import { EmptyState } from "../ui/empty-state";
 import { StatusBadge } from "../ui/status-badge";
@@ -54,7 +55,7 @@ export function AdminElectionTable({ elections }: { elections: readonly AdminEle
               <td className="px-4 py-4">
                 <StatusBadge status={election.state as ElectionStateValue} size="sm" />
               </td>
-              <td className="px-4 py-4">{election.electionType}</td>
+              <td className="px-4 py-4">{labelOf(electionTypeLabelMap, election.electionType)}</td>
               <td className="px-4 py-4 text-slate-600">
                 {formatDate(election.startsAt)}
                 <br />
