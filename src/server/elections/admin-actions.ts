@@ -42,6 +42,7 @@ import {
   type ElectionServiceContext
 } from "./election-service";
 import { getAdminElectionDetail } from "./admin-election-view";
+import { linkManagedRegistryToElection } from "../voter-registries/managed-registry-service";
 
 export type AdminActionState = Readonly<{
   ok: boolean;
@@ -402,7 +403,6 @@ function validateWizardInput(formData: FormData): string | null {
     ["electionType", "투표 유형"],
     ["startsAt", "시작일시"],
     ["endsAt", "종료일시"],
-    ["voterRows", "선거인 명부"]
   ] as const;
   for (const [key, label] of requiredFields) {
     if (!value(formData, key)) {
@@ -427,20 +427,26 @@ function validateWizardInput(formData: FormData): string | null {
     return "선택 항목 제목이 중복되지 않도록 입력해 주세요.";
   }
 
-  const voterRows = parseVoterRows(value(formData, "voterRows"));
-  if (voterRows.length === 0) {
-    return "선거인 명부를 1명 이상 입력해 주세요.";
-  }
-  const invalidRow = voterRows.find((row) => !validateVoterRegistryFields(row).ok);
-  if (invalidRow) {
-    return `선거인 명부 ${invalidRow.rowNumber}행의 호수번호, 이름, 식별번호, 생년월일을 확인해 주세요.`;
-  }
-  const voterIdentifiers = voterRows.map((row) => {
-    const validated = validateVoterRegistryFields(row);
-    return validated.fields ? canonicalVoterIdentifier(validated.fields).toLowerCase() : "";
-  });
-  if (new Set(voterIdentifiers).size !== voterIdentifiers.length) {
-    return "선거인 명부에 중복된 선거인 정보가 있습니다.";
+  if (value(formData, "registryMode") === "existing") {
+    if (!value(formData, "managedRegistryId")) {
+      return "연결할 선거인 명부를 선택해 주세요.";
+    }
+  } else {
+    const voterRows = parseVoterRows(value(formData, "voterRows"));
+    if (voterRows.length === 0) {
+      return "선거인 명부를 1명 이상 입력해 주세요.";
+    }
+    const invalidRow = voterRows.find((row) => !validateVoterRegistryFields(row).ok);
+    if (invalidRow) {
+      return `선거인 명부 ${invalidRow.rowNumber}행의 호수번호, 이름, 식별번호, 생년월일을 확인해 주세요.`;
+    }
+    const voterIdentifiers = voterRows.map((row) => {
+      const validated = validateVoterRegistryFields(row);
+      return validated.fields ? canonicalVoterIdentifier(validated.fields).toLowerCase() : "";
+    });
+    if (new Set(voterIdentifiers).size !== voterIdentifiers.length) {
+      return "선거인 명부에 중복된 선거인 정보가 있습니다.";
+    }
   }
 
   return null;
@@ -514,15 +520,27 @@ export async function createElectionWizardAction(
       );
     }
 
-    await importEligibleVoters(
-      electionId,
-      {
-        sourceType: "manual",
-        rows: parseVoterRows(value(formData, "voterRows")),
-        reason: "투표 생성 마법사 선거인 명부 등록"
-      },
-      context
-    );
+    if (value(formData, "registryMode") === "existing") {
+      const linkResult = await linkManagedRegistryToElection({
+        prisma: getPrismaClient(),
+        session: context.session,
+        electionId,
+        registryId: value(formData, "managedRegistryId")
+      });
+      if (!linkResult.ok) {
+        return { ok: false, message: linkResult.message };
+      }
+    } else {
+      await importEligibleVoters(
+        electionId,
+        {
+          sourceType: "manual",
+          rows: parseVoterRows(value(formData, "voterRows")),
+          reason: "투표 생성 마법사 선거인 명부 등록"
+        },
+        context
+      );
+    }
   } catch (error) {
     return { ok: false, message: safeMessage(error) };
   }

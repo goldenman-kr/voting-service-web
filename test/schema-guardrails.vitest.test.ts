@@ -128,6 +128,15 @@ describe("Prisma schema guardrails", () => {
     );
   });
 
+  it("managed voter registries stay outside anonymous ballot models", () => {
+    expect(block("model", "ManagedVoterRegistry")).toContain("organizationId");
+    expect(block("model", "ManagedVoter")).toContain("externalIdentifierHmac");
+    expect(block("model", "ManagedVoterRegistry")).not.toMatch(/\b(Ballot|Vote|AnonymousBallotGroup)\b/);
+    expect(block("model", "ManagedVoter")).not.toMatch(/\b(Ballot|Vote|AnonymousBallotGroup)\b/);
+    expect(block("model", "VoterRegistry")).toContain("managedRegistryId");
+    expect(block("model", "VoterRegistry")).not.toMatch(/\bBallot\b|\bVote\b|\bAnonymousBallotGroup\b/);
+  });
+
   it("contains VoterSession for short-lived voter auth sessions only", () => {
     const fields = fieldNames("VoterSession");
     expect(fields).toEqual(
@@ -147,7 +156,7 @@ describe("Prisma schema guardrails", () => {
         "updatedAt"
       ])
     );
-    expect(block("model", "VoterSession")).toContain("opaqueHandleHash      String");
+    expect(block("model", "VoterSession")).toMatch(/opaqueHandleHash\s+String/);
     expect(block("model", "VoterSession")).toContain("@unique @map(\"opaque_handle_hash\")");
     expect(block("model", "VoterSession")).toContain("@@index([expiresAt])");
     expect(block("model", "VoterSession")).toContain("@@index([electionId])");
@@ -174,7 +183,7 @@ describe("Prisma schema guardrails", () => {
         "updatedAt"
       ])
     );
-    expect(block("model", "AdminSession")).toContain("sessionTokenHash   String");
+    expect(block("model", "AdminSession")).toMatch(/sessionTokenHash\s+String/);
     expect(block("model", "AdminSession")).toContain("@unique @map(\"session_token_hash\")");
     expect(block("model", "AdminSession")).toContain(
       "Never store raw session tokens, passwords, IP, or User-Agent here."
@@ -216,9 +225,9 @@ describe("Prisma schema guardrails", () => {
         "updatedAt"
       ])
     );
-    expect(block("model", "AdminStepUpGrant")).toContain("tokenHash          String");
+    expect(block("model", "AdminStepUpGrant")).toMatch(/tokenHash\s+String/);
     expect(block("model", "AdminStepUpGrant")).toContain("@unique @map(\"token_hash\")");
-    expect(block("model", "AdminStepUpGrant")).toContain("permissionCodes    Json");
+    expect(block("model", "AdminStepUpGrant")).toMatch(/permissionCodes\s+Json/);
     expect(block("model", "AdminStepUpGrant")).toContain(
       "Never store raw step-up tokens, passwords, IP, or User-Agent here."
     );
@@ -245,8 +254,8 @@ describe("Prisma schema guardrails", () => {
   it("keeps AuthenticationMethod canonical and MVP default safe", () => {
     expect(enumValues("AuthenticationMethod")).toEqual(Object.values(AuthenticationMethod));
     expect(DEFAULT_AUTHENTICATION_METHOD).toBe("invite_link_with_identifier");
-    expect(block("model", "AuthenticationPolicy")).toContain(
-      "method               AuthenticationMethod @default(invite_link_with_identifier)"
+    expect(block("model", "AuthenticationPolicy")).toMatch(
+      /method\s+AuthenticationMethod\s+@default\(invite_link_with_identifier\)/
     );
   });
 
@@ -333,7 +342,7 @@ describe("Prisma schema guardrails", () => {
     expect(values).not.toContain("admin_login_failed");
     expect(values).not.toContain("admin_step_up_success");
     expect(values).not.toContain("admin_step_up_failed");
-    expect(block("model", "SecurityEvent")).toContain("actorType         String");
+    expect(block("model", "SecurityEvent")).toMatch(/actorType\s+String/);
   });
 
   it("keeps migration SQL aligned with anonymous voting and token guardrails", () => {

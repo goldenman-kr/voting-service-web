@@ -25,6 +25,7 @@ import {
   updateElectionQuestionsAndOptionsAction,
   type AdminActionState
 } from "../../server/elections/admin-actions";
+import type { ManagedVoterRegistrySummary } from "../../server/voter-registries/admin-view";
 
 const initialState: AdminActionState = { ok: false };
 
@@ -132,7 +133,7 @@ function previewRowsFromText(text: string): ParsedVoterRegistryRow[] {
   return parseVoterRegistryTextRows(text).slice(0, 20);
 }
 
-function VoterRegistryFileImportControl({
+export function VoterRegistryFileImportControl({
   rows,
   onRowsChange,
   disabled
@@ -244,7 +245,11 @@ function VoterRegistryFileImportControl({
   );
 }
 
-export function CreateElectionWizardForm() {
+export function CreateElectionWizardForm({
+  managedRegistries = []
+}: {
+  managedRegistries?: readonly ManagedVoterRegistrySummary[];
+}) {
   const [state, action, pending] = useActionState(createElectionWizardAction, initialState);
   const [currentStep, setCurrentStep] = useState(0);
   const [title, setTitle] = useState("");
@@ -257,6 +262,10 @@ export function CreateElectionWizardForm() {
     { id: 2, title: "", description: "" }
   ]);
   const [voterRows, setVoterRows] = useState("");
+  const [registryMode, setRegistryMode] = useState<"existing" | "manual">(
+    managedRegistries.length > 0 ? "existing" : "manual"
+  );
+  const [managedRegistryId, setManagedRegistryId] = useState(managedRegistries[0]?.id ?? "");
 
   const filledOptions = useMemo(
     () => options.filter((option) => option.title.trim().length > 0),
@@ -264,7 +273,8 @@ export function CreateElectionWizardForm() {
   );
   const isStepOneComplete = Boolean(title.trim() && electionType && startsAt && endsAt && new Date(endsAt) > new Date(startsAt));
   const isStepTwoComplete = filledOptions.length >= 2;
-  const isStepThreeComplete = rowsToVoterCount(voterRows) > 0;
+  const isStepThreeComplete =
+    registryMode === "existing" ? Boolean(managedRegistryId) : rowsToVoterCount(voterRows) > 0;
   const canSubmit = isStepOneComplete && isStepTwoComplete && isStepThreeComplete && !pending;
 
   const disabledReason =
@@ -273,7 +283,9 @@ export function CreateElectionWizardForm() {
       : currentStep === 1 && !isStepTwoComplete
         ? "최소 2개의 선택 항목 제목을 입력해 주세요."
         : currentStep === 2 && !isStepThreeComplete
-          ? "선거인 명부를 1명 이상 입력해 주세요."
+          ? registryMode === "existing"
+            ? "연결할 독립 선거인명부를 선택해 주세요."
+            : "선거인 명부를 1명 이상 입력해 주세요."
           : undefined;
 
   function updateOption(id: number, patch: Partial<WizardOption>) {
@@ -458,27 +470,83 @@ export function CreateElectionWizardForm() {
           </p>
         </div>
 
-        <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-950">
-          기존 구조는 투표별 명부만 지원합니다. 공통 명부 불러오기, 새 공통 명부 만들기, 복제는 schema와
-          migration을 포함해 별도 단계에서 구현해야 합니다.
+        <input type="hidden" name="registryMode" value={registryMode} />
+        <div className="grid gap-3 rounded-md border border-slate-200 bg-white p-4">
+          <p className="text-sm font-semibold text-slate-950">명부 연결 방식</p>
+          <label className="flex gap-3 rounded-md border border-slate-200 p-3 text-sm">
+            <input
+              type="radio"
+              name="registryModeChoice"
+              checked={registryMode === "existing"}
+              disabled={managedRegistries.length === 0}
+              onChange={() => setRegistryMode("existing")}
+            />
+            <span>
+              <span className="block font-semibold text-slate-950">기존 독립 명부 선택</span>
+              <span className="mt-1 block text-slate-600">선택한 명부는 이 투표에 snapshot으로 연결되고, 원본 명부는 수정 불가 상태가 됩니다.</span>
+            </span>
+          </label>
+          <label className="flex gap-3 rounded-md border border-slate-200 p-3 text-sm">
+            <input
+              type="radio"
+              name="registryModeChoice"
+              checked={registryMode === "manual"}
+              onChange={() => setRegistryMode("manual")}
+            />
+            <span>
+              <span className="block font-semibold text-slate-950">이 투표에서 직접 입력</span>
+              <span className="mt-1 block text-slate-600">독립 명부가 없거나 새 투표 전용 명부가 필요할 때 사용합니다.</span>
+            </span>
+          </label>
         </div>
 
-        <label className="grid gap-1 text-sm font-medium text-slate-700">
-          명부 입력
-          <textarea
-            name="voterRows"
-            rows={9}
-            value={voterRows}
-            onChange={(event) => setVoterRows(event.target.value)}
-            className="rounded-md border border-slate-300 px-3 py-2"
-            placeholder={"호수번호,이름,식별번호,생년월일\n7,홍길동,0001,900101\n12,김영희,0423,880715"}
-          />
-          <FieldHelp>
-            호수번호는 숫자 1~2자리, 식별번호는 숫자 4자리, 생년월일은 숫자 6자리로 입력합니다.
-            식별번호와 생년월일의 앞자리 0은 그대로 유지합니다.
-          </FieldHelp>
-        </label>
-        <VoterRegistryFileImportControl rows={voterRows} onRowsChange={setVoterRows} disabled={pending} />
+        {registryMode === "existing" ? (
+          <div className="grid gap-3 rounded-md border border-slate-200 bg-white p-4">
+            <label className="grid gap-1 text-sm font-medium text-slate-700">
+              독립 선거인명부
+              <select
+                name="managedRegistryId"
+                value={managedRegistryId}
+                onChange={(event) => setManagedRegistryId(event.target.value)}
+                className="rounded-md border border-slate-300 px-3 py-2"
+              >
+                {managedRegistries.map((registry) => (
+                  <option key={registry.id} value={registry.id}>
+                    {registry.title} · {registry.validRows}명 · {registry.editable ? "수정 가능" : "사용됨"}
+                  </option>
+                ))}
+              </select>
+              <FieldHelp>
+                목록에 없으면 선거인명부 관리에서 새 명부를 만든 뒤 이 화면으로 돌아와 선택합니다.
+              </FieldHelp>
+            </label>
+            <a
+              href="/admin/voter-registries/new"
+              className="w-fit rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700"
+            >
+              새 명부 만들기
+            </a>
+          </div>
+        ) : (
+          <>
+            <label className="grid gap-1 text-sm font-medium text-slate-700">
+              명부 입력
+              <textarea
+                name="voterRows"
+                rows={9}
+                value={voterRows}
+                onChange={(event) => setVoterRows(event.target.value)}
+                className="rounded-md border border-slate-300 px-3 py-2"
+                placeholder={"호수번호,이름,식별번호,생년월일\n7,홍길동,0001,900101\n12,김영희,0423,880715"}
+              />
+              <FieldHelp>
+                호수번호는 숫자 1~2자리, 식별번호는 숫자 4자리, 생년월일은 숫자 6자리로 입력합니다.
+                식별번호와 생년월일의 앞자리 0은 그대로 유지합니다.
+              </FieldHelp>
+            </label>
+            <VoterRegistryFileImportControl rows={voterRows} onRowsChange={setVoterRows} disabled={pending} />
+          </>
+        )}
 
         <div className="rounded-md border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-700">
           <p className="font-semibold text-slate-950">투표 참여 인증 방식</p>
@@ -1008,8 +1076,8 @@ export function EditElectionSetupPolicyForm({ initial }: { initial: EditWizardSe
         <div>
           <h3 className="text-base font-semibold text-slate-950">선거인 명부</h3>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            현재 버전에서는 투표별 선거인 명부를 사용합니다. 작성 중 상태에서는 세부 명부 관리 화면에서
-            선거인을 추가할 수 있습니다. 기존 명부 전체 교체와 공통 명부 재사용은 후속 단계에서 제공합니다.
+            독립 선거인명부는 명부 관리 화면에서 만들고 복제할 수 있습니다. 이 투표에 이미 연결된 명부는
+            아래 세부 화면에서 확인하고, 새 투표 생성 시에는 기존 독립 명부를 선택해 연결할 수 있습니다.
           </p>
         </div>
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
@@ -1023,7 +1091,8 @@ export function EditElectionSetupPolicyForm({ initial }: { initial: EditWizardSe
           </div>
         </dl>
         <p className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm leading-6 text-blue-950">
-          통합 편집 마법사에서는 명부 전체 교체, 기존 선거인 삭제/비활성화, 공통 명부 선택을 제공하지 않습니다.
+          통합 편집 마법사에서는 이미 검수 흐름에 들어간 투표의 명부 교체를 제공하지 않습니다. 변경이 필요하면
+          독립 명부를 복제한 뒤 새 투표에 연결해 주세요.
         </p>
         <a
           href={`/admin/elections/${initial.electionId}/voters`}

@@ -70,7 +70,9 @@ describe("UI guardrails", () => {
     expect(createWizardSource).not.toContain("질문 설명");
     expect(actionSource).not.toContain("[\"questionTitle\", \"질문 제목\"]");
     expect(actionSource).toContain("title: value(formData, \"title\")");
-    expect(formSource).toContain("공통 명부 불러오기, 새 공통 명부 만들기, 복제는 schema와");
+    expect(formSource).toContain("기존 독립 명부 선택");
+    expect(formSource).toContain("managedRegistryId");
+    expect(formSource).toContain("새 명부 만들기");
     expect(formSource).toContain("투표 참여 인증 방식");
     expect(formSource).not.toContain("Ballot ID");
     expect(formSource).not.toContain("Vote ID");
@@ -81,6 +83,7 @@ describe("UI guardrails", () => {
     expect(actionSource).toContain("createQuestion");
     expect(actionSource).toContain("createOption");
     expect(actionSource).toContain("importEligibleVoters");
+    expect(actionSource).toContain("linkManagedRegistryToElection");
   });
 
   it("admin election detail uses friendly sections and draft-only edit entry", () => {
@@ -119,10 +122,11 @@ describe("UI guardrails", () => {
     expect(authPolicyPage).not.toContain("AuthenticationPolicy 설정");
     expect(tableSource).toContain("labelOf(electionTypeLabelMap, election.electionType)");
     expect(shellSource).toContain("/admin/voter-registries");
-    expect(registryPage).toContain("선거인명부 현황");
+    expect(registryPage).toContain("독립 선거인명부");
     expect(registryPage).toContain("새 명부 만들기");
     expect(registryPage).not.toContain("새 투표 만들기");
-    expect(registryPage).toContain("현재 schema에서는 명부가 투표에 직접 연결됩니다");
+    expect(registryPage).toContain("명부 관리");
+    expect(registryPage).toContain("복제하기");
     expect(electionVotersPage).toContain("유효한 선거인 목록");
     expect(electionVotersPage).toContain("호수번호");
     expect(electionVotersPage).toContain("식별번호");
@@ -130,6 +134,45 @@ describe("UI guardrails", () => {
     expect(electionVotersPage).not.toContain("Ballot ID");
     expect(electionVotersPage).not.toContain("Vote ID");
     expect(electionVotersPage).not.toContain("AnonymousBallotGroup ID");
+  });
+
+  it("independent voter registry screens expose create, detail, lock, edit, delete, and clone controls", () => {
+    const listPage = readUiSource("src/app/admin/(protected)/voter-registries/page.tsx");
+    const newPage = readUiSource("src/app/admin/(protected)/voter-registries/new/page.tsx");
+    const detailPage = readUiSource("src/app/admin/(protected)/voter-registries/[registry_id]/page.tsx");
+    const forms = readUiSource("src/components/admin/managed-voter-registry-forms.tsx");
+    const service = readUiSource("src/server/voter-registries/managed-registry-service.ts");
+    const schema = readUiSource("prisma/schema.prisma");
+
+    expect(listPage).toContain("독립 선거인명부");
+    expect(listPage).toContain("/admin/voter-registries/new");
+    expect(listPage).toContain("명부 관리");
+    expect(listPage).toContain("복제하기");
+    expect(listPage).toContain("사용됨 · 수정 불가");
+    expect(listPage).not.toContain("새 투표 만들기");
+    expect(newPage).toContain("새 명부 만들기");
+    expect(newPage).toContain("CreateManagedVoterRegistryForm");
+    expect(detailPage).toContain("선거인 목록");
+    expect(detailPage).toContain("호수번호");
+    expect(detailPage).toContain("식별번호");
+    expect(detailPage).toContain("생년월일");
+    expect(detailPage).toContain("ManagedVoterRowActions");
+    expect(detailPage).toContain("AddManagedVoterDialog");
+    expect(forms).toContain("선거인 추가");
+    expect(forms).toContain("선거인 수정");
+    expect(forms).toContain("삭제");
+    expect(forms).toContain("이미 투표에 사용된 명부는 선거인을 수정하거나 삭제할 수 없습니다.");
+    expect(forms).toContain("VoterRegistryFileImportControl");
+    expect(service).toContain("cloneManagedRegistry");
+    expect(service).toContain("title: `${source.title} (사본)`");
+    expect(service).toContain("linkManagedRegistryToElection");
+    expect(service).toContain("managedRegistryId");
+    expect(service).toContain("lockedAt");
+    expect(schema).toContain("model ManagedVoterRegistry");
+    expect(schema).toContain("model ManagedVoter");
+    expect(detailPage).not.toContain("Ballot ID");
+    expect(detailPage).not.toContain("Vote ID");
+    expect(detailPage).not.toContain("AnonymousBallotGroup ID");
   });
 
   it("admin draft edit route exposes Draft-only conservative question and option editing", () => {
@@ -153,7 +196,7 @@ describe("UI guardrails", () => {
     expect(editPage).toContain("문항/선택 항목 문구를 보수적으로 수정합니다");
     expect(editPage).toContain("EditElectionQuestionsAndOptionsForm");
     expect(editPage).toContain("EditElectionSetupPolicyForm");
-    expect(editPage).toContain("명부 전체 교체와 공통 명부 선택은 후속 단계");
+    expect(editPage).toContain("명부 교체와 인증 방식 수정은 아래 읽기 전용 단계에서");
     expect(formSource).toContain("EditElectionBasicInfoForm");
     expect(formSource).toContain("updateElectionBasicInfoAction");
     expect(formSource).toContain("기본 정보 저장");
@@ -194,7 +237,8 @@ describe("UI guardrails", () => {
     expect(editSetupPolicyFormSource).toContain("후속 제공 예정입니다");
     expect(editSetupPolicyFormSource).toContain("공급자 연동과 보안 정책이 준비되기 전에는 저장할 수 없습니다");
     expect(editSetupPolicyFormSource).toContain("선거인 명부");
-    expect(editSetupPolicyFormSource).toContain("명부 전체 교체, 기존 선거인 삭제/비활성화, 공통 명부 선택을 제공하지 않습니다");
+    expect(editSetupPolicyFormSource).toContain("독립 선거인명부는 명부 관리 화면에서 만들고 복제할 수 있습니다");
+    expect(editSetupPolicyFormSource).toContain("독립 명부를 복제한 뒤 새 투표에 연결해 주세요");
     expect(editSetupPolicyFormSource).toContain("/voters");
     expect(editSetupPolicyFormSource).not.toContain("font-mono");
     expect(editSetupPolicyFormSource).not.toContain("invite_link_with_identifier");
@@ -235,8 +279,11 @@ describe("UI guardrails", () => {
       "src/app/admin/(protected)/elections/[election_id]/edit/page.tsx",
       "src/app/admin/(protected)/elections/[election_id]/results/page.tsx",
       "src/app/admin/(protected)/voter-registries/page.tsx",
+      "src/app/admin/(protected)/voter-registries/new/page.tsx",
+      "src/app/admin/(protected)/voter-registries/[registry_id]/page.tsx",
       "src/app/admin/login/page.tsx",
       "src/components/admin/admin-election-forms.tsx",
+      "src/components/admin/managed-voter-registry-forms.tsx",
       "src/components/admin/admin-election-table.tsx",
       "src/components/admin/admin-login-form.tsx",
       "src/components/admin/admin-operation-forms.tsx",

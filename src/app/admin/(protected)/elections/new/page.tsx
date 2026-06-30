@@ -2,8 +2,16 @@ import { CreateElectionWizardForm } from "../../../../../components/admin/admin-
 import { PageHeader } from "../../../../../components/ui/page-header";
 import { WarningBanner } from "../../../../../components/ui/warning-banner";
 import { AnonymousVotingNotice } from "../../../../../components/ui/anonymous-voting-notice";
+import { getCurrentAdminSessionFromCookies } from "../../../../../server/auth/current-admin";
+import { getPrismaClient } from "../../../../../server/db/prisma";
+import { listManagedVoterRegistrySummaries } from "../../../../../server/voter-registries/admin-view";
 
-export default function NewElectionPage() {
+export default async function NewElectionPage() {
+  const restored = await getCurrentAdminSessionFromCookies();
+  const managedRegistries = restored
+    ? await listManagedVoterRegistrySummaries(getPrismaClient(), restored.session)
+    : [];
+
   return (
     <div className="grid gap-6">
       <PageHeader
@@ -15,7 +23,7 @@ export default function NewElectionPage() {
         투표가 시작되면 문항과 명부 수정이 제한됩니다. 공개된 결과는 직접 덮어쓰지 않고 정정 또는 무효
         절차로만 처리합니다.
       </WarningBanner>
-      <CreateElectionWizardForm />
+      <CreateElectionWizardForm managedRegistries={managedRegistries} />
       <AnonymousVotingNotice audience="admin" />
     </div>
   );

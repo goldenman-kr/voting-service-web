@@ -156,8 +156,8 @@ export default async function AdminElectionEditPage({ params }: Params) {
           <div>
             <h2 className="text-base font-semibold text-slate-950">3 선거인 명부/인증 방식</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              명부 전체 교체와 공통 명부 선택은 후속 단계에서 다룹니다. 지금은 등록 건수와 현재 인증 방식만
-              확인합니다.
+              명부 교체와 인증 방식 수정은 아래 읽기 전용 단계에서 현재 연결 상태를 확인한 뒤 별도 세부 화면에서
+              처리합니다.
             </p>
           </div>
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
@@ -234,7 +234,7 @@ export default async function AdminElectionEditPage({ params }: Params) {
           </div>
           <p className="text-sm leading-6 text-emerald-900">
             현재 통합 편집 화면은 작성 중 상태의 시작 전 투표에서만 동작합니다. 질문/선택 항목 삭제, 순서 변경,
-            명부 전체 교체, 공통 명부, 사진 업로드는 후속 단계에서 별도 정책을 확정한 뒤 제공합니다.
+            사용된 명부 직접 수정, 사진 업로드는 결과 의미와 개인정보 보관 범위에 영향을 주므로 여기서 제공하지 않습니다.
           </p>
         </section>
       ) : null}
