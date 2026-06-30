@@ -116,9 +116,7 @@ export const PERMISSIONS = Object.freeze([
     auditEvent: true
   }),
   p("election.open", "투표 수동 시작", RiskLevel.HIGH, {
-    stepUp: ControlRequirement.YES,
-    reason: ControlRequirement.YES,
-    dualApproval: ControlRequirement.CONDITIONAL,
+    reason: ControlRequirement.CONDITIONAL,
     auditEvent: true
   }),
   p("election.pause", "투표 일시중단", RiskLevel.HIGH, {

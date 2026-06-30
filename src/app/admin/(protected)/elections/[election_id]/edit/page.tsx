@@ -176,7 +176,7 @@ export default async function AdminElectionEditPage({ params }: Params) {
           </dl>
           <div className="flex flex-wrap gap-2">
             <Link
-              href={`/admin/elections/${election.id}/voters`}
+              href={election.voterRegistry?.managedRegistryId ? `/admin/voter-registries/${election.voterRegistry.managedRegistryId}` : `/admin/elections/${election.id}/voters`}
               className="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800"
             >
               선거인 명부 세부 화면으로 이동
@@ -194,10 +194,10 @@ export default async function AdminElectionEditPage({ params }: Params) {
       {showEditForm ? (
         <section className="grid gap-4 rounded-md border border-emerald-200 bg-emerald-50 p-5">
           <div>
-            <h2 className="text-base font-semibold text-emerald-950">검수 요청 전 최종 확인</h2>
+            <h2 className="text-base font-semibold text-emerald-950">투표 시작 전 최종 확인</h2>
             <p className="mt-2 text-sm leading-6 text-emerald-900">
               변경사항이 저장되면 투표를 시작하기 전에 상세 화면에서 제목, 일정, 문항, 선택 항목,
-              선거인 명부를 다시 확인해 주세요. 모든 항목이 준비되면 상세 화면에서 검수 요청을 진행할 수 있습니다.
+              선거인 명부를 다시 확인해 주세요. 모든 항목이 준비되면 상세 화면에서 바로 투표를 시작할 수 있습니다.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -208,10 +208,10 @@ export default async function AdminElectionEditPage({ params }: Params) {
               상세 화면으로 돌아가기
             </Link>
             <Link
-              href={`/admin/elections/${election.id}#pre-review-summary`}
+              href={`/admin/elections/${election.id}#pre-start-summary`}
               className="rounded-md border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-900"
             >
-              검수 요청 전 최종 확인
+              투표 시작 전 최종 확인
             </Link>
             <Link
               href={`/admin/elections/${election.id}/questions`}
@@ -220,7 +220,7 @@ export default async function AdminElectionEditPage({ params }: Params) {
               문항 관리
             </Link>
             <Link
-              href={`/admin/elections/${election.id}/voters`}
+              href={election.voterRegistry?.managedRegistryId ? `/admin/voter-registries/${election.voterRegistry.managedRegistryId}` : `/admin/elections/${election.id}/voters`}
               className="rounded-md border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-900"
             >
               선거인 명부 관리

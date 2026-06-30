@@ -265,7 +265,7 @@ export function CreateElectionWizardForm({
   const [registryMode, setRegistryMode] = useState<"existing" | "manual">(
     managedRegistries.length > 0 ? "existing" : "manual"
   );
-  const [managedRegistryId, setManagedRegistryId] = useState(managedRegistries[0]?.id ?? "");
+  const [managedRegistryId, setManagedRegistryId] = useState("");
 
   const filledOptions = useMemo(
     () => options.filter((option) => option.title.trim().length > 0),
@@ -313,7 +313,16 @@ export function CreateElectionWizardForm({
   }
 
   return (
-    <form action={action} className="grid gap-6">
+    <form
+      action={action}
+      onSubmit={(event) => {
+        if (currentStep < 2) {
+          event.preventDefault();
+          goNext();
+        }
+      }}
+      className="grid gap-6"
+    >
       <WizardStepIndicator currentStep={currentStep} />
 
       <section className={currentStep === 0 ? "grid gap-5" : "hidden"}>
@@ -483,7 +492,7 @@ export function CreateElectionWizardForm({
             />
             <span>
               <span className="block font-semibold text-slate-950">기존 독립 명부 선택</span>
-              <span className="mt-1 block text-slate-600">선택한 명부는 이 투표에 snapshot으로 연결되고, 원본 명부는 수정 불가 상태가 됩니다.</span>
+              <span className="mt-1 block text-slate-600">선택한 명부는 이 투표에 연결됩니다. 투표가 실제 시작되기 전까지 원본 명부를 수정할 수 있습니다.</span>
             </span>
           </label>
           <label className="flex gap-3 rounded-md border border-slate-200 p-3 text-sm">
@@ -510,9 +519,10 @@ export function CreateElectionWizardForm({
                 onChange={(event) => setManagedRegistryId(event.target.value)}
                 className="rounded-md border border-slate-300 px-3 py-2"
               >
+                <option value="">명부를 선택해 주세요</option>
                 {managedRegistries.map((registry) => (
                   <option key={registry.id} value={registry.id}>
-                    {registry.title} · {registry.validRows}명 · {registry.editable ? "수정 가능" : "사용됨"}
+                    {registry.title} · {registry.validRows}명 · {registry.editable ? "수정 가능" : "시작된 투표에서 사용 중"}
                   </option>
                 ))}
               </select>

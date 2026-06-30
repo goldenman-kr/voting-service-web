@@ -17,6 +17,7 @@ export type AdminElectionListItem = Readonly<{
   startsAt: Date;
   endsAt: Date;
   updatedAt: Date;
+  deletedAt?: Date | null;
   questionCount: number;
   eligibleVoterCount: number;
 }>;
@@ -32,6 +33,8 @@ export type AdminElectionDetail = AdminElectionListItem &
       maxCodeResends?: number | null;
     } | null;
     voterRegistry?: {
+      id: string;
+      managedRegistryId?: string | null;
       status: string;
       totalRows: number;
       validRows: number;
@@ -118,6 +121,7 @@ function mapListItem(record: {
   startsAt: Date;
   endsAt: Date;
   updatedAt: Date;
+  deletedAt: Date | null;
   _count: { questions: number; eligibleVoters: number };
 }): AdminElectionListItem {
   return Object.freeze({
@@ -130,6 +134,7 @@ function mapListItem(record: {
     startsAt: record.startsAt,
     endsAt: record.endsAt,
     updatedAt: record.updatedAt,
+    deletedAt: record.deletedAt,
     questionCount: record._count.questions,
     eligibleVoterCount: record._count.eligibleVoters
   });
@@ -141,7 +146,7 @@ export async function listAdminElectionItems(
 ): Promise<AdminElectionListItem[]> {
   const organizationId = assertAdminElectionRead(session);
   const elections = await prisma.election.findMany({
-    where: { organizationId },
+    where: { organizationId, deletedAt: null },
     orderBy: { createdAt: "desc" },
     include: {
       _count: {
@@ -211,7 +216,7 @@ export async function listAdminVoterRegistrySummaries(
   const organizationId = assertAdminElectionRead(session);
   requirePermission(session, "voter_registry.read");
   const registries = await prisma.voterRegistry.findMany({
-    where: { election: { organizationId } },
+    where: { election: { organizationId, deletedAt: null } },
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,
@@ -260,7 +265,7 @@ export async function listAdminEligibleVoterRows(
   const voters = await prisma.eligibleVoter.findMany({
     where: {
       electionId,
-      election: { organizationId },
+      election: { organizationId, deletedAt: null },
       status: "active"
     },
     orderBy: { createdAt: "asc" },
@@ -295,7 +300,7 @@ export async function getAdminElectionDetail(
 ): Promise<AdminElectionDetail | null> {
   const organizationId = assertAdminElectionRead(session);
   const election = await prisma.election.findFirst({
-    where: { id: electionId, organizationId },
+    where: { id: electionId, organizationId, deletedAt: null },
     include: {
       authenticationPolicy: true,
       voterRegistry: true,
@@ -364,6 +369,8 @@ export async function getAdminElectionDetail(
     voterRegistry: election.voterRegistry
       ? {
           status: election.voterRegistry.status,
+          id: election.voterRegistry.id,
+          managedRegistryId: election.voterRegistry.managedRegistryId,
           totalRows: election.voterRegistry.totalRows,
           validRows: election.voterRegistry.validRows
         }

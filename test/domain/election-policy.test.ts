@@ -20,6 +20,8 @@ describe("election state machine", () => {
     expect(canTransitionElectionState(ElectionState.DRAFT, ElectionState.READY_FOR_REVIEW)).toBe(true);
     expect(canTransitionElectionState(ElectionState.READY_FOR_REVIEW, ElectionState.DRAFT)).toBe(true);
     expect(canTransitionElectionState(ElectionState.READY_FOR_REVIEW, ElectionState.APPROVED)).toBe(true);
+    expect(canTransitionElectionState(ElectionState.DRAFT, ElectionState.OPEN)).toBe(true);
+    expect(canTransitionElectionState(ElectionState.APPROVED, ElectionState.OPEN)).toBe(true);
     expect(canTransitionElectionState(ElectionState.APPROVED, ElectionState.SCHEDULED)).toBe(true);
     expect(canTransitionElectionState(ElectionState.SCHEDULED, ElectionState.OPEN)).toBe(true);
     expect(canTransitionElectionState(ElectionState.NOTICE, ElectionState.OPEN)).toBe(true);
@@ -33,7 +35,6 @@ describe("election state machine", () => {
   });
 
   it("blocks invalid direct transitions and throws on assert", () => {
-    expect(canTransitionElectionState(ElectionState.DRAFT, ElectionState.OPEN)).toBe(false);
     expect(canTransitionElectionState(ElectionState.PUBLISHED, ElectionState.CONFIRMED)).toBe(false);
     expect(() =>
       assertElectionTransitionAllowed(ElectionState.PUBLISHED, ElectionState.CONFIRMED)

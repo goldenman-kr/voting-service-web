@@ -1,5 +1,6 @@
 import { parseEnv } from "../../lib/env";
 import { decodeVoterRegistryPayload } from "../../lib/voter-registry-fields";
+import type { ElectionStateValue } from "../../domain/elections/state-machine";
 import type { AdminSession } from "../auth/admin-session";
 import type { PrismaClientLike } from "../db/prisma";
 import { decryptPersonalValue } from "../privacy/personal-data-encryption";
@@ -27,8 +28,18 @@ export type ManagedVoterRow = Readonly<{
   createdAt: Date;
 }>;
 
+export type ManagedVoterRegistryUsedElection = Readonly<{
+  id: string;
+  title: string;
+  state: ElectionStateValue;
+  startsAt: Date;
+  endsAt: Date;
+  linkedAt: Date;
+}>;
+
 export type ManagedVoterRegistryDetail = ManagedVoterRegistrySummary & Readonly<{
   voters: readonly ManagedVoterRow[];
+  usedElections: readonly ManagedVoterRegistryUsedElection[];
 }>;
 
 function organizationScope(session: AdminSession): string {
@@ -39,8 +50,23 @@ function organizationScope(session: AdminSession): string {
   return session.organizationId;
 }
 
-function isUsed(registry: { lockedAt?: Date | null; _count: { electionRegistries: number } }): boolean {
-  return Boolean(registry.lockedAt) || registry._count.electionRegistries > 0;
+function electionHasStarted(election: { state: string; startsAt: Date }, now = new Date()): boolean {
+  return [
+    "open",
+    "paused",
+    "closed",
+    "tallying",
+    "pending_confirmation",
+    "confirmed",
+    "published",
+    "invalidated"
+  ].includes(election.state) || election.startsAt <= now;
+}
+
+function isUsed(registry: {
+  electionRegistries?: readonly { election: { state: string; startsAt: Date } }[];
+}): boolean {
+  return Boolean(registry.electionRegistries?.some((entry) => electionHasStarted(entry.election)));
 }
 
 function displayVoter(row: {
@@ -75,6 +101,17 @@ export async function listManagedVoterRegistrySummaries(
     where: { organizationId },
     orderBy: { updatedAt: "desc" },
     include: {
+      electionRegistries: {
+        where: { election: { deletedAt: null } },
+        select: {
+          election: {
+            select: {
+              state: true,
+              startsAt: true
+            }
+          }
+        }
+      },
       _count: {
         select: { electionRegistries: true }
       }
@@ -109,6 +146,22 @@ export async function getManagedVoterRegistryDetail(
       voters: {
         orderBy: { createdAt: "asc" }
       },
+      electionRegistries: {
+        where: { election: { deletedAt: null } },
+        orderBy: { createdAt: "desc" },
+        select: {
+          createdAt: true,
+          election: {
+            select: {
+              id: true,
+              title: true,
+              state: true,
+              startsAt: true,
+              endsAt: true
+            }
+          }
+        }
+      },
       _count: {
         select: { electionRegistries: true }
       }
@@ -126,6 +179,14 @@ export async function getManagedVoterRegistryDetail(
     editable: !used,
     createdAt: registry.createdAt,
     updatedAt: registry.updatedAt,
-    voters: registry.voters.map(displayVoter)
+    voters: registry.voters.map(displayVoter),
+    usedElections: registry.electionRegistries.map((entry) => ({
+      id: entry.election.id,
+      title: entry.election.title,
+      state: entry.election.state as ElectionStateValue,
+      startsAt: entry.election.startsAt,
+      endsAt: entry.election.endsAt,
+      linkedAt: entry.createdAt
+    }))
   });
 }

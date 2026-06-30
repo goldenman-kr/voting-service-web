@@ -218,7 +218,7 @@ class MvpFlowRepository {
   }
 
   async listElections(organizationId: string) {
-    return [...this.elections.values()].filter((election) => election.organizationId === organizationId);
+    return [...this.elections.values()].filter((election) => election.organizationId === organizationId && !election.deletedAt);
   }
 
   async updateElectionDraft(electionId: string, input: any) {
@@ -227,9 +227,18 @@ class MvpFlowRepository {
     return updated;
   }
 
-  async updateElectionState(electionId: string, state: string) {
+  async updateElectionState(electionId: string, state: string, updates: { startsAt?: Date } = {}) {
     const election = this.elections.get(electionId)!;
-    this.elections.set(electionId, { ...election, state: state as ElectionRecord["state"] });
+    this.elections.set(electionId, { ...election, state: state as ElectionRecord["state"], ...updates });
+  }
+
+  async softDeleteElection(input: { electionId: string; deletedAt: Date; deletionReason?: string }) {
+    const election = this.elections.get(input.electionId)!;
+    this.elections.set(input.electionId, {
+      ...election,
+      deletedAt: input.deletedAt,
+      deletionReason: input.deletionReason
+    });
   }
 
   async createQuestion(electionId: string, input: any) {
@@ -868,8 +877,8 @@ describe("operational exception and audit coverage regression", () => {
     const { election } = await createElectionDraft(draftInput(), context);
     const question = await createQuestion(election.id, { title: "Q", questionType: "single_choice", required: true, displayOrder: 1 }, context);
 
-    await expect(openElection(election.id, { reason: "skip states" }, context)).rejects.toThrow(/현재 투표 상태/);
-    repository.elections.set(election.id, { ...election, state: ElectionState.OPEN });
+    const opened = await openElection(election.id, { reason: "start now" }, context);
+    expect(opened.state).toBe(ElectionState.OPEN);
     await expect(updateOption(election.id, question.id, "missing-option", { label: "blocked" }, context)).rejects.toThrow();
 
     expect(canOverwritePublishedResult()).toBe(false);

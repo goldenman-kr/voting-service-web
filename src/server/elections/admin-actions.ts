@@ -27,6 +27,7 @@ import {
   createQuestion,
   approveElectionReview,
   closeElection,
+  deletePreStartElection,
   importEligibleVoters,
   issueInvitations,
   openElection,
@@ -783,4 +784,21 @@ export async function electionOperationAction(
   revalidatePath(`/admin/elections/${electionId}`);
   revalidatePath(`/admin/elections/${electionId}/voters`);
   return { ok: true, message: electionOperationMessages[operation] };
+}
+
+export async function deletePreStartElectionAction(formData: FormData): Promise<void> {
+  const electionId = value(formData, "electionId");
+  try {
+    await deletePreStartElection(
+      electionId,
+      { reason: value(formData, "reason") || "작성중/시작 전 투표 삭제" },
+      await serviceContext()
+    );
+  } catch {
+    redirect(`/admin/elections/${electionId}`);
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/elections");
+  redirect("/admin/elections");
 }

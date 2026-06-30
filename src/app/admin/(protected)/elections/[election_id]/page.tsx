@@ -2,9 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { MetricCard } from "../../../../../components/admin/admin-cards";
-import { RequestReviewForm } from "../../../../../components/admin/admin-election-forms";
+import { DeletePreStartElectionForm } from "../../../../../components/admin/delete-election-form";
 import { ElectionStateCtaPanel } from "../../../../../components/admin/admin-operation-forms";
-import { StepUpPanel } from "../../../../../components/admin/step-up-panel";
 import { AnonymousVotingNotice } from "../../../../../components/ui/anonymous-voting-notice";
 import { PageHeader } from "../../../../../components/ui/page-header";
 import { WarningBanner } from "../../../../../components/ui/warning-banner";
@@ -62,7 +61,14 @@ export default async function AdminElectionDetailPage({ params }: Params) {
   if (!restored) return null;
   const election = await getAdminElectionDetail(getPrismaClient(), restored.session, (await params).election_id);
   if (!election) notFound();
-  const canRequestReview = election.state === ElectionState.DRAFT;
+  const preStartStates = new Set<ElectionStateValue>([
+    ElectionState.DRAFT,
+    ElectionState.READY_FOR_REVIEW,
+    ElectionState.APPROVED,
+    ElectionState.SCHEDULED,
+    ElectionState.NOTICE
+  ]);
+  const canDelete = preStartStates.has(election.state) && election.startsAt > new Date();
   const canUseExistingDraftEditPages = election.state === ElectionState.DRAFT && isDraftEditPolicyAllowed(election.state);
   const editPolicyAllowed = isDraftEditPolicyAllowed(election.state);
   const optionCount = election.questions.reduce((count, question) => count + question.options.length, 0);
@@ -109,7 +115,9 @@ export default async function AdminElectionDetailPage({ params }: Params) {
       label: "선거인 명부",
       ready: Boolean(election.voterRegistry && election.voterRegistry.validRows > 0),
       help: "투표 대상 선거인이 1명 이상 등록되어야 합니다.",
-      href: `/admin/elections/${election.id}/voters`
+      href: election.voterRegistry?.managedRegistryId
+        ? `/admin/voter-registries/${election.voterRegistry.managedRegistryId}`
+        : `/admin/elections/${election.id}/voters`
     },
     {
       label: "투표 참여 인증 방식",
@@ -118,7 +126,7 @@ export default async function AdminElectionDetailPage({ params }: Params) {
       href: `/admin/elections/${election.id}/edit`
     }
   ];
-  const isReadyForReview = readinessItems.every((item) => item.ready);
+  const isReadyToStart = readinessItems.every((item) => item.ready);
 
   return (
     <div className="grid gap-6">
@@ -143,6 +151,9 @@ export default async function AdminElectionDetailPage({ params }: Params) {
             >
               결과 관리
             </Link>
+            {canDelete ? (
+              <DeletePreStartElectionForm electionId={election.id} title={election.title} />
+            ) : null}
           </>
         }
       />
@@ -165,21 +176,20 @@ export default async function AdminElectionDetailPage({ params }: Params) {
         </WarningBanner>
       )}
 
-      {canRequestReview ? (
-        <section id="pre-review-summary" className="grid gap-4 rounded-md border border-slate-200 bg-white p-5">
+      {preStartStates.has(election.state) ? (
+        <section id="pre-start-summary" className="grid gap-4 rounded-md border border-slate-200 bg-white p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold text-slate-950">검수 요청 전 확인할 항목</h2>
+              <h2 className="text-base font-semibold text-slate-950">투표 시작 전 확인할 항목</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                이 요약은 관리자가 빠르게 점검하기 위한 안내입니다. 실제 검수 요청 가능 여부는 서버 검증이
-                최종 판단합니다.
+                이 요약은 관리자가 바로 투표를 시작하기 전에 확인할 항목입니다. 시작 버튼을 누르면 시작일시가 현재 시각으로 갱신되고 투표가 진행 상태로 전환됩니다.
               </p>
             </div>
             <span className={[
               "rounded-md px-3 py-1 text-sm font-semibold",
-              isReadyForReview ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+              isReadyToStart ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
             ].join(" ")}>
-              {isReadyForReview ? "검수 요청 가능" : "확인 필요 항목 있음"}
+              {isReadyToStart ? "시작 가능" : "확인 필요 항목 있음"}
             </span>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
@@ -200,9 +210,9 @@ export default async function AdminElectionDetailPage({ params }: Params) {
               </div>
             ))}
           </div>
-          {isReadyForReview ? (
+          {isReadyToStart ? (
             <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm leading-6 text-emerald-900">
-              모든 기본 항목이 준비되었습니다. 아래 검수 요청 영역에서 최종 확인 후 검수 요청을 진행할 수 있습니다.
+              모든 기본 항목이 준비되었습니다. 아래 운영 CTA에서 바로 투표를 시작할 수 있습니다.
             </p>
           ) : null}
         </section>
@@ -296,7 +306,7 @@ export default async function AdminElectionDetailPage({ params }: Params) {
         <dl className="grid gap-3 text-sm md:grid-cols-2">
           <div><dt className="font-semibold text-slate-500">초대 준비/발송</dt><dd>{invitationStatus}</dd></div>
           <div><dt className="font-semibold text-slate-500">결과 상태</dt><dd>{resultStatus}</dd></div>
-          <div><dt className="font-semibold text-slate-500">다음에 할 일</dt><dd>{canRequestReview ? "설정을 확인한 뒤 검수 요청을 보낼 수 있습니다." : "아래 상태별 작업 영역에서 가능한 작업만 실행할 수 있습니다."}</dd></div>
+          <div><dt className="font-semibold text-slate-500">다음에 할 일</dt><dd>{preStartStates.has(election.state) ? "설정을 확인한 뒤 바로 투표를 시작할 수 있습니다." : "아래 상태별 작업 영역에서 가능한 작업만 실행할 수 있습니다."}</dd></div>
           <div><dt className="font-semibold text-slate-500">공개 결과</dt><dd>{election.resultSummary.publishedVersionCount > 0 ? `${election.resultSummary.publishedVersionCount}건 공개 기록 있음` : "아직 공개 기록 없음"}</dd></div>
         </dl>
       </section>
@@ -307,7 +317,7 @@ export default async function AdminElectionDetailPage({ params }: Params) {
             <h2 className="text-base font-semibold">편집하기</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               통합 편집 마법사에서 기본 정보, 문항/선택 항목, 투표 참여 인증 방식을 정리할 수 있습니다.
-              선거인 명부 추가 등록은 세부 명부 관리 화면에서 진행합니다.
+              선거인 명부 추가 등록은 연결된 독립 명부 관리 화면에서 진행합니다.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-4">
@@ -317,7 +327,10 @@ export default async function AdminElectionDetailPage({ params }: Params) {
             <Link className="rounded-md border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-800" href={`/admin/elections/${election.id}/questions`}>
               문항/선택 항목 편집
             </Link>
-            <Link className="rounded-md border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-800" href={`/admin/elections/${election.id}/voters`}>
+            <Link
+              className="rounded-md border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-800"
+              href={election.voterRegistry?.managedRegistryId ? `/admin/voter-registries/${election.voterRegistry.managedRegistryId}` : `/admin/elections/${election.id}/voters`}
+            >
               선거인 명부 편집
             </Link>
             <Link className="rounded-md border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-800" href={`/admin/elections/${election.id}/auth-policy`}>
@@ -327,23 +340,6 @@ export default async function AdminElectionDetailPage({ params }: Params) {
         </section>
       ) : null}
 
-      <section className="grid gap-4 rounded-md border border-slate-200 bg-white p-5">
-        <div>
-          <h2 className="text-base font-semibold text-slate-950">검수 요청</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            검수 요청을 보내면 투표 설정을 확정하는 단계로 이동합니다. 검수 이후에는 설정을 수정하려면
-            다시 작성 단계로 되돌리는 절차가 필요할 수 있습니다.
-          </p>
-        </div>
-        <RequestReviewForm electionId={election.id} disabled={!canRequestReview} />
-      </section>
-      {!canRequestReview ? (
-        <WarningBanner title="검수 요청 제한">초안 상태에서만 검수 요청을 보낼 수 있습니다.</WarningBanner>
-      ) : null}
-      <StepUpPanel
-        permissionCodes={["election.approve", "election.schedule", "election.open", "election.pause", "election.resume", "election.close", "invitation.send", "invitation.resend"]}
-        purpose="투표 상태 전환"
-      />
       <ElectionStateCtaPanel electionId={election.id} state={election.state} />
       <AnonymousVotingNotice audience="admin" />
       <section className="grid gap-3 rounded-md border border-slate-200 bg-white p-5">
@@ -352,7 +348,10 @@ export default async function AdminElectionDetailPage({ params }: Params) {
           <Link className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold" href={`/admin/elections/${election.id}/questions`}>
             문항/선택 항목
           </Link>
-          <Link className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold" href={`/admin/elections/${election.id}/voters`}>
+          <Link
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold"
+            href={election.voterRegistry?.managedRegistryId ? `/admin/voter-registries/${election.voterRegistry.managedRegistryId}` : `/admin/elections/${election.id}/voters`}
+          >
             선거인 명부
           </Link>
           <Link className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold" href={`/admin/elections/${election.id}/auth-policy`}>

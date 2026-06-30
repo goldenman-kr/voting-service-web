@@ -42,6 +42,7 @@ export const ROLE_PERMISSIONS = Object.freeze({
     "election.create",
     "election.update",
     "election.delete_draft",
+    "election.open",
     "election.request_review",
     "question.read",
     "question.write",

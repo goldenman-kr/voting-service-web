@@ -153,6 +153,9 @@ async function getScopedElection(
   if (!election) {
     throw notFoundError("election");
   }
+  if (election.deletedAt) {
+    throw notFoundError("election");
+  }
   assertOrganizationScope(context.session, election);
   return election;
 }
@@ -772,11 +775,78 @@ export async function openElection(
   rawInput: unknown,
   context: ElectionServiceContext
 ) {
-  return transitionElectionState(electionId, rawInput, context, ElectionState.OPEN, {
-    permissionCode: "election.open",
-    eventType: "election.opened",
-    changeType: "opened"
+  const input = electionTransitionInputSchema.parse(rawInput);
+  assertPermissionControls(context, "election.open", input.reason);
+  const election = await getScopedElection(context, electionId);
+  try {
+    assertElectionTransitionAllowed(election.state, ElectionState.OPEN);
+  } catch {
+    throw conflictError(`transition denied: ${election.state} -> ${ElectionState.OPEN}`);
+  }
+  const openedAt = nowFrom(context);
+  await context.repository.updateElectionState(electionId, ElectionState.OPEN, { startsAt: openedAt });
+  await context.repository.recordElectionStateHistory({
+    electionId,
+    fromState: election.state,
+    toState: ElectionState.OPEN,
+    requestedById: context.session.userId,
+    approvedById: context.session.userId,
+    reason: input.reason,
+    changeType: "opened",
+    changedAt: openedAt
   });
+  await audit(context, {
+    eventType: "election.opened",
+    targetType: "Election",
+    targetId: electionId,
+    reason: input.reason,
+    beforeSummary: { state: election.state, startsAt: election.startsAt },
+    afterSummary: { state: ElectionState.OPEN, startsAt: openedAt }
+  });
+  return { electionId, state: ElectionState.OPEN };
+}
+
+export async function deletePreStartElection(
+  electionId: string,
+  rawInput: unknown,
+  context: ElectionServiceContext
+) {
+  const input = electionTransitionInputSchema.parse(rawInput);
+  requirePermission(context.session, "election.delete_draft");
+  const election = await getScopedElection(context, electionId);
+  const now = nowFrom(context);
+  const deletableStates: readonly ElectionStateValue[] = [
+    ElectionState.DRAFT,
+    ElectionState.READY_FOR_REVIEW,
+    ElectionState.APPROVED,
+    ElectionState.SCHEDULED,
+    ElectionState.NOTICE
+  ];
+  if (!deletableStates.includes(election.state) || election.startsAt <= now) {
+    throw conflictError(`delete denied in ${election.state}`);
+  }
+  await context.repository.softDeleteElection({
+    electionId,
+    deletedAt: now,
+    deletionReason: input.reason || "관리자 시작 전 삭제"
+  });
+  await context.repository.recordElectionChangeHistory({
+    electionId,
+    changedArea: "election",
+    beforeSummary: { state: election.state, startsAt: election.startsAt },
+    afterSummary: { deletedAt: now },
+    changedById: context.session.userId,
+    changedAt: now
+  });
+  await audit(context, {
+    eventType: "election.deleted",
+    targetType: "Election",
+    targetId: electionId,
+    reason: input.reason,
+    beforeSummary: { state: election.state, startsAt: election.startsAt },
+    afterSummary: { deletedAt: now }
+  });
+  return { electionId, deletedAt: now };
 }
 
 export async function pauseElection(

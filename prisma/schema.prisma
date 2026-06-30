@@ -548,6 +548,8 @@ model Election {
   startsAt               DateTime                  @map("starts_at") @db.Timestamptz(6)
   endsAt                 DateTime                  @map("ends_at") @db.Timestamptz(6)
   timezone               String                    @default("Asia/Seoul")
+  deletedAt              DateTime?                 @map("deleted_at") @db.Timestamptz(6)
+  deletionReason         String?                   @map("deletion_reason") @db.Text
   createdAt              DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt              DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
   organization           Organization              @relation(fields: [organizationId], references: [id])
@@ -579,6 +581,7 @@ model Election {
   userRoles              UserRole[]
 
   @@index([organizationId, state])
+  @@index([organizationId, deletedAt])
   @@index([startsAt, endsAt])
   @@map("elections")
 }

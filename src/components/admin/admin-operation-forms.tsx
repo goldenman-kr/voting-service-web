@@ -64,7 +64,7 @@ function ElectionOperationForm({
     <form action={action} className="grid gap-3 rounded-md border border-slate-200 bg-white p-4">
       <input type="hidden" name="electionId" value={electionId} />
       <input type="hidden" name="operation" value={operation} />
-      <ReasonBox required={reasonRequired} />
+      {reasonRequired ? <ReasonBox required /> : null}
       <ActionMessage state={state} />
       <button
         type="submit"
@@ -85,38 +85,32 @@ export function ElectionStateCtaPanel({
   state: ElectionStateValue;
 }) {
   const operations: OperationButton[] =
-    state === ElectionState.READY_FOR_REVIEW
-      ? [{ operation: "approve", label: "검수 승인", reasonRequired: true }]
-      : state === ElectionState.APPROVED
+    state === ElectionState.DRAFT ||
+    state === ElectionState.READY_FOR_REVIEW ||
+    state === ElectionState.APPROVED ||
+    state === ElectionState.SCHEDULED ||
+    state === ElectionState.NOTICE
+      ? [{ operation: "open", label: "투표 시작", reasonRequired: false }]
+      : state === ElectionState.OPEN
         ? [
-            { operation: "schedule", label: "예약 상태 전환", reasonRequired: false },
-            { operation: "prepare_invitations", label: "초대 준비", reasonRequired: true }
+            { operation: "pause", label: "일시중단", reasonRequired: true },
+            { operation: "close", label: "종료", reasonRequired: true },
+            { operation: "resend_invitations", label: "초대 재발송", reasonRequired: true }
           ]
-        : state === ElectionState.SCHEDULED || state === ElectionState.NOTICE
+        : state === ElectionState.PAUSED
           ? [
-              { operation: "open", label: "투표 시작", reasonRequired: true },
-              { operation: "send_invitations", label: "초대 발송", reasonRequired: true }
+              { operation: "resume", label: "재개", reasonRequired: true },
+              { operation: "close", label: "종료", reasonRequired: true },
+              { operation: "resend_invitations", label: "초대 재발송", reasonRequired: true }
             ]
-          : state === ElectionState.OPEN
-            ? [
-                { operation: "pause", label: "일시중단", reasonRequired: true },
-                { operation: "close", label: "종료", reasonRequired: true },
-                { operation: "resend_invitations", label: "초대 재발송", reasonRequired: true }
-              ]
-            : state === ElectionState.PAUSED
-              ? [
-                  { operation: "resume", label: "재개", reasonRequired: true },
-                  { operation: "close", label: "종료", reasonRequired: true },
-                  { operation: "resend_invitations", label: "초대 재발송", reasonRequired: true }
-                ]
-              : [];
+          : [];
 
   return (
     <section className="grid gap-4 rounded-md border border-slate-200 bg-white p-5">
       <div>
         <h2 className="text-base font-semibold text-slate-950">운영 CTA</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          표시된 작업만 현재 상태에서 실행할 수 있습니다. 위험 작업은 추가 확인 권한이 필요합니다.
+          표시된 작업만 현재 상태에서 실행할 수 있습니다. 투표 시작은 현재 시각으로 시작일시를 갱신하고 즉시 진행 상태로 전환합니다.
         </p>
       </div>
       {operations.length > 0 ? (

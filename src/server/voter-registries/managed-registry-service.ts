@@ -79,13 +79,28 @@ async function assertEditableRegistry(
   const organizationId = organizationIdFor(session);
   const registry = await prisma.managedVoterRegistry.findFirst({
     where: { id: registryId, organizationId },
-    include: { _count: { select: { electionRegistries: true } } }
+    include: {
+      electionRegistries: {
+        select: {
+          election: {
+            select: {
+              state: true,
+              startsAt: true
+            }
+          }
+        }
+      }
+    }
   });
   if (!registry) {
     return { ok: false as const, message: "명부를 찾을 수 없습니다." };
   }
-  if (registry.lockedAt || registry._count.electionRegistries > 0) {
-    return { ok: false as const, message: "이미 투표에 사용된 명부는 수정할 수 없습니다." };
+  const lockedByStartedElection = registry.electionRegistries.some((entry) =>
+    ["open", "paused", "closed", "tallying", "pending_confirmation", "confirmed", "published", "invalidated"].includes(entry.election.state) ||
+    entry.election.startsAt <= new Date()
+  );
+  if (lockedByStartedElection) {
+    return { ok: false as const, message: "이미 시작된 투표에서 사용 중인 명부는 수정할 수 없습니다." };
   }
   return { ok: true as const, registry };
 }
@@ -103,6 +118,73 @@ async function refreshCounts(prisma: PrismaClientLike, registryId: string): Prom
       status: validRows > 0 ? "validated" : "draft"
     }
   });
+}
+
+async function syncEditableElectionSnapshots(prisma: PrismaClientLike, registryId: string): Promise<void> {
+  const now = new Date();
+  const source = await prisma.managedVoterRegistry.findUnique({
+    where: { id: registryId },
+    include: {
+      voters: { where: { status: "active" } },
+      electionRegistries: {
+        where: {
+          election: {
+            deletedAt: null,
+            startsAt: { gt: now },
+            state: { in: ["draft", "ready_for_review", "approved", "scheduled", "notice"] }
+          }
+        },
+        select: {
+          id: true,
+          electionId: true
+        }
+      }
+    }
+  });
+  if (!source || source.electionRegistries.length === 0) return;
+
+  for (const registry of source.electionRegistries) {
+    await prisma.$transaction(async (tx) => {
+      await tx.eligibleVoter.updateMany({
+        where: { electionId: registry.electionId },
+        data: { status: "disabled" }
+      });
+      for (const voter of source.voters) {
+        await tx.eligibleVoter.upsert({
+          where: {
+            electionId_externalIdentifierHmac: {
+              electionId: registry.electionId,
+              externalIdentifierHmac: voter.externalIdentifierHmac
+            }
+          },
+          create: {
+            electionId: registry.electionId,
+            voterRegistryId: registry.id,
+            nameEncrypted: voter.nameEncrypted,
+            phoneEncrypted: voter.phoneEncrypted,
+            externalIdentifierEncrypted: voter.externalIdentifierEncrypted,
+            externalIdentifierHmac: voter.externalIdentifierHmac,
+            status: "active"
+          },
+          update: {
+            voterRegistryId: registry.id,
+            nameEncrypted: voter.nameEncrypted,
+            phoneEncrypted: voter.phoneEncrypted,
+            externalIdentifierEncrypted: voter.externalIdentifierEncrypted,
+            status: "active"
+          }
+        });
+      }
+      await tx.voterRegistry.update({
+        where: { id: registry.id },
+        data: {
+          totalRows: source.voters.length,
+          validRows: source.voters.length,
+          status: source.voters.length > 0 ? "validated" : "draft"
+        }
+      });
+    });
+  }
 }
 
 export async function createManagedRegistry({
@@ -189,6 +271,7 @@ export async function addManagedVoter({
     }
   });
   await refreshCounts(prisma, registryId);
+  await syncEditableElectionSnapshots(prisma, registryId);
   return { ok: true, message: "선거인을 추가했습니다." };
 }
 
@@ -237,6 +320,7 @@ export async function updateManagedVoter({
     }
   });
   await refreshCounts(prisma, registryId);
+  await syncEditableElectionSnapshots(prisma, registryId);
   return { ok: true, message: "선거인 정보를 수정했습니다." };
 }
 
@@ -264,6 +348,7 @@ export async function deleteManagedVoter({
     data: { status: "disabled" }
   });
   await refreshCounts(prisma, registryId);
+  await syncEditableElectionSnapshots(prisma, registryId);
   return { ok: true, message: "선거인을 명부에서 제외했습니다." };
 }
 
@@ -340,7 +425,7 @@ export async function linkManagedRegistryToElection({
       create: {
         electionId,
         managedRegistryId: registryId,
-        status: "locked",
+        status: "validated",
         sourceType: "managed",
         totalRows: source.voters.length,
         validRows: source.voters.length,
@@ -348,7 +433,7 @@ export async function linkManagedRegistryToElection({
       },
       update: {
         managedRegistryId: registryId,
-        status: "locked",
+        status: "validated",
         sourceType: "managed",
         totalRows: source.voters.length,
         validRows: source.voters.length,
@@ -367,10 +452,6 @@ export async function linkManagedRegistryToElection({
         status: "active"
       })),
       skipDuplicates: true
-    });
-    await tx.managedVoterRegistry.update({
-      where: { id: registryId },
-      data: { lockedAt: source.lockedAt ?? new Date(), status: "locked" }
     });
   });
   return { ok: true, message: "선거인 명부를 투표에 연결했습니다." };

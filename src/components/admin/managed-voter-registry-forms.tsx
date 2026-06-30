@@ -155,7 +155,7 @@ export function AddManagedVoterDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(addManagedVoterAction, initialState);
-  const disabledReason = "이미 투표에 사용된 명부는 선거인을 추가할 수 없습니다.";
+  const disabledReason = "이미 시작된 투표에서 사용 중인 명부는 선거인을 추가할 수 없습니다.";
 
   return (
     <>
@@ -212,7 +212,7 @@ export function ManagedVoterRowActions({
 }) {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(updateManagedVoterAction, initialState);
-  const disabledReason = "이미 투표에 사용된 명부는 선거인을 수정하거나 삭제할 수 없습니다.";
+  const disabledReason = "이미 시작된 투표에서 사용 중인 명부는 선거인을 수정하거나 삭제할 수 없습니다.";
 
   function confirmDelete(event: FormEvent<HTMLFormElement>) {
     if (!window.confirm("선택한 선거인을 명부에서 제외할까요?")) {

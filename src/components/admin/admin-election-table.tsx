@@ -4,6 +4,7 @@ import type { ElectionStateValue } from "../../domain/elections/state-machine";
 import { ElectionState } from "../../guardrails/index.js";
 import { electionTypeLabelMap, labelOf } from "../../lib/ui/election-labels";
 import type { AdminElectionListItem } from "../../server/elections/admin-election-view";
+import { DeletePreStartElectionForm } from "./delete-election-form";
 import { EmptyState } from "../ui/empty-state";
 import { StatusBadge } from "../ui/status-badge";
 
@@ -65,9 +66,14 @@ export function AdminElectionTable({ elections }: { elections: readonly AdminEle
               <td className="px-4 py-4">{election.eligibleVoterCount}</td>
               <td className="px-4 py-4 text-slate-600">{formatDate(election.updatedAt)}</td>
               <td className="px-4 py-4">
-                <Link href={`/admin/elections/${election.id}`} className="font-semibold text-blue-700 hover:text-blue-900">
-                  상세
-                </Link>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link href={`/admin/elections/${election.id}`} className="font-semibold text-blue-700 hover:text-blue-900">
+                    상세
+                  </Link>
+                  {canDeletePreStartElection(election) ? (
+                    <DeletePreStartElectionForm electionId={election.id} title={election.title} compact />
+                  ) : null}
+                </div>
               </td>
             </tr>
           ))}
@@ -84,6 +90,10 @@ const setupStates = new Set<ElectionStateValue>([
   ElectionState.SCHEDULED,
   ElectionState.NOTICE
 ]);
+
+function canDeletePreStartElection(election: AdminElectionListItem): boolean {
+  return setupStates.has(election.state) && election.startsAt > new Date();
+}
 
 const activeStates = new Set<ElectionStateValue>([ElectionState.OPEN, ElectionState.PAUSED]);
 
