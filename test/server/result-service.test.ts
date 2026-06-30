@@ -438,6 +438,7 @@ describe("result tally service", () => {
     expect(result.sourceRule).toContain("is_current=true");
     expect(result.items.find((item) => item.optionId === "option-a")?.voteCount).toBe(1);
     expect(result.items.find((item) => item.optionId === "option-b")?.voteCount).toBe(1);
+    expect(result.items.find((item) => item.displayLabel === "기권")?.voteCount).toBe(10);
     expect(repository.election.state).toBe(ElectionState.PENDING_CONFIRMATION);
     expect(repository.stateHistory.map((history) => history.toState)).toEqual([
       ElectionState.TALLYING,
@@ -459,7 +460,7 @@ describe("result tally service", () => {
 });
 
 describe("result version and publication service", () => {
-  it("runs result screen operations without step-up while keeping permission and reason checks", async () => {
+  it("runs result screen operations without step-up or reason input while keeping permission checks", async () => {
     const repository = new InMemoryResultRepository();
     const auditRecorder = new InMemoryAuditRecorder();
     const context = {
@@ -470,12 +471,12 @@ describe("result version and publication service", () => {
     };
 
     await tallyElectionResult("election-1", {}, context);
-    await confirmResult("election-1", { reason: "review complete" }, context);
-    await publishResult("election-1", { reason: "publish approved", notice: "official" }, context);
-    await requestCorrection("election-1", { reason: "published typo", notice: "correction requested" }, context);
+    await confirmResult("election-1", {}, context);
+    await publishResult("election-1", { notice: "official" }, context);
+    await requestCorrection("election-1", { notice: "correction requested" }, context);
     const invalidated = await invalidateElectionResult(
       "election-1",
-      { reason: "material error", notice: "voided" },
+      { notice: "voided" },
       context
     );
 
@@ -494,7 +495,7 @@ describe("result version and publication service", () => {
     expect(repository.versions).toHaveLength(1);
   });
 
-  it("publishes without overwriting results and applies small anonymous result masking", async () => {
+  it("publishes without overwriting results and shows every anonymous result count", async () => {
     const { repository, context } = createContext();
     repository.eligibleVoterCount = 8;
     await tallyElectionResult("election-1", {}, context);
@@ -507,9 +508,10 @@ describe("result version and publication service", () => {
     );
 
     expect(published.result_version.status).toBe("published");
-    expect(published.privacy.canPublishCounts).toBe(false);
-    const previewItems = published.public_result_preview.items as Array<{ masked?: boolean }>;
-    expect(previewItems.every((item) => item.masked === true)).toBe(true);
+    expect(published.result_version.notice).toBe("official");
+    expect(published.privacy.canPublishCounts).toBe(true);
+    const previewItems = published.public_result_preview.items as Array<{ masked?: boolean; vote_count?: number }>;
+    expect(previewItems.every((item) => item.masked === false && typeof item.vote_count === "number")).toBe(true);
     expect(repository.election.state).toBe(ElectionState.PUBLISHED);
     expect(repository.results).toHaveLength(1);
   });
@@ -557,18 +559,19 @@ describe("result version and publication service", () => {
 });
 
 describe("anonymous result privacy policy", () => {
-  it("blocks count publication below the voter-count threshold", () => {
+  it("allows count publication below the voter-count threshold", () => {
     const evaluation = evaluateAnonymousResultPrivacyRisk({
       votingMode: "anonymous",
       eligibleVoterCount: 9,
       items: [{ questionId: "q1", optionId: "o1", voteCount: 9 }]
     });
 
-    expect(evaluation.canPublishCounts).toBe(false);
-    expect(evaluation.requiredAction).toBe("block_counts");
+    expect(evaluation.canPublishCounts).toBe(true);
+    expect(evaluation.requiredAction).toBe("none");
+    expect(evaluation.maskedResultItems).toEqual([]);
   });
 
-  it("masks option counts below the per-option threshold", () => {
+  it("shows option counts below the per-option threshold", () => {
     const items = [
       { questionId: "q1", optionId: "o1", voteCount: 2 },
       { questionId: "q1", optionId: "o2", voteCount: 8 }
@@ -580,9 +583,9 @@ describe("anonymous result privacy policy", () => {
     });
 
     expect(evaluation.canPublishCounts).toBe(true);
-    expect(evaluation.requiredAction).toBe("mask_counts");
+    expect(evaluation.requiredAction).toBe("none");
     expect(maskSmallGroupResultItems(items, evaluation)).toEqual([
-      expect.objectContaining({ optionId: "o1", masked: true }),
+      expect.objectContaining({ optionId: "o1", masked: false, publicVoteCount: 2 }),
       expect.objectContaining({ optionId: "o2", masked: false, publicVoteCount: 8 })
     ]);
   });
@@ -623,6 +626,7 @@ describe("report exports and public result access", () => {
     const serialized = JSON.stringify(publicResult);
 
     expect(publicResult.result_version.status).toBe("published");
+    expect(publicResult.result_version.notice).toBe("published");
     expect(serialized).not.toContain("ballot");
     expect(serialized).not.toContain("vote-a");
     expect(serialized).not.toContain("anonymousBallotGroup");

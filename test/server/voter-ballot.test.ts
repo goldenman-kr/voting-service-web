@@ -36,6 +36,10 @@ const credentialId = "20000000-0000-4000-8000-000000000001";
 const eligibleVoterId = "30000000-0000-4000-8000-000000000001";
 const sessionHandle = "opaque-voter-session-handle";
 const sessionHash = hashOpaqueHandle(sessionHandle, hmacKey);
+const secondCredentialId = "20000000-0000-4000-8000-000000000002";
+const secondEligibleVoterId = "30000000-0000-4000-8000-000000000002";
+const secondSessionHandle = "second-opaque-voter-session-handle";
+const secondSessionHash = hashOpaqueHandle(secondSessionHandle, hmacKey);
 const questionId = "40000000-0000-4000-8000-000000000001";
 const optionAId = "50000000-0000-4000-8000-000000000001";
 const optionBId = "50000000-0000-4000-8000-000000000002";
@@ -328,6 +332,46 @@ describe("voter anonymous ballot service", () => {
     expect(repository.ballots).toHaveLength(1);
     expect(repository.ballots.filter((ballot) => ballot.isCurrent)).toHaveLength(1);
     expect(repository.ballots[0]).toMatchObject({ isCurrent: true, acceptanceStatus: "accepted" });
+  });
+
+  it("does not reuse a completed ballot group cookie for a different voter on the same browser", async () => {
+    const repository = new InMemoryBallotRepository();
+    const first = await submitAnonymousBallot(repository, answer(optionAId), context());
+
+    repository.session = {
+      ...repository.session,
+      sessionId: "session-2",
+      opaqueHandleHash: secondSessionHash,
+      eligibleVoterId: secondEligibleVoterId,
+      votingCredentialId: secondCredentialId
+    };
+    repository.credential = {
+      id: secondCredentialId,
+      electionId,
+      hasVoted: false,
+      submissionCount: 0
+    };
+
+    const second = await submitAnonymousBallot(
+      repository,
+      answer(optionBId),
+      context({
+        voterSessionHandle: secondSessionHandle,
+        ballotGroupToken: first.ballotGroupCookie!.value,
+        now: new Date("2026-01-01T00:02:00.000Z")
+      })
+    );
+
+    expect(second.ballotGroupCookie?.value).toBeTruthy();
+    expect(repository.groups.size).toBe(2);
+    expect(repository.ballots).toHaveLength(2);
+    expect(repository.ballots.every((ballot) => ballot.isCurrent && ballot.acceptanceStatus === "accepted")).toBe(true);
+    expect(repository.ballots.map((ballot) => ballot.anonymousBallotGroupId)).toEqual([
+      expect.any(String),
+      expect.any(String)
+    ]);
+    expect(repository.ballots[0].anonymousBallotGroupId).not.toBe(repository.ballots[1].anonymousBallotGroupId);
+    expect(second.response.current_ballot_replaced).toBe(false);
   });
 
   it("matches official tally eligibility criteria", async () => {

@@ -142,12 +142,12 @@ export const invitationPrepareInputSchema = z.object({
 });
 
 export const invitationSendInputSchema = z.object({
-  reason: z.string().trim().min(1).max(1000),
+  reason: z.string().trim().max(1000).optional(),
   channel: z.enum(["app", "email", "sms", "kakao"]).default("email")
 });
 
 export const invitationResendInputSchema = z.object({
-  reason: z.string().trim().min(1).max(1000),
+  reason: z.string().trim().max(1000).optional(),
   eligibleVoterId: z.string().uuid().optional(),
   channel: z.enum(["app", "email", "sms", "kakao"]).default("email")
 });

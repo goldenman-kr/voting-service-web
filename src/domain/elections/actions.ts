@@ -47,8 +47,8 @@ export const ELECTION_ACTION_POLICY: Readonly<
     [ElectionState.APPROVED]: PolicyDecision.REQUIRES_PERMISSION,
     [ElectionState.SCHEDULED]: PolicyDecision.REQUIRES_PERMISSION,
     [ElectionState.NOTICE]: PolicyDecision.REQUIRES_PERMISSION,
-    [ElectionState.OPEN]: PolicyDecision.REQUIRES_REASON,
-    [ElectionState.PAUSED]: PolicyDecision.REQUIRES_REASON
+    [ElectionState.OPEN]: PolicyDecision.REQUIRES_PERMISSION,
+    [ElectionState.PAUSED]: PolicyDecision.REQUIRES_PERMISSION
   }),
   [ElectionAction.SUBMIT_BALLOT]: Object.freeze({
     [ElectionState.OPEN]: PolicyDecision.ALLOWED
@@ -76,7 +76,7 @@ export const ELECTION_ACTION_POLICY: Readonly<
     [ElectionState.CONFIRMED]: PolicyDecision.REQUIRES_DUAL_APPROVAL
   }),
   [ElectionAction.REQUEST_CORRECTION]: Object.freeze({
-    [ElectionState.PUBLISHED]: PolicyDecision.REQUIRES_REASON
+    [ElectionState.PUBLISHED]: PolicyDecision.REQUIRES_PERMISSION
   }),
   [ElectionAction.INVALIDATE_ELECTION]: Object.freeze({
     [ElectionState.OPEN]: PolicyDecision.REQUIRES_DUAL_APPROVAL,

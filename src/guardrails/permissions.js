@@ -116,21 +116,17 @@ export const PERMISSIONS = Object.freeze([
     auditEvent: true
   }),
   p("election.open", "투표 수동 시작", RiskLevel.HIGH, {
-    reason: ControlRequirement.CONDITIONAL,
     auditEvent: true
   }),
   p("election.pause", "투표 일시중단", RiskLevel.HIGH, {
-    reason: ControlRequirement.YES,
     dualApproval: ControlRequirement.CONDITIONAL,
     auditEvent: true
   }),
   p("election.resume", "투표 재개", RiskLevel.HIGH, {
-    reason: ControlRequirement.YES,
     dualApproval: ControlRequirement.CONDITIONAL,
     auditEvent: true
   }),
   p("election.close", "투표 종료/조기 종료", RiskLevel.HIGH, {
-    reason: ControlRequirement.YES,
     dualApproval: ControlRequirement.CONDITIONAL,
     auditEvent: true
   }),
@@ -140,7 +136,6 @@ export const PERMISSIONS = Object.freeze([
     auditEvent: true
   }),
   p("election.invalidate", "투표 무효 처리", RiskLevel.CRITICAL, {
-    reason: ControlRequirement.YES,
     dualApproval: ControlRequirement.YES,
     auditEvent: true
   }),
@@ -168,12 +163,10 @@ export const PERMISSIONS = Object.freeze([
   p("invitation.read", "초대 상태 조회", RiskLevel.MEDIUM),
   p("invitation.send", "초대 발송", RiskLevel.HIGH, {
     stepUp: ControlRequirement.CONDITIONAL,
-    reason: ControlRequirement.YES,
     auditEvent: true
   }),
   p("invitation.resend", "초대 재발송", RiskLevel.MEDIUM, {
     stepUp: ControlRequirement.CONDITIONAL,
-    reason: ControlRequirement.YES,
     auditEvent: true
   }),
   p("invitation.revoke", "초대 취소", RiskLevel.HIGH, {
@@ -198,21 +191,17 @@ export const PERMISSIONS = Object.freeze([
   }),
   p("result.read", "집계 결과 조회", RiskLevel.MEDIUM),
   p("result.tally", "집계 실행", RiskLevel.HIGH, {
-    reason: ControlRequirement.CONDITIONAL,
     auditEvent: true
   }),
   p("result.version.create", "ResultVersion 생성", RiskLevel.HIGH, {
-    reason: ControlRequirement.YES,
     dualApproval: ControlRequirement.CONDITIONAL,
     auditEvent: true
   }),
   p("result.confirm", "결과 확정", RiskLevel.HIGH, {
-    reason: ControlRequirement.YES,
     dualApproval: ControlRequirement.CONDITIONAL,
     auditEvent: true
   }),
   p("result.publish", "결과 공개", RiskLevel.HIGH, {
-    reason: ControlRequirement.YES,
     dualApproval: ControlRequirement.CONDITIONAL,
     auditEvent: true
   }),
@@ -240,11 +229,9 @@ export const PERMISSIONS = Object.freeze([
     auditEvent: true
   }),
   p("result.correct.request", "Published 이후 정정 요청", RiskLevel.HIGH, {
-    reason: ControlRequirement.YES,
     auditEvent: true
   }),
   p("result.correct.approve", "정정 승인/새 버전 준비", RiskLevel.CRITICAL, {
-    reason: ControlRequirement.YES,
     dualApproval: ControlRequirement.YES,
     auditEvent: true
   }),

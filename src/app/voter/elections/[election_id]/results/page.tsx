@@ -1,6 +1,5 @@
 import { ErrorState } from "../../../../../components/ui/error-state";
 import { PageHeader } from "../../../../../components/ui/page-header";
-import { WarningBanner } from "../../../../../components/ui/warning-banner";
 import { VoterSecondaryLink, VoterShell } from "../../../../../components/voter/voter-shell";
 import {
   getCurrentVoterElectionInfo,
@@ -28,6 +27,7 @@ export default async function ListedVoterResultsPage({ params }: Params) {
       </VoterShell>
     );
   }
+  const resultNotice = data.result_version.notice?.trim();
 
   return (
     <VoterShell>
@@ -36,15 +36,18 @@ export default async function ListedVoterResultsPage({ params }: Params) {
         title="공개된 결과"
         description="관리자 확정과 공개 이후 열람할 수 있습니다."
       />
-      <WarningBanner title="소규모 익명투표 제한">
-        재식별 위험이 있는 세부 득표수는 제한되거나 마스킹될 수 있습니다.
-      </WarningBanner>
+      {resultNotice ? (
+        <section className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-950">
+          <h2 className="font-semibold">결과 공지</h2>
+          <p className="mt-1 whitespace-pre-wrap">{resultNotice}</p>
+        </section>
+      ) : null}
       <section className="grid gap-3 rounded-md border border-slate-200 bg-white p-5">
         {data.result.items.map((item, index) => (
           <div key={`${item.display_label ?? "item"}-${index}`} className="flex items-center justify-between">
             <span className="font-medium">{item.display_label ?? "결과 항목"}</span>
             <span className="text-sm text-slate-700">
-              {item.masked ? "소규모 제한" : item.vote_count === undefined ? "공개 제한" : `${item.vote_count}표`}
+              {item.vote_count === undefined ? "비공개" : `${item.vote_count}표`}
             </span>
           </div>
         ))}

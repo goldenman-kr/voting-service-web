@@ -32,8 +32,18 @@ export function AdminElectionTable({ elections }: { elections: readonly AdminEle
   }
 
   return (
-    <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
-      <table className="w-full min-w-[860px] border-collapse text-left text-sm">
+    <div className="overflow-x-auto rounded-md border border-slate-200 bg-white">
+      <table className="w-full min-w-[1120px] table-fixed border-collapse text-left text-sm">
+        <colgroup>
+          <col className="w-[32%]" />
+          <col className="w-[7rem]" />
+          <col className="w-[9rem]" />
+          <col className="w-[13rem]" />
+          <col className="w-[4.5rem]" />
+          <col className="w-[5rem]" />
+          <col className="w-[10rem]" />
+          <col className="w-[7rem]" />
+        </colgroup>
         <thead className="bg-slate-100 text-xs font-semibold uppercase tracking-normal text-slate-600">
           <tr>
             <th className="px-4 py-3">투표</th>
@@ -48,24 +58,37 @@ export function AdminElectionTable({ elections }: { elections: readonly AdminEle
         </thead>
         <tbody className="divide-y divide-slate-200">
           {elections.map((election) => (
-            <tr key={election.id}>
+            <tr key={election.id} className="align-top">
               <td className="px-4 py-4">
-                <p className="font-medium text-slate-950">{election.title}</p>
-                <p className="mt-1 text-xs text-slate-500">{election.description ?? "설명 없음"}</p>
+                <p className="whitespace-normal break-words font-medium leading-6 text-slate-950 [word-break:keep-all]">
+                  {election.title}
+                </p>
+                <p className="mt-1 whitespace-normal break-words text-xs leading-5 text-slate-500 [word-break:keep-all]">
+                  {election.description ?? "설명 없음"}
+                </p>
               </td>
-              <td className="px-4 py-4">
+              <td className="px-4 py-4 whitespace-nowrap">
                 <StatusBadge status={election.state as ElectionStateValue} size="sm" />
               </td>
-              <td className="px-4 py-4">{labelOf(electionTypeLabelMap, election.electionType)}</td>
-              <td className="px-4 py-4 text-slate-600">
-                {formatDate(election.startsAt)}
-                <br />
-                {formatDate(election.endsAt)}
+              <td className="px-4 py-4 whitespace-normal leading-6 [word-break:keep-all]">
+                {labelOf(electionTypeLabelMap, election.electionType)}
               </td>
-              <td className="px-4 py-4">{election.questionCount}</td>
-              <td className="px-4 py-4">{election.eligibleVoterCount}</td>
-              <td className="px-4 py-4 text-slate-600">{formatDate(election.updatedAt)}</td>
-              <td className="px-4 py-4">
+              <td className="px-4 py-4 text-slate-600">
+                <dl className="grid gap-1 leading-6">
+                  <div className="grid grid-cols-[2.5rem_1fr] gap-2">
+                    <dt className="font-semibold text-slate-500">시작</dt>
+                    <dd>{formatDate(election.startsAt)}</dd>
+                  </div>
+                  <div className="grid grid-cols-[2.5rem_1fr] gap-2">
+                    <dt className="font-semibold text-slate-500">종료</dt>
+                    <dd>{formatDate(election.endsAt)}</dd>
+                  </div>
+                </dl>
+              </td>
+              <td className="px-4 py-4 text-center">{election.questionCount}</td>
+              <td className="px-4 py-4 text-center">{election.eligibleVoterCount}</td>
+              <td className="px-4 py-4 whitespace-normal leading-6 text-slate-600 [word-break:keep-all]">{formatDate(election.updatedAt)}</td>
+              <td className="px-4 py-4 whitespace-nowrap">
                 <div className="flex flex-wrap items-center gap-2">
                   <Link href={`/admin/elections/${election.id}`} className="font-semibold text-blue-700 hover:text-blue-900">
                     상세

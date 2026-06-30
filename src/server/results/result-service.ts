@@ -41,7 +41,6 @@ import {
   invalidateElectionInputSchema,
   optionalReasonSchema,
   publishResultInputSchema,
-  reasonRequiredSchema,
   reportExportRequestInputSchema
 } from "./validation";
 
@@ -59,6 +58,8 @@ export type PublicResultContext = Readonly<{
 
 const OFFICIAL_TALLY_SOURCE_RULE =
   "is_current=true; acceptance_status=accepted; server_received_at<=election.ends_at";
+
+const OPERATION_REASON = "관리자 운영 작업";
 
 function nowFrom(context: { now?: Date }): Date {
   return context.now ?? new Date();
@@ -214,10 +215,12 @@ async function safeTransitionElectionState(
 
 function aggregateResultItems(
   questions: readonly TallyQuestionRecord[],
-  ballots: readonly TallyBallotRecord[]
+  ballots: readonly TallyBallotRecord[],
+  eligibleVoterCount: number
 ): ResultItemInput[] {
   const questionById = new Map(questions.map((question) => [question.id, question]));
   const countByKey = new Map<string, ResultItemInput>();
+  const nonVotingCount = Math.max(eligibleVoterCount - ballots.length, 0);
 
   for (const question of questions) {
     if (question.questionType === "free_text") {
@@ -240,8 +243,8 @@ function aggregateResultItems(
     countByKey.set(`${question.id}:abstain`, {
       questionId: question.id,
       optionId: null,
-      voteCount: 0,
-      displayLabel: "abstain"
+      voteCount: nonVotingCount,
+      displayLabel: "기권"
     });
   }
 
@@ -252,11 +255,6 @@ function aggregateResultItems(
         continue;
       }
       if (vote.answerType === "abstain") {
-        const key = `${vote.questionId}:abstain`;
-        const item = countByKey.get(key);
-        if (item) {
-          countByKey.set(key, { ...item, voteCount: item.voteCount + 1 });
-        }
         continue;
       }
       if (vote.answerType === "free_text") {
@@ -280,25 +278,38 @@ function aggregateResultItems(
   return Array.from(countByKey.values());
 }
 
+function isAbstainResultItem(item: Pick<ResultItemInput, "optionId" | "displayLabel">): boolean {
+  return item.optionId === null && (item.displayLabel === "abstain" || item.displayLabel === "기권");
+}
+
+function displayLabelForResultItem(item: Pick<ResultItemInput, "displayLabel">): string | null | undefined {
+  return item.displayLabel === "abstain" ? "기권" : item.displayLabel;
+}
+
 function resultDto(
   result: ResultRecord,
   evaluation?: ResultPrivacyEvaluation,
-  role = "ElectionManager"
+  role = "ElectionManager",
+  nonVotingCount?: number
 ) {
   const items = evaluation
     ? maskSmallGroupResultItems(result.items, evaluation).map((item) => ({
         question_id: item.questionId,
         option_id: item.optionId,
-        display_label: item.displayLabel,
+        display_label: displayLabelForResultItem(item),
         masked: item.masked,
-        vote_count: item.masked ? undefined : item.publicVoteCount
+        vote_count: item.masked
+          ? undefined
+          : isAbstainResultItem(item)
+            ? nonVotingCount ?? item.publicVoteCount
+            : item.publicVoteCount
       }))
     : result.items.map((item) => ({
         question_id: item.questionId,
         option_id: item.optionId,
-        display_label: item.displayLabel,
+        display_label: displayLabelForResultItem(item),
         masked: item.masked,
-        vote_count: item.voteCount
+        vote_count: isAbstainResultItem(item) ? nonVotingCount ?? item.voteCount : item.voteCount
       }));
 
   return sanitizeResponseForRole(
@@ -345,6 +356,17 @@ async function evaluatePrivacyForResult(
   });
 }
 
+async function countNonVotingEligibleVoters(
+  repository: ResultRepository,
+  election: ResultElectionRecord
+): Promise<number> {
+  const [eligibleVoterCount, rawBallots] = await Promise.all([
+    repository.countEligibleVoters(election.id),
+    repository.listBallotsForTally(election.id)
+  ]);
+  return Math.max(eligibleVoterCount - getTallyEligibleBallots(rawBallots, election).length, 0);
+}
+
 export async function tallyElectionResult(
   electionId: string,
   rawInput: unknown,
@@ -356,12 +378,14 @@ export async function tallyElectionResult(
   assertElectionActionAllowed(election, ElectionAction.TALLY_RESULT, input.reason);
 
   await transitionElectionState(context, election, ElectionState.TALLYING, input.reason, "result_tally_started");
-  const [questions, rawBallots] = await Promise.all([
+  const [questions, rawBallots, eligibleVoterCount] = await Promise.all([
     context.repository.listQuestionsWithOptions(electionId),
-    context.repository.listBallotsForTally(electionId)
+    context.repository.listBallotsForTally(electionId),
+    context.repository.countEligibleVoters(electionId)
   ]);
   const tallyEligibleBallots = getTallyEligibleBallots(rawBallots, election);
-  const items = aggregateResultItems(questions, tallyEligibleBallots);
+  const nonVotingCount = Math.max(eligibleVoterCount - tallyEligibleBallots.length, 0);
+  const items = aggregateResultItems(questions, tallyEligibleBallots, eligibleVoterCount);
   const result = await context.repository.createTalliedResult({
     electionId,
     talliedById: context.session.userId,
@@ -389,7 +413,7 @@ export async function tallyElectionResult(
     }
   });
   return {
-    result: resultDto(result),
+    result: resultDto(result, undefined, "ElectionManager", nonVotingCount),
     tally_eligible_ballot_count: tallyEligibleBallots.length,
     election_state: ElectionState.PENDING_CONFIRMATION
   };
@@ -403,9 +427,12 @@ export async function getElectionResult(electionId: string, context: ResultServi
     throw notFoundError("result");
   }
   const latestVersion = await context.repository.findLatestResultVersion(electionId);
-  const evaluation = await evaluatePrivacyForResult(context.repository, election, result);
+  const [evaluation, nonVotingCount] = await Promise.all([
+    evaluatePrivacyForResult(context.repository, election, result),
+    countNonVotingEligibleVoters(context.repository, election)
+  ]);
   return {
-    result: resultDto(result, evaluation),
+    result: resultDto(result, evaluation, "ElectionManager", nonVotingCount),
     latest_version: latestVersion ? versionDto(latestVersion) : null
   };
 }
@@ -415,7 +442,7 @@ export async function confirmResult(
   rawInput: unknown,
   context: ResultServiceContext
 ) {
-  const input = reasonRequiredSchema.parse(rawInput);
+  const input = optionalReasonSchema.parse(rawInput);
   assertPermissionControls(context, "result.confirm", input.reason);
   const election = await getScopedElection(context, electionId);
   assertElectionActionAllowed(election, ElectionAction.CONFIRM_RESULT, input.reason);
@@ -462,7 +489,10 @@ export async function publishResult(
   if (!result || result.id !== version.resultId) {
     throw notFoundError("result");
   }
-  const evaluation = await evaluatePrivacyForResult(context.repository, election, result);
+  const [evaluation, nonVotingCount] = await Promise.all([
+    evaluatePrivacyForResult(context.repository, election, result),
+    countNonVotingEligibleVoters(context.repository, election)
+  ]);
   const published = await context.repository.markResultVersionPublished(
     version.id,
     nowFrom(context),
@@ -488,7 +518,7 @@ export async function publishResult(
   return {
     result_version: versionDto(published),
     privacy: evaluation,
-    public_result_preview: resultDto(result, evaluation, "PublicViewer"),
+    public_result_preview: resultDto(result, evaluation, "PublicViewer", nonVotingCount),
     election_state: ElectionState.PUBLISHED
   };
 }
@@ -516,7 +546,7 @@ export async function requestCorrection(
   const correction = await context.repository.createCorrectionRequest({
     electionId,
     resultVersionId: published.id,
-    reason: input.reason,
+    reason: input.reason || OPERATION_REASON,
     requestedById: context.session.userId
   });
   await audit(context, {
@@ -601,7 +631,7 @@ export async function invalidateElectionResult(
   const invalidation = await context.repository.createInvalidationRecord({
     electionId,
     resultVersionId: published?.id,
-    reason: input.reason,
+    reason: input.reason || OPERATION_REASON,
     requestedById: context.session.userId,
     approvedById: context.session.userId,
     approvedAt: nowFrom(context),
@@ -719,9 +749,12 @@ export async function getPublicElectionResult(electionId: string, context: Publi
   if (!result) {
     throw notFoundError("published result");
   }
-  const evaluation = await evaluatePrivacyForResult(context.repository, election, result);
+  const [evaluation, nonVotingCount] = await Promise.all([
+    evaluatePrivacyForResult(context.repository, election, result),
+    countNonVotingEligibleVoters(context.repository, election)
+  ]);
   return {
     result_version: versionDto(version),
-    result: resultDto(result, evaluation, "PublicViewer")
+    result: resultDto(result, evaluation, "PublicViewer", nonVotingCount)
   };
 }

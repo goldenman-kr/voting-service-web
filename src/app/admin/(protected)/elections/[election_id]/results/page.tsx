@@ -30,23 +30,6 @@ function resultItems(data: unknown): ResultItem[] {
   return result.items.filter((item): item is ResultItem => Boolean(item && typeof item === "object"));
 }
 
-function privacySummary(data: unknown) {
-  if (!data || typeof data !== "object") return null;
-  const result = (data as {
-    result?: {
-      privacy_risk_level?: string;
-      can_publish_counts?: boolean;
-      required_action?: string;
-    };
-  }).result;
-  if (!result) return null;
-  return {
-    riskLevel: result.privacy_risk_level,
-    canPublishCounts: result.can_publish_counts,
-    requiredAction: result.required_action
-  };
-}
-
 export default async function AdminResultsPage({ params }: Params) {
   const restored = await getCurrentAdminSessionFromCookies();
   if (!restored) return null;
@@ -55,7 +38,6 @@ export default async function AdminResultsPage({ params }: Params) {
   if (!election) notFound();
   const resultView = await getAdminResultView(election.id);
   const rows = resultItems(resultView.data);
-  const privacy = privacySummary(resultView.data);
 
   return (
     <div className="grid gap-6">
@@ -68,12 +50,6 @@ export default async function AdminResultsPage({ params }: Params) {
       <WarningBanner title="결과 공개 이후 정책">
         공개된 결과는 조용히 수정하거나 삭제하지 않습니다. 정정은 새 버전과 공지로 처리하고, 중대한 오류는 무효 기록으로 남깁니다.
       </WarningBanner>
-      {privacy?.riskLevel ? (
-        <WarningBanner title="소규모 익명투표 공개 제한">
-          공개 위험도: {privacy.riskLevel}. 득표수 공개 가능 여부: {privacy.canPublishCounts ? "가능" : "제한"}.
-          {privacy.requiredAction ? ` 필요한 조치: ${privacy.requiredAction}` : null}
-        </WarningBanner>
-      ) : null}
       <section className="rounded-md border border-slate-200 bg-white p-5">
         <h2 className="text-base font-semibold">집계 결과</h2>
         {resultView.error ? (
@@ -84,7 +60,7 @@ export default async function AdminResultsPage({ params }: Params) {
               <div key={`${row.display_label ?? "item"}-${index}`} className="flex items-center justify-between rounded-md bg-slate-50 px-4 py-3">
                 <span className="font-medium">{row.display_label ?? "항목"}</span>
                 <span className="text-sm text-slate-700">
-                  {row.masked ? "소규모 제한" : typeof row.vote_count === "number" ? `${row.vote_count}표` : "비공개"}
+                  {typeof row.vote_count === "number" ? `${row.vote_count}표` : "비공개"}
                 </span>
               </div>
             ))}

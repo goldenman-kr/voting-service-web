@@ -242,7 +242,7 @@ async function getOrCreateAnonymousBallotGroup({
   if (context.ballotGroupToken) {
     const tokenHash = hashBallotGroupToken(context.ballotGroupToken, context.hmacKey);
     const existing = await repository.findAnonymousBallotGroupByTokenHash(election.id, tokenHash);
-    if (existing) {
+    if (existing && existing.submissionCount === 0 && !existing.currentBallotId) {
       return { group: existing };
     }
   }

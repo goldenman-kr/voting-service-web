@@ -861,6 +861,7 @@ describe("MVP end-to-end flow with in-memory boundaries", () => {
     expect(tally.tally_eligible_ballot_count).toBe(1);
     expect(published.result_version.status).toBe("published");
     expect(publicResult.result_version.status).toBe("published");
+    expect(publicResult.result_version.notice).toBe("official");
     expect(completion).toMatchObject({ completed: true });
     const serializedPublicResult = JSON.stringify(publicResult);
     expect(serializedPublicResult).not.toContain("ballot");
@@ -1009,13 +1010,13 @@ describe("privacy and UI smoke regression", () => {
     }
   });
 
-  it("applies small anonymous result disclosure restrictions", () => {
+  it("allows small anonymous result counts for election outcome visibility", () => {
     const evaluation = evaluateAnonymousResultPrivacyRisk({
       votingMode: "anonymous",
       eligibleVoterCount: 8,
       items: [{ questionId: "q", optionId: "o", voteCount: 8 }]
     });
-    expect(evaluation.canPublishCounts).toBe(false);
-    expect(evaluation.requiredAction).toBe("block_counts");
+    expect(evaluation.canPublishCounts).toBe(true);
+    expect(evaluation.requiredAction).toBe("none");
   });
 });

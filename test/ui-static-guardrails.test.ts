@@ -364,6 +364,19 @@ describe("UI guardrails", () => {
     expect(ballotSource).toContain("자세히");
   });
 
+  it("voter result pages render the published result notice above counts", () => {
+    const resultSources = [
+      "src/app/voter/results/page.tsx",
+      "src/app/voter/elections/[election_id]/results/page.tsx"
+    ].map(readUiSource);
+
+    for (const source of resultSources) {
+      expect(source).toContain("data.result_version.notice");
+      expect(source).toContain("결과 공지");
+      expect(source.indexOf("결과 공지")).toBeLessThan(source.indexOf("data.result.items.map"));
+    }
+  });
+
   it("voter registry management uses required household identifier fields and local file parsing", () => {
     const formSource = readUiSource("src/components/admin/admin-election-forms.tsx");
     const actionSource = readUiSource("src/server/elections/admin-actions.ts");
@@ -426,5 +439,18 @@ describe("UI guardrails", () => {
     expect(resultsPage).toContain("ResultOperationPanel");
     expect(resultsPage).not.toContain("StepUpPanel");
     expect(resultsPage).toContain("ReportExportSkeleton");
+  });
+
+  it("admin election tables keep Korean words intact and allocate operational columns", () => {
+    const source = readUiSource("src/components/admin/admin-election-table.tsx");
+
+    expect(source).toContain("overflow-x-auto");
+    expect(source).toContain("min-w-[1120px]");
+    expect(source).toContain("table-fixed");
+    expect(source).toContain("<colgroup>");
+    expect(source).toContain("[word-break:keep-all]");
+    expect(source).toContain("whitespace-nowrap");
+    expect(source).toContain("시작</dt>");
+    expect(source).toContain("종료</dt>");
   });
 });

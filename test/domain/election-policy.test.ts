@@ -76,7 +76,7 @@ describe("state-based election actions", () => {
 
   it("keeps correction as a Published-only domain flow, not result overwrite", () => {
     expect(canPerformElectionAction(ElectionState.PUBLISHED, ElectionAction.REQUEST_CORRECTION)).toBe(
-      PolicyDecision.REQUIRES_REASON
+      PolicyDecision.REQUIRES_PERMISSION
     );
     expect(canPerformElectionAction(ElectionState.CONFIRMED, ElectionAction.REQUEST_CORRECTION)).toBe(
       PolicyDecision.DENIED

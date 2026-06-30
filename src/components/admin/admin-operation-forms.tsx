@@ -14,7 +14,6 @@ const initialResultState: ResultActionState = { ok: false };
 type OperationButton = Readonly<{
   operation: string;
   label: string;
-  reasonRequired: boolean;
   notice?: boolean;
 }>;
 
@@ -33,38 +32,20 @@ function ActionMessage({ state }: { state: AdminActionState | ResultActionState 
   );
 }
 
-function ReasonBox({ required = true }: { required?: boolean }) {
-  return (
-    <label className="grid gap-1 text-sm font-medium text-slate-700">
-      사유
-      <textarea
-        name="reason"
-        rows={3}
-        required={required}
-        placeholder="민감정보를 넣지 말고 운영상 필요한 요약만 입력하세요."
-        className="rounded-md border border-slate-300 px-3 py-2"
-      />
-    </label>
-  );
-}
-
 function ElectionOperationForm({
   electionId,
   operation,
-  label,
-  reasonRequired = true
+  label
 }: {
   electionId: string;
   operation: string;
   label: string;
-  reasonRequired?: boolean;
 }) {
   const [state, action, pending] = useActionState(electionOperationAction, initialElectionState);
   return (
     <form action={action} className="grid gap-3 rounded-md border border-slate-200 bg-white p-4">
       <input type="hidden" name="electionId" value={electionId} />
       <input type="hidden" name="operation" value={operation} />
-      {reasonRequired ? <ReasonBox required /> : null}
       <ActionMessage state={state} />
       <button
         type="submit"
@@ -90,18 +71,18 @@ export function ElectionStateCtaPanel({
     state === ElectionState.APPROVED ||
     state === ElectionState.SCHEDULED ||
     state === ElectionState.NOTICE
-      ? [{ operation: "open", label: "투표 시작", reasonRequired: false }]
+      ? [{ operation: "open", label: "투표 시작" }]
       : state === ElectionState.OPEN
         ? [
-            { operation: "pause", label: "일시중단", reasonRequired: true },
-            { operation: "close", label: "종료", reasonRequired: true },
-            { operation: "resend_invitations", label: "초대 재발송", reasonRequired: true }
+            { operation: "pause", label: "일시중단" },
+            { operation: "close", label: "종료" },
+            { operation: "resend_invitations", label: "초대 재발송" }
           ]
         : state === ElectionState.PAUSED
           ? [
-              { operation: "resume", label: "재개", reasonRequired: true },
-              { operation: "close", label: "종료", reasonRequired: true },
-              { operation: "resend_invitations", label: "초대 재발송", reasonRequired: true }
+              { operation: "resume", label: "재개" },
+              { operation: "close", label: "종료" },
+              { operation: "resend_invitations", label: "초대 재발송" }
             ]
           : [];
 
@@ -137,15 +118,15 @@ export function ResultOperationPanel({
 }) {
   const operations: OperationButton[] =
     state === ElectionState.CLOSED
-      ? [{ operation: "tally", label: "결과 집계", reasonRequired: false }]
+      ? [{ operation: "tally", label: "결과 집계" }]
       : state === ElectionState.PENDING_CONFIRMATION
-        ? [{ operation: "confirm", label: "결과 확정", reasonRequired: true }]
+        ? [{ operation: "confirm", label: "결과 확정" }]
         : state === ElectionState.CONFIRMED
-          ? [{ operation: "publish", label: "결과 공개", reasonRequired: true, notice: true }]
+          ? [{ operation: "publish", label: "결과 공개", notice: true }]
           : state === ElectionState.PUBLISHED
             ? [
-                { operation: "request_correction", label: "정정 요청", reasonRequired: true, notice: true },
-                { operation: "invalidate", label: "무효 처리", reasonRequired: true, notice: true }
+                { operation: "request_correction", label: "정정 요청", notice: true },
+                { operation: "invalidate", label: "무효 처리", notice: true }
               ]
             : [];
 
@@ -172,13 +153,11 @@ function ResultOperationForm({
   electionId,
   operation,
   label,
-  reasonRequired,
   notice
 }: {
   electionId: string;
   operation: string;
   label: string;
-  reasonRequired: boolean;
   notice?: boolean;
 }) {
   const [actionState, action, pending] = useActionState(resultOperationAction, initialResultState);
@@ -186,7 +165,6 @@ function ResultOperationForm({
     <form action={action} className="grid gap-3 rounded-md border border-slate-200 p-4">
       <input type="hidden" name="electionId" value={electionId} />
       <input type="hidden" name="operation" value={operation} />
-      <ReasonBox required={reasonRequired} />
       {notice ? (
         <label className="grid gap-1 text-sm font-medium text-slate-700">
           공지 문구

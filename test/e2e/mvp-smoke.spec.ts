@@ -81,10 +81,9 @@ async function expectElectionState(electionId: string, state: string) {
     .toBe(state);
 }
 
-async function submitResultOperation(page: Page, buttonName: string, reason: string, notice?: string) {
+async function submitResultOperation(page: Page, buttonName: string, notice?: string) {
   const form = page.locator("form").filter({ has: page.getByRole("button", { name: buttonName }) }).first();
   await expect(form).toBeVisible();
-  await form.getByLabel("사유").fill(reason);
   const noticeInput = form.getByLabel("공지 문구");
   if (notice && (await noticeInput.count()) > 0) {
     await noticeInput.fill(notice);
@@ -239,16 +238,15 @@ test("admin and voter MVP smoke flow preserves anonymity guardrails", async ({ b
   await expect(adminPage.getByText("Closed").or(adminPage.getByText("마감")).first()).toBeVisible();
 
   await adminPage.goto(`/admin/elections/${electionId}/results`);
-  await completeStepUp(adminPage);
   await submitOperation(adminPage, "결과 집계");
   await expectElectionState(electionId, "pending_confirmation");
   await adminPage.reload();
   await expect(adminPage.getByText("PendingConfirmation").or(adminPage.getByText("확정 대기")).first()).toBeVisible();
-  await submitResultOperation(adminPage, "결과 확정", "E2E 결과 확정");
+  await submitResultOperation(adminPage, "결과 확정");
   await expectElectionState(electionId, "confirmed");
   await adminPage.reload();
   await expect(adminPage.getByText("Confirmed").or(adminPage.getByText("확정됨")).first()).toBeVisible();
-  await submitResultOperation(adminPage, "결과 공개", "E2E 결과 공개", "E2E 결과 공개 공지");
+  await submitResultOperation(adminPage, "결과 공개", "E2E 결과 공개 공지");
   await expectElectionState(electionId, "published");
   await adminPage.reload();
   await expect(adminPage.getByText("Published").or(adminPage.getByText("공개됨")).first()).toBeVisible();
@@ -256,7 +254,7 @@ test("admin and voter MVP smoke flow preserves anonymity guardrails", async ({ b
 
   await voterPage.goto("/voter/results");
   await expect(voterPage.getByRole("heading", { name: "공개된 결과" })).toBeVisible();
-  await expect(voterPage.getByText("소규모 익명투표 제한")).toBeVisible();
+  await expect(voterPage.getByText(/표/).first()).toBeVisible();
   await expectNoForbiddenText(voterPage, [fixture.inviteToken]);
 
   await findElectionByTitle(prisma, fixture.electionTitle);
