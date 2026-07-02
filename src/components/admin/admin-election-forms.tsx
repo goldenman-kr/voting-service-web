@@ -190,8 +190,18 @@ export function VoterRegistryFileImportControl({
 
   return (
     <div className="grid gap-3 rounded-md border border-slate-200 bg-white p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm font-medium text-slate-700">CSV/XLSX 파일 불러오기</span>
+        <a
+          href="/voter-list-sample.csv"
+          download="voter-list-sample.csv"
+          className="rounded-md border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+        >
+          샘플파일 다운로드
+        </a>
+      </div>
       <label className="grid gap-1 text-sm font-medium text-slate-700">
-        CSV/XLSX 파일 불러오기
+        <span className="sr-only">CSV/XLSX 파일 선택</span>
         <input
           type="file"
           accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

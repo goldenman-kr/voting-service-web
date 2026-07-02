@@ -7,12 +7,28 @@ import { getPrismaClient } from "../../../../server/db/prisma";
 import { listManagedVoterRegistrySummaries } from "../../../../server/voter-registries/admin-view";
 import { cloneManagedRegistryAction } from "../../../../server/voter-registries/admin-actions";
 
-function formatDate(date: Date): string {
-  return new Intl.DateTimeFormat("ko-KR", {
+function formatDateTimeParts(date: Date): { date: string; time: string } {
+  const dateText = new Intl.DateTimeFormat("ko-KR", {
     dateStyle: "short",
+    timeZone: "Asia/Seoul"
+  }).format(date);
+
+  const timeText = new Intl.DateTimeFormat("ko-KR", {
     timeStyle: "short",
     timeZone: "Asia/Seoul"
   }).format(date);
+
+  return { date: dateText, time: timeText };
+}
+
+function DateTimeCell({ value }: { value: Date }) {
+  const parts = formatDateTimeParts(value);
+  return (
+    <time dateTime={value.toISOString()} className="grid gap-1 whitespace-nowrap leading-5 text-slate-600">
+      <span>{parts.date}</span>
+      <span className="text-xs text-slate-500">{parts.time}</span>
+    </time>
+  );
 }
 
 export default async function AdminVoterRegistriesPage() {
@@ -37,10 +53,8 @@ export default async function AdminVoterRegistriesPage() {
         <div className="overflow-x-auto rounded-md border border-slate-200 bg-white">
           <table className="w-full min-w-[980px] table-fixed border-collapse text-left text-sm">
             <colgroup>
-              <col className="w-[24%]" />
-              <col className="w-[24%]" />
+              <col className="w-[44%]" />
               <col className="w-[6rem]" />
-              <col className="w-[9rem]" />
               <col className="w-[9rem]" />
               <col className="w-[8rem]" />
               <col className="w-[8rem]" />
@@ -48,10 +62,8 @@ export default async function AdminVoterRegistriesPage() {
             </colgroup>
             <thead className="bg-slate-100 text-xs font-semibold uppercase tracking-normal text-slate-600">
               <tr>
-                <th className="px-4 py-3">명부 제목</th>
-                <th className="px-4 py-3">설명</th>
+                <th className="px-4 py-3">명부</th>
                 <th className="px-4 py-3">선거인 수</th>
-                <th className="px-4 py-3">사용 여부</th>
                 <th className="px-4 py-3">수정 가능 여부</th>
                 <th className="px-4 py-3">생성일</th>
                 <th className="px-4 py-3">수정일</th>
@@ -61,14 +73,15 @@ export default async function AdminVoterRegistriesPage() {
             <tbody className="divide-y divide-slate-200">
               {registries.map((registry) => (
                 <tr key={registry.id} className="align-top">
-                  <td className="px-4 py-4 whitespace-normal break-words font-medium leading-6 text-slate-950 [word-break:keep-all]">
-                    {registry.title}
-                  </td>
-                  <td className="px-4 py-4 whitespace-normal break-words leading-6 text-slate-600 [word-break:keep-all]">
-                    {registry.description || "-"}
+                  <td className="px-4 py-4">
+                    <p className="whitespace-normal break-words font-medium leading-6 text-slate-950 [word-break:keep-all]">
+                      {registry.title}
+                    </p>
+                    <p className="mt-1 whitespace-normal break-words text-xs leading-5 text-slate-500 [word-break:keep-all]">
+                      {registry.description || "설명 없음"}
+                    </p>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">{registry.validRows}/{registry.totalRows}명</td>
-                  <td className="px-4 py-4 whitespace-normal leading-6 [word-break:keep-all]">{registry.used ? "시작된 투표에서 사용 중" : "시작된 투표 없음"}</td>
                   <td className="px-4 py-4 whitespace-normal leading-6 [word-break:keep-all]">
                     {registry.editable ? (
                       <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800">수정 가능</span>
@@ -76,8 +89,8 @@ export default async function AdminVoterRegistriesPage() {
                       <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">시작됨 · 수정 불가</span>
                     )}
                   </td>
-                  <td className="px-4 py-4 whitespace-normal leading-6 text-slate-600 [word-break:keep-all]">{formatDate(registry.createdAt)}</td>
-                  <td className="px-4 py-4 whitespace-normal leading-6 text-slate-600 [word-break:keep-all]">{formatDate(registry.updatedAt)}</td>
+                  <td className="px-4 py-4"><DateTimeCell value={registry.createdAt} /></td>
+                  <td className="px-4 py-4"><DateTimeCell value={registry.updatedAt} /></td>
                   <td className="px-4 py-4 whitespace-nowrap">
                     <div className="flex flex-wrap gap-2">
                       <Link

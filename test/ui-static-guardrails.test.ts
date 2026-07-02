@@ -22,8 +22,11 @@ describe("UI guardrails", () => {
     expect(source).not.toContain(">관리자 메뉴</Link>");
     expect(source).toContain("https://github.com/goldenman-kr/voting-service-web");
     expect(source).toContain("GitHub 저장소 보기");
-    expect(source).toContain("© 2026 Goldenman Korea. All rights reserved.");
-    expect(source).toContain("김은동(mrgold2@naver.com)");
+    expect(source).toContain("flex min-h-screen flex-col");
+    expect(source).toContain("mt-auto border-t");
+    expect(source).toContain("text-right text-sm");
+    expect(source).toContain("© 2026 KRYP. All rights reserved.");
+    expect(source).toContain("온라인 선거시스템 문의: hello@kryp.xyz");
     expect(source).toContain("기술지원: kryp.xyz");
   });
 
@@ -165,7 +168,13 @@ describe("UI guardrails", () => {
     expect(listPage).toContain("시작됨 · 수정 불가");
     expect(listPage).toContain("overflow-x-auto");
     expect(listPage).toContain("table-fixed");
+    expect(listPage).toContain("w-[44%]");
     expect(listPage).toContain("[word-break:keep-all]");
+    expect(listPage).toContain("formatDateTimeParts");
+    expect(listPage).toContain("DateTimeCell");
+    expect(listPage).toContain("whitespace-nowrap leading-5");
+    expect(listPage).not.toContain("사용 여부");
+    expect(listPage).not.toContain("registry.used ? ");
     expect(listPage).not.toContain("새 투표 만들기");
     expect(newPage).toContain("새 명부 만들기");
     expect(newPage).toContain("CreateManagedVoterRegistryForm");
@@ -413,12 +422,20 @@ describe("UI guardrails", () => {
 
   it("voter registry management uses required household identifier fields and local file parsing", () => {
     const formSource = readUiSource("src/components/admin/admin-election-forms.tsx");
+    const sampleCsv = readUiSource("public/voter-list-sample.csv");
+    const dockerfile = readUiSource("Dockerfile");
     const actionSource = readUiSource("src/server/elections/admin-actions.ts");
     const serviceSource = readUiSource("src/server/elections/election-service.ts");
     const validationSource = readUiSource("src/server/elections/validation.ts");
 
     expect(formSource).toContain("호수번호,이름,식별번호,생년월일");
     expect(formSource).toContain("CSV/XLSX 파일 불러오기");
+    expect(formSource).toContain("샘플파일 다운로드");
+    expect(formSource).toContain("href=\"/voter-list-sample.csv\"");
+    expect(formSource).toContain("download=\"voter-list-sample.csv\"");
+    expect(sampleCsv).toBe("호수번호,이름,식별번호,생년월일\n99,홍길동,1234,880101\n");
+    expect(dockerfile).toContain("COPY public ./public");
+    expect(dockerfile).toContain("COPY --from=builder /app/public ./public");
     expect(formSource).toContain("read-excel-file/browser");
     expect(formSource).toContain("파일은 서버에 저장하지 않고 브라우저에서 먼저 읽습니다");
     expect(formSource).toContain("파일 원본은 서버에 저장하지 않습니다");

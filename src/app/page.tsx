@@ -4,7 +4,7 @@ import { PublicNav } from "../components/ui/public-nav";
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-950">
+    <main className="flex min-h-screen flex-col bg-slate-50 text-slate-950">
       <PublicNav />
       <section className="mx-auto grid max-w-6xl gap-8 px-4 py-8 md:py-12">
         <div className="grid gap-6">
@@ -74,10 +74,10 @@ export default function HomePage() {
           </a>
         </article>
       </section>
-      <footer className="border-t border-slate-200 bg-white">
-        <div className="mx-auto grid max-w-6xl gap-2 px-4 py-6 text-sm leading-6 text-slate-600">
-          <p>© 2026 Goldenman Korea. All rights reserved.</p>
-          <p>온라인 선거시스템 담당자: 김은동(mrgold2@naver.com)</p>
+      <footer className="mt-auto border-t border-slate-200 bg-white">
+        <div className="mx-auto grid max-w-6xl gap-2 px-4 py-6 text-right text-sm leading-6 text-slate-600">
+          <p>© 2026 KRYP. All rights reserved.</p>
+          <p>온라인 선거시스템 문의: hello@kryp.xyz</p>
           <p>기술지원: kryp.xyz</p>
         </div>
       </footer>
