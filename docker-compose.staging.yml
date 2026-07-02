@@ -10,7 +10,7 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_NAV_BADGE: ${NEXT_PUBLIC_NAV_BADGE:-}
-    image: voting-service-web:staging
+    image: ${APP_IMAGE:-voting-service-web:staging}
     restart: unless-stopped
     environment:
       NODE_ENV: production
