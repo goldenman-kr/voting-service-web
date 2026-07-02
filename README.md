@@ -96,7 +96,7 @@ Run RBAC seed first, then set one-time bootstrap environment values in your loca
 
 Required values:
 
-- `BOOTSTRAP_ADMIN_EMAIL`
+- `BOOTSTRAP_ADMIN_USERNAME`
 - `BOOTSTRAP_ADMIN_PASSWORD`
 - `BOOTSTRAP_TENANT_NAME`
 - `BOOTSTRAP_ORGANIZATION_NAME`

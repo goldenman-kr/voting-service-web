@@ -78,10 +78,10 @@ Command compatibility check:
 | `SESSION_SECRET` | Web Service secret/env variable | Admin/voter session signing/secrecy | Runtime | Staging-only random value |
 | `ENCRYPTION_KEY` | Web Service secret/env variable | Current field-encryption placeholder | Runtime | Staging-only random value; future KMS replacement |
 | `HMAC_KEY` | Web Service secret/env variable | Token/hash digest key | Runtime | Staging-only random value; never reuse production |
-| `BOOTSTRAP_ADMIN_EMAIL` | Temporary Web Service env or one-off job env | First admin bootstrap | Bootstrap only | Remove after bootstrap |
+| `BOOTSTRAP_ADMIN_USERNAME` | Temporary Web Service env or one-off job env | First admin bootstrap | Bootstrap only | Remove after bootstrap |
 | `BOOTSTRAP_ADMIN_PASSWORD` | Temporary Web Service env or one-off job env | First admin bootstrap password | Bootstrap only | Remove after bootstrap; never document value |
 | `BOOTSTRAP_CONFIRM` | Temporary Web Service env or one-off job env | Confirms production-mode bootstrap | Bootstrap only | Fixed value: `CREATE_INITIAL_ADMIN`; remove after bootstrap |
-| Email provider env | Do not set | Future delivery adapter | Disabled | Keep absent |
+| Username provider env | Do not set | Future delivery adapter | Disabled | Keep absent |
 | SMS provider env | Do not set | Future delivery adapter | Disabled | Keep absent |
 | Kakao provider env | Do not set | Future delivery adapter | Disabled | Keep absent |
 | KMS env | Do not set | Future field encryption adapter | Disabled | Keep absent |
@@ -125,7 +125,7 @@ NODE_ENV=production npm run admin:bootstrap
 ```
 
 5. Run bootstrap a second time and confirm it refuses duplicate initial admin creation.
-6. Remove `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD`, `BOOTSTRAP_CONFIRM`, and other bootstrap-only env values.
+6. Remove `BOOTSTRAP_ADMIN_USERNAME`, `BOOTSTRAP_ADMIN_PASSWORD`, `BOOTSTRAP_CONFIRM`, and other bootstrap-only env values.
 7. Redeploy or restart the Web Service if env removal does not automatically apply.
 
 ### Staging Smoke Order
@@ -217,7 +217,7 @@ Complete these checks before creating any Render resource:
 - Render account access is limited to trusted operators.
 - No production secret is used for staging.
 - No production database URL is available to the staging operator shell.
-- External email/SMS/Kakao/external identity providers remain disabled.
+- External username/SMS/Kakao/external identity providers remain disabled.
 - Legal-effect voting remains disabled.
 - `docs/staging-deployment-plan.md` and this runbook have both been reviewed.
 
@@ -308,7 +308,7 @@ Bootstrap-only values:
 
 | Name | Value policy |
 | --- | --- |
-| `BOOTSTRAP_ADMIN_EMAIL` | Initial staging admin email |
+| `BOOTSTRAP_ADMIN_USERNAME` | Initial staging admin username |
 | `BOOTSTRAP_ADMIN_PASSWORD` | Strong temporary password; remove after bootstrap |
 | `BOOTSTRAP_TENANT_NAME` | Staging tenant name |
 | `BOOTSTRAP_ORGANIZATION_NAME` | Staging organization name |
@@ -317,7 +317,7 @@ Bootstrap-only values:
 
 Keep these disabled or absent:
 
-- email provider keys
+- username provider keys
 - SMS provider keys
 - Kakao provider keys
 - external identity provider keys

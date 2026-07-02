@@ -43,7 +43,7 @@ async function expectNoForbiddenText(page: Page, extraForbidden: readonly string
 
 async function loginAdmin(page: Page) {
   await page.goto("/admin/login");
-  await page.getByLabel("이메일").fill(fixture.adminEmail);
+  await page.getByLabel("계정명").fill(fixture.adminUsername);
   await page.getByLabel("비밀번호").fill(fixture.adminPassword);
   await page.getByRole("button", { name: "로그인" }).click();
   await expect(page).toHaveURL(/\/admin$/);

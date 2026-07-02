@@ -23,7 +23,7 @@ export APP_URL="http://127.0.0.1:3200"
 export SESSION_SECRET="rehearsal-dummy-session-secret-32chars"
 export ENCRYPTION_KEY="rehearsal-dummy-encryption-key-32chars"
 export HMAC_KEY="rehearsal-dummy-hmac-key-32chars"
-export BOOTSTRAP_ADMIN_EMAIL="rehearsal-admin@example.test"
+export BOOTSTRAP_ADMIN_USERNAME="rehearsal-admin@example.test"
 export BOOTSTRAP_ADMIN_PASSWORD="replace-with-a-local-rehearsal-password"
 export BOOTSTRAP_TENANT_NAME="Rehearsal Tenant"
 export BOOTSTRAP_ORGANIZATION_NAME="Rehearsal Organization"
@@ -187,7 +187,7 @@ Before production migration:
 
 - MFA/WebAuthn is not implemented.
 - KMS-backed field encryption is not implemented.
-- External email/SMS/Kakao/identity providers are not implemented.
+- External username/SMS/Kakao/identity providers are not implemented.
 - PDF/CSV/Excel report file generation is not implemented.
 - Backup/restore automation is not implemented.
 - Production log/APM/access-log redaction is not verified.

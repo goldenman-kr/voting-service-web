@@ -11,14 +11,14 @@ export function AdminLoginForm() {
     setError(null);
     setLoading(true);
     const form = new FormData(event.currentTarget);
-    const email = String(form.get("email") ?? "");
+    const username = String(form.get("username") ?? "");
     const password = String(form.get("password") ?? "");
 
     try {
       const response = await fetch("/api/v1/admin/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ username, password })
       });
       if (!response.ok) {
         setError("인증 정보를 확인할 수 없습니다.");
@@ -35,10 +35,10 @@ export function AdminLoginForm() {
   return (
     <form onSubmit={onSubmit} className="grid gap-4 rounded-md border border-slate-200 bg-white p-5 shadow-sm">
       <label className="grid gap-1 text-sm font-medium text-slate-700">
-        이메일
+        계정명
         <input
-          name="email"
-          type="email"
+          name="username"
+          type="text"
           autoComplete="username"
           required
           className="rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"

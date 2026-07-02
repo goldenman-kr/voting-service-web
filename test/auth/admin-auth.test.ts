@@ -10,7 +10,7 @@ import {
 import {
   assertAdminAuthResultContainsNoSecrets,
   createPasswordStepUpGrant,
-  hashAdminEmail,
+  hashAdminUsername,
   hashAdminOpaqueToken,
   loginAdmin,
   logoutAdmin,
@@ -53,8 +53,8 @@ class InMemoryAdminAuthRepository implements AdminAuthRepository {
     this.users.set(user.id, user);
   }
 
-  async findUserByEmailHash(emailHash: string) {
-    return [...this.users.values()].find((user) => user.emailHash === emailHash) ?? null;
+  async findUserByUsernameHash(usernameHash: string) {
+    return [...this.users.values()].find((user) => user.emailHash === usernameHash) ?? null;
   }
 
   async findUserById(userId: string) {
@@ -148,12 +148,12 @@ async function fixtureRepository() {
     id: "admin-user-1",
     tenantId: "tenant-1",
     organizationId: "org-1",
-    emailHash: hashAdminEmail("admin@example.com", hmacKey),
+    emailHash: hashAdminUsername("admin-owner", hmacKey),
     passwordHash,
     status: "active",
     mfaRequired: true,
     roles: [Role.ORGANIZATION_OWNER],
-    permissions: ["election.read", "election.open", "result.publish"]
+    permissions: ["election.read", "election.open", "result.publish", "report.create"]
   });
   return { repository, password };
 }
@@ -162,7 +162,7 @@ describe("admin password and DB-backed session policy", () => {
   it("verifies scrypt password hashes and rejects wrong passwords generically", async () => {
     const { repository, password } = await fixtureRepository();
     const result = await loginAdmin({
-      email: "admin@example.com",
+      username: "admin-owner",
       password,
       repository,
       context: { hmacKey, now }
@@ -170,7 +170,7 @@ describe("admin password and DB-backed session policy", () => {
     expect(result.session.userId).toBe("admin-user-1");
     await expect(
       loginAdmin({
-        email: "admin@example.com",
+        username: "admin-owner",
         password: "wrong password",
         repository,
         context: { hmacKey, now }
@@ -181,7 +181,7 @@ describe("admin password and DB-backed session policy", () => {
     });
     await expect(
       loginAdmin({
-        email: "missing@example.com",
+        username: "missing-admin",
         password: "wrong password",
         repository,
         context: { hmacKey, now }
@@ -195,7 +195,7 @@ describe("admin password and DB-backed session policy", () => {
   it("stores only session hashes and keeps tokens out of events and responses", async () => {
     const { repository, password } = await fixtureRepository();
     const result = await loginAdmin({
-      email: "admin@example.com",
+      username: "admin-owner",
       password,
       repository,
       context: { hmacKey, now, ipAddress: "203.0.113.5", userAgent: "Mozilla/5.0 Test" }
@@ -213,7 +213,7 @@ describe("admin password and DB-backed session policy", () => {
   it("restores, touches, and revokes admin sessions", async () => {
     const { repository, password } = await fixtureRepository();
     const result = await loginAdmin({
-      email: "admin@example.com",
+      username: "admin-owner",
       password,
       repository,
       context: { hmacKey, now }
@@ -240,21 +240,21 @@ describe("admin password and DB-backed session policy", () => {
   it("creates scoped step-up grants without exposing step-up token hashes", async () => {
     const { repository, password } = await fixtureRepository();
     const login = await loginAdmin({
-      email: "admin@example.com",
+      username: "admin-owner",
       password,
       repository,
       context: { hmacKey, now }
     });
-    expect(() => requirePermissionWithStepUp(login.session, "result.publish", now)).toThrow();
+    expect(() => requirePermissionWithStepUp(login.session, "report.create", now)).toThrow();
     const stepUp = await createPasswordStepUpGrant({
       sessionToken: login.sessionCookie.value,
       password,
-      permissionCodes: ["result.publish"],
+      permissionCodes: ["report.create"],
       purpose: "publish result",
       repository,
       context: { hmacKey, now: new Date("2026-01-01T00:05:00.000Z") }
     });
-    expect(stepUp.session.stepUp?.permissionCodes).toEqual(["result.publish"]);
+    expect(stepUp.session.stepUp?.permissionCodes).toEqual(["report.create"]);
     const stepUpToken = stepUp.stepUpCookie.value;
     expect(repository.grants.has(hashAdminOpaqueToken(stepUpToken, hmacKey))).toBe(true);
     expect(JSON.stringify(stepUp)).not.toContain(hashAdminOpaqueToken(stepUpToken, hmacKey));
@@ -282,7 +282,7 @@ describe("admin auth route handlers", () => {
     const { repository, password } = await fixtureRepository();
     const dependencies = { repository, hmacKey, now };
     const loginResponse = await handleAdminLoginRoute(
-      makeRequest({ email: "admin@example.com", password }),
+      makeRequest({ username: "admin-owner", password }),
       dependencies
     );
     const loginJson = await loginResponse.json();
@@ -302,7 +302,7 @@ describe("admin auth route handlers", () => {
     const { repository, password } = await fixtureRepository();
     const dependencies = { repository, hmacKey, now };
     const loginResponse = await handleAdminLoginRoute(
-      makeRequest({ email: "admin@example.com", password }),
+      makeRequest({ username: "admin-owner", password }),
       dependencies
     );
     const cookiePair = (loginResponse.headers.get("set-cookie") ?? "").split(";")[0];

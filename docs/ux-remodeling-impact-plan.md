@@ -10,10 +10,10 @@ secret access, and production database access.
 | --- | --- | --- | --- | --- | --- | --- |
 | Landing page with voter/admin entry | `src/app/page.tsx` is now a portal landing draft | Refine copy, entry CTAs, trust explanation | No | Must not imply unsupported public election listing | Low | UX-1 |
 | Common top menu | `PublicNav` exists for public/voter entry; admin shell has side navigation | Keep home/voter/admin entry visible on public pages and admin shell | No | Do not expose admin-only state publicly | Low | UX-1 |
-| Admin login email to username | Admin login route and UI submit `email`; user identity uses email-hash based lookup | Auth payload, bootstrap, credential handoff, repository lookup, validation copy | Likely yes | Account enumeration and admin credential handoff impact | Medium | UX-6/7 |
+| Admin login username to username | Admin login route and UI submit `username`; user identity uses username-hash based lookup | Auth payload, bootstrap, credential handoff, repository lookup, validation copy | Likely yes | Account enumeration and admin credential handoff impact | Medium | UX-6/7 |
 | Admin login 5 failures IP block | Login records security events and generic errors; no IP lockout store | Hashed or masked IP rate-limit store and auth service checks | Likely yes | Raw IP storage/logging policy, NAT/shared IP lockout risk | High | UX-6/7 |
 | Voter auth 5 failures IP block | Identifier failure controls exist around credential/session attempts; no IP-level block | Voter-safe rate limit independent of voter existence | Likely yes | Must not reveal whether voter exists; raw IP should not be stored | High | UX-6/7 |
-| Voter registry fields: unit, name, phone last 4, birth date | Current import accepts name, external identifier, email; PII is encrypted/HMACed generically | New field mapping, validation, HMAC search strategy, masking rules | Yes | Raw PII storage, field exposure, search HMAC design | High | UX-7 |
+| Voter registry fields: unit, name, phone last 4, birth date | Current import accepts name, external identifier, username; PII is encrypted/HMACed generically | New field mapping, validation, HMAC search strategy, masking rules | Yes | Raw PII storage, field exposure, search HMAC design | High | UX-7 |
 | Preset voter registry selection | Registry is election-owned via `VoterRegistry.electionId @unique` | Shared registry model, election-to-registry relation or clone workflow | Yes | Used-registry immutability and PII minimization | High | UX-4/7 |
 | Used registry edit lock and clone | Current registry is tied to one election and imported through election setup | Need usage detection, clone command, edit permissions | Likely yes | Must not mutate a registry used by an active/completed election | High | UX-4/7 |
 | Option card input instead of line textarea | Current question/option setup already stores options as rows, but creation flow is split across pages | Wizard UI can create row/card controls using existing option APIs | No | Start-after edit restrictions remain | Medium | UX-3 |
@@ -46,7 +46,7 @@ secret access, and production database access.
 | Public voter dashboard with ongoing/completed lists | Current invite-token flow prevents broad election discovery | Design an API that exposes only safe public metadata or require invite/auth first |
 | Vote-select-then-auth flow | Reverses current security boundary where invite is verified before election info/ballot access | Treat as new product flow requiring API and disclosure review |
 | IP block | Raw IP retention can conflict with log/PII minimization | Store HMAC/masked IP with retention policy and generic errors |
-| Username login | Existing admin handoff and lookup are email-based | Separate auth identity design from label-only UI copy |
+| Username login | Existing admin handoff and lookup are username-based | Separate auth identity design from label-only UI copy |
 | Registry fields | Unit/phone/birth fields are stronger PII than current generic external ID | Define encryption/HMAC/search/masking before migration |
 | Option photos | Storage can leak metadata or private candidate material | Defer until storage, access, scanning, and retention are designed |
 
@@ -57,13 +57,13 @@ secret access, and production database access.
 | Screen | Purpose | Main user | User action | Inputs | Required guidance | Next screen | Empty/error state | Difficulty | Needed changes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `/` | Portal entry | Admin/Voter | Choose admin or voter path | None | Invite-based MVP, secret/token protection, open-source placeholder | `/voter` or `/admin` | Explain invite-only MVP | Low | UI only |
-| `/admin/login` | Admin authentication | Admin | Sign in | Email/password today | Generic failure, no account detail | `/admin` | Generic error | Low now, high for username/IP block | UI now, API/schema later |
+| `/admin/login` | Admin authentication | Admin | Sign in | Username/password today | Generic failure, no account detail | `/admin` | Generic error | Low now, high for username/IP block | UI now, API/schema later |
 | `/admin` | Operational dashboard | Admin | See status and next action | None | Counts are aggregate; no voter choices | `/admin/elections` or new election | Empty election guidance | Low | UI + aggregate query |
 | `/admin/elections` | Manage elections | Admin | Choose election or create | None | State controls what can be changed | Detail/new | Empty list guidance | Low | UI grouping |
 | `/admin/elections/new` | Create draft | Manager | Enter base election data | Title, type, schedule | Starts/ends restrict editing later | Detail setup pages | Validation messages | Medium | Wizard later |
 | `/admin/elections/[id]` | Inspect and operate | Manager/Approver | Continue setup or state action | Reasons for operations | No option/registry edits once open | Subpages/results | Permission/state errors | Medium | Existing actions reused |
 | `/admin/elections/[id]/questions` | Configure options | Manager | Add/update questions/options | Question title, option labels today | Option descriptions possible; photos deferred | Detail/auth/registry | Validation messages | Medium | UI/action extension later |
-| `/admin/elections/[id]/voters` | Manage allowed voters | Manager | Import/validate registry | Current name/external id/email | PII masked; used registry lock later | Detail/review | Masked validation errors | High | Schema/API later |
+| `/admin/elections/[id]/voters` | Manage allowed voters | Manager | Import/validate registry | Current name/external id/username | PII masked; used registry lock later | Detail/review | Masked validation errors | High | Schema/API later |
 
 ### Voter Flow
 

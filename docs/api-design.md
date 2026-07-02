@@ -90,7 +90,7 @@
 
 | API 이름 | Method / Path | 목적 | Role 또는 Permission | 요청 파라미터 / Body | Response Body | 상태 코드 | 주요 검증 규칙 | 감사 로그 | 보안/개인정보 주의사항 | 관련 테이블 | 관련 UI |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 관리자 로그인 | `POST /api/v1/admin/auth/login` | 관리자 세션 시작 | 관리자 계정 | `email`, `password` | `mfa_required`, `session_state`, 제한된 `user` | 200, 401, 423 | 계정 상태, 비밀번호, 잠금 확인 | SecurityEvent `login_success/login_failed` | 실패 사유 세부 노출 금지, 세션 토큰 로그 금지 | `users`, `security_events` | 관리자 로그인 |
+| 관리자 로그인 | `POST /api/v1/admin/auth/login` | 관리자 세션 시작 | 관리자 계정 | `username`, `password` | `mfa_required`, `session_state`, 제한된 `user` | 200, 401, 423 | 계정 상태, 비밀번호, 잠금 확인 | SecurityEvent `login_success/login_failed` | 실패 사유 세부 노출 금지, 세션 토큰 로그 금지 | `users`, `security_events` | 관리자 로그인 |
 | MFA 검증 | `POST /api/v1/admin/auth/mfa/verify` | MFA 완료 | 관리자 계정 | `method_type`, `otp` 또는 WebAuthn assertion | `session`, `user`, `permissions` | 200, 401, 423 | MFA 등록/상태/실패 횟수 | SecurityEvent `mfa_success/mfa_failed` | MFA secret 원문 저장/응답 금지 | `user_mfa_methods`, `security_events` | MFA 화면 |
 | Step-up 요청 | `POST /api/v1/admin/auth/step-up` | 위험 작업 재인증 | 로그인 관리자 | `purpose`, `password_or_mfa` | `step_up_state`, `expires_at` 또는 one-time opaque handle | 200, 401 | 목적과 위험 권한 확인 | SecurityEvent, AuditEvent 조건부 | handle 원문 로그 금지, 짧은 TTL 필수 | `security_events`, `audit_events` | 위험 작업 확인 |
 | 세션 조회 | `GET /api/v1/admin/auth/session` | 현재 세션/권한 확인 | 로그인 관리자 | 없음 | `user`, `organization_scope`, `permissions`, `mfa_state` | 200, 401 | 세션 만료/조직 범위 | 없음 또는 SecurityEvent | 권한은 최소 필요 범위로 반환 | `users`, `user_roles` | 전역 |
@@ -102,8 +102,8 @@
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 조직 설정 조회 | `GET /api/v1/admin/organizations/{organization_id}` | 조직 기본 설정 조회 | `organization.read` | path `organization_id` | `organization`, `settings`, `retention_summary` | 200, 403 | tenant scope 검증 | 없음 | secret/provider credential 제외 | `organizations`, `retention_policies` | 조직 설정 |
 | 조직 설정 수정 | `PATCH /api/v1/admin/organizations/{organization_id}` | 조직 정책 수정 | `organization.update` | `timezone`, `allowed_auth_methods`, `notification_defaults` | 수정된 설정 | 200, 400, 403 | 최소 보안 기준 하향 금지 | AuditEvent `organization.updated` | 유료 인증 활성화는 명시 확인 | `organizations`, `organization_authentication_methods` | 조직 설정 |
-| 관리자 목록 | `GET /api/v1/admin/organizations/{organization_id}/users` | 관리자 조회 | `user.read` | filter `status`, `role` | paged `users` | 200 | 조직 범위 | 없음 | 이메일/이름 마스킹 기본 | `users`, `user_roles` | 관리자 관리 |
-| 관리자 초대 | `POST /api/v1/admin/organizations/{organization_id}/users` | 관리자 초대 | `user.invite` | `email`, `name`, `roles` | invited user summary | 201, 409 | 중복 이메일, role 부여 가능 여부 | AuditEvent `user.invited` | 이메일 원문 응답 지양, 마스킹 | `users`, `user_roles` | 관리자 관리 |
+| 관리자 목록 | `GET /api/v1/admin/organizations/{organization_id}/users` | 관리자 조회 | `user.read` | filter `status`, `role` | paged `users` | 200 | 조직 범위 | 없음 | 계정명/이름 마스킹 기본 | `users`, `user_roles` | 관리자 관리 |
+| 관리자 초대 | `POST /api/v1/admin/organizations/{organization_id}/users` | 관리자 초대 | `user.invite` | `username`, `name`, `roles` | invited user summary | 201, 409 | 중복 계정명, role 부여 가능 여부 | AuditEvent `user.invited` | 계정명 원문 응답 지양, 마스킹 | `users`, `user_roles` | 관리자 관리 |
 | Role/Permission 조회 | `GET /api/v1/admin/organizations/{organization_id}/roles` | Role과 권한 조회 | `role.read` | 없음 | `roles`, `permissions` | 200 | scope 검증 | 없음 | critical 권한 표시 | `roles`, `permissions`, `role_permissions` | 권한 관리 |
 | 사용자 Role 변경 | `PUT /api/v1/admin/organizations/{organization_id}/users/{user_id}/roles` | Role 부여/회수 | `role.assign` | `roles`, `reason`, `step_up_token` | updated role summary | 200, 400, 403 | critical 권한 step-up, 자기 권한 과다 변경 제한 | AuditEvent `role.changed` | 변경 전/후 기록, MFA secret 제외 | `user_roles`, `audit_events` | 권한 관리 |
 

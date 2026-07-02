@@ -5,7 +5,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, RoleScope } from "@prisma/client";
 
 import { PERMISSIONS, ROLE_PERMISSIONS, Role } from "../../src/guardrails/index.js";
-import { hashAdminEmail } from "../../src/server/auth/admin-auth-service";
+import { hashAdminUsername } from "../../src/server/auth/admin-auth-service";
 import { hashAdminPassword } from "../../src/server/auth/password";
 import { hashInviteToken, hashVoterIdentifier } from "../../src/server/voters/voter-auth-service";
 
@@ -59,7 +59,7 @@ const roleScopeByCode: Readonly<Record<string, RoleScope>> = Object.freeze({
 
 export type E2eFixture = Readonly<{
   runId: string;
-  adminEmail: string;
+  adminUsername: string;
   adminPassword: string;
   voterIdentifier: string;
   inviteToken: string;
@@ -156,7 +156,7 @@ export async function prepareE2eFixture(prisma: PrismaClient): Promise<E2eFixtur
   await seedRbacForE2e(prisma);
 
   const runId = randomRunId();
-  const adminEmail = `${runId}@example.test`;
+  const adminUsername = `admin-${runId}`;
   const adminPassword = `E2E-${randomBytes(18).toString("base64url")}!`;
   const voterIdentifier = `MEM-${runId}`;
   const inviteToken = `invite-${runId}-${randomBytes(16).toString("base64url")}`;
@@ -176,7 +176,7 @@ export async function prepareE2eFixture(prisma: PrismaClient): Promise<E2eFixtur
     data: {
       tenantId: tenant.id,
       organizationId: organization.id,
-      emailHash: hashAdminEmail(adminEmail, hmacKey),
+      emailHash: hashAdminUsername(adminUsername, hmacKey),
       passwordHash,
       status: "active",
       mfaRequired: true
@@ -212,7 +212,7 @@ export async function prepareE2eFixture(prisma: PrismaClient): Promise<E2eFixtur
 
   return Object.freeze({
     runId,
-    adminEmail,
+    adminUsername,
     adminPassword,
     voterIdentifier,
     inviteToken,

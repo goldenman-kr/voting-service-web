@@ -80,7 +80,7 @@ WHERE is_current = true;
 
 ## Mock Or Skeleton Areas
 
-- External delivery providers for email, SMS, Kakao, SSO, and identity verification are not implemented.
+- External delivery providers for username, SMS, Kakao, SSO, and identity verification are not implemented.
 - Real MFA/WebAuthn is not implemented; step-up is represented by a password-confirmation based MVP boundary.
 - Report file generation for PDF, CSV, and Excel is not implemented.
 - KMS-backed field encryption, key rotation, and production secret-management adapters are not implemented.
@@ -125,7 +125,7 @@ WHERE is_current = true;
 - Decide production retention/deletion schedules and implement operational purge workflows.
 - Resolve or formally accept current npm audit findings.
 - Implement production-grade MFA/WebAuthn for administrators.
-- Implement provider-specific delivery security before enabling email/SMS/Kakao/external identity integrations.
+- Implement provider-specific delivery security before enabling username/SMS/Kakao/external identity integrations.
 - Run production-like migration rehearsal and rollback planning.
 - Keep `docs/production-like-rehearsal-runbook.md` current as the pre-deployment rehearsal procedure evolves.
 - Follow `docs/production-deployment-plan.md` before selecting a production platform or creating infrastructure.

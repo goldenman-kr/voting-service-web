@@ -15,7 +15,7 @@ const prisma = new PrismaClient({ adapter: new PrismaPg(env.DATABASE_URL) });
 
 try {
   const result = await bootstrapInitialAdmin(prisma, {
-    email: process.env.BOOTSTRAP_ADMIN_EMAIL ?? "",
+    username: process.env.BOOTSTRAP_ADMIN_USERNAME ?? "",
     password: process.env.BOOTSTRAP_ADMIN_PASSWORD ?? "",
     hmacKey: env.HMAC_KEY,
     tenantName: process.env.BOOTSTRAP_TENANT_NAME,
