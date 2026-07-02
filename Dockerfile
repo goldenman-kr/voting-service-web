@@ -9,6 +9,8 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 FROM deps AS builder
+ARG NEXT_PUBLIC_NAV_BADGE=""
+ENV NEXT_PUBLIC_NAV_BADGE=${NEXT_PUBLIC_NAV_BADGE}
 ENV DATABASE_URL=postgresql://user:pass@localhost:5432/buildtime
 ENV APP_URL=https://localhost
 ENV SESSION_SECRET=build_time_dummy_secret_32_bytes_minimum

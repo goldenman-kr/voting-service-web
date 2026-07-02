@@ -122,10 +122,10 @@ No-go if production secrets or a production database are needed.
 | `SESSION_SECRET` | Yes | Yes | App runtime | Staging-only random value |
 | `ENCRYPTION_KEY` | Yes | Yes | App runtime | Placeholder until KMS adapter |
 | `HMAC_KEY` | Yes | Yes | App runtime | Staging-only random value; rotation requires plan |
-| `BOOTSTRAP_ADMIN_EMAIL` | Bootstrap only | Sensitive | Temporary shell/env | Remove after bootstrap |
+| `BOOTSTRAP_ADMIN_USERNAME` | Bootstrap only | Sensitive | Temporary shell/env | Remove after bootstrap |
 | `BOOTSTRAP_ADMIN_PASSWORD` | Bootstrap only | Yes | Temporary shell/env | Remove after bootstrap |
 | `BOOTSTRAP_CONFIRM=CREATE_INITIAL_ADMIN` | Bootstrap only | No | Temporary shell/env | Required with production node env |
-| Email/SMS/Kakao provider env | Future | Yes | Disabled | Do not configure until providers exist |
+| Username/SMS/Kakao provider env | Future | Yes | Disabled | Do not configure until providers exist |
 | KMS env | Future | Yes/sensitive | Disabled | Do not configure until KMS adapter exists |
 | APM/logging env | Future | Sensitive | Disabled by default | Enable only after redaction review |
 

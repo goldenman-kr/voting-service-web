@@ -4,7 +4,7 @@ import { createHmac } from "node:crypto";
 import { hashAdminPassword } from "./password.ts";
 
 export type BootstrapInitialAdminInput = Readonly<{
-  email: string;
+  username: string;
   password: string;
   hmacKey: string;
   tenantName?: string;
@@ -20,28 +20,33 @@ export type BootstrapInitialAdminResult = Readonly<{
   userId?: string;
   tenantId?: string;
   organizationId?: string;
-  roleCode?: string;
+  roleCodes?: string[];
 }>;
 
 const DEFAULT_TENANT_NAME = "Initial Tenant";
 const DEFAULT_ORGANIZATION_NAME = "Initial Organization";
+const DEFAULT_INITIAL_ADMIN_ROLE_CODES = Object.freeze([Role.ORGANIZATION_OWNER, Role.ELECTION_MANAGER]);
 const PRODUCTION_CONFIRMATION_REQUIRED =
   "BOOTSTRAP_CONFIRM=CREATE_INITIAL_ADMIN is required in production";
 
-function normalizeAdminEmail(email: string): string {
-  return email.trim().toLowerCase();
+function isRoleCode(value: string | undefined): value is string {
+  return typeof value === "string" && value.trim().length > 0;
 }
 
-function hashAdminEmail(email: string, hmacKey: string): string {
-  return createHmac("sha256", hmacKey).update(normalizeAdminEmail(email)).digest("hex");
+function normalizeAdminUsername(username: string): string {
+  return username.trim().toLowerCase();
+}
+
+function hashAdminUsername(username: string, hmacKey: string): string {
+  return createHmac("sha256", hmacKey).update(normalizeAdminUsername(username)).digest("hex");
 }
 
 function assertBootstrapInput(input: BootstrapInitialAdminInput): void {
   if (input.nodeEnv === "production" && !input.confirmProduction) {
     throw new Error(PRODUCTION_CONFIRMATION_REQUIRED);
   }
-  if (!input.email.trim()) {
-    throw new Error("BOOTSTRAP_ADMIN_EMAIL is required");
+  if (!input.username.trim()) {
+    throw new Error("BOOTSTRAP_ADMIN_USERNAME is required");
   }
   if (input.password.length < 12) {
     throw new Error("BOOTSTRAP_ADMIN_PASSWORD must be at least 12 characters");
@@ -53,7 +58,7 @@ export async function bootstrapInitialAdmin(
   input: BootstrapInitialAdminInput
 ): Promise<BootstrapInitialAdminResult> {
   assertBootstrapInput(input);
-  const roleCode = input.roleCode ?? Role.ORGANIZATION_OWNER;
+  const roleCodes = Array.from(new Set([input.roleCode, ...DEFAULT_INITIAL_ADMIN_ROLE_CODES].filter(isRoleCode)));
 
   const existingAdmin = await prisma.user.findFirst({
     where: {
@@ -75,18 +80,22 @@ export async function bootstrapInitialAdmin(
     });
   }
 
-  const role = await prisma.role.findFirst({
-    where: {
-      organizationId: null,
-      code: roleCode
+  const roles: Array<{ id: string }> = [];
+  for (const roleCode of roleCodes) {
+    const role = await prisma.role.findFirst({
+      where: {
+        organizationId: null,
+        code: roleCode
+      }
+    });
+    if (!role) {
+      throw new Error(`Role ${roleCode} is not seeded. Run npm run db:seed first.`);
     }
-  });
-  if (!role) {
-    throw new Error(`Role ${roleCode} is not seeded. Run npm run db:seed first.`);
+    roles.push(role);
   }
 
   const { passwordHash } = await hashAdminPassword(input.password);
-  const emailHash = hashAdminEmail(input.email, input.hmacKey);
+  const usernameHash = hashAdminUsername(input.username, input.hmacKey);
 
   const result = await prisma.$transaction(async (tx) => {
     const tenant = await tx.tenant.create({
@@ -102,18 +111,20 @@ export async function bootstrapInitialAdmin(
       data: {
         tenantId: tenant.id,
         organizationId: organization.id,
-        emailHash,
+        emailHash: usernameHash,
         passwordHash,
         status: "active",
         mfaRequired: true
       }
     });
-    await tx.userRole.create({
-      data: {
-        userId: user.id,
-        roleId: role.id
-      }
-    });
+    for (const role of roles) {
+      await tx.userRole.create({
+        data: {
+          userId: user.id,
+          roleId: role.id
+        }
+      });
+    }
     return { tenant, organization, user };
   });
 
@@ -122,6 +133,6 @@ export async function bootstrapInitialAdmin(
     userId: result.user.id,
     tenantId: result.tenant.id,
     organizationId: result.organization.id,
-    roleCode
+    roleCodes
   });
 }

@@ -48,7 +48,7 @@ flowchart TD
 - PostgreSQL: self-hosted staging may use Docker/host PostgreSQL; production should use managed PostgreSQL or a thoroughly hardened self-hosted PostgreSQL plan with backup/restore rehearsal. No SQLite.
 - Secret store: platform secret manager or cloud secret store. Production secrets must not live in git, `.env`, shell history, CI logs, or runbook examples.
 - Migration execution point: controlled deployment step or separate migration runner after approval, not an unreviewed app startup side effect.
-- Admin bootstrap: one-time command using environment-provided email/password and `BOOTSTRAP_CONFIRM=CREATE_INITIAL_ADMIN`; disable or restrict after initial setup.
+- Admin bootstrap: one-time command using environment-provided username/password and `BOOTSTRAP_CONFIRM=CREATE_INITIAL_ADMIN`; disable or restrict after initial setup.
 - Backup/restore: managed encrypted backup, point-in-time recovery, restore rehearsal, and documented retention.
 - Logging/APM: centralized logs with strict redaction and no token/PII/linkage payloads.
 - CDN/proxy/HTTPS: mandatory TLS, HSTS after verification, request size limits, security headers, and access log redaction.
@@ -68,7 +68,7 @@ flowchart TD
 | `SESSION_SECRET` | Yes | Yes | Secret store | High entropy; rotate with session invalidation plan |
 | `ENCRYPTION_KEY` | Yes currently | Yes | Secret store / future KMS | Replace with KMS-backed envelope encryption before production PII |
 | `HMAC_KEY` | Yes | Yes | Secret store | Rotation requires identifier/hash migration plan |
-| `BOOTSTRAP_ADMIN_EMAIL` | Bootstrap only | Sensitive | One-time secret/input | Remove after bootstrap |
+| `BOOTSTRAP_ADMIN_USERNAME` | Bootstrap only | Sensitive | One-time secret/input | Remove after bootstrap |
 | `BOOTSTRAP_ADMIN_PASSWORD` | Bootstrap only | Yes | One-time secret/input | Remove after bootstrap; never reuse |
 | `BOOTSTRAP_CONFIRM` | Bootstrap only | No | One-time env | Use only for explicit production bootstrap |
 | Provider keys | Future | Yes | Secret store | Not configured until providers are implemented |

@@ -124,9 +124,9 @@ function userInclude() {
 export class PrismaAdminAuthRepository implements AdminAuthRepository {
   constructor(private readonly prisma: PrismaClientLike) {}
 
-  async findUserByEmailHash(emailHash: string): Promise<AdminUserAuthRecord | null> {
+  async findUserByUsernameHash(usernameHash: string): Promise<AdminUserAuthRecord | null> {
     const user = await this.prisma.user.findFirst({
-      where: { emailHash },
+      where: { emailHash: usernameHash },
       include: userInclude()
     });
     return user ? mapUser(user) : null;

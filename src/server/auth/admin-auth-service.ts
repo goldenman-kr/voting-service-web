@@ -50,12 +50,12 @@ function nowFrom(context: AdminAuthRequestContext): Date {
   return context.now ?? new Date();
 }
 
-export function normalizeAdminEmail(email: string): string {
-  return email.trim().toLowerCase();
+export function normalizeAdminUsername(username: string): string {
+  return username.trim().toLowerCase();
 }
 
-export function hashAdminEmail(email: string, hmacKey: string): string {
-  return createHmac("sha256", hmacKey).update(normalizeAdminEmail(email)).digest("hex");
+export function hashAdminUsername(username: string, hmacKey: string): string {
+  return createHmac("sha256", hmacKey).update(normalizeAdminUsername(username)).digest("hex");
 }
 
 export function hashAdminOpaqueToken(token: string, hmacKey: string): string {
@@ -142,19 +142,19 @@ function createSessionDto({
 }
 
 export async function loginAdmin({
-  email,
+  username,
   password,
   repository,
   context
 }: {
-  email: string;
+  username: string;
   password: string;
   repository: AdminAuthRepository;
   context: AdminAuthRequestContext;
 }): Promise<LoginResult> {
   const now = nowFrom(context);
-  const emailHash = hashAdminEmail(email, context.hmacKey);
-  const user = await repository.findUserByEmailHash(emailHash);
+  const usernameHash = hashAdminUsername(username, context.hmacKey);
+  const user = await repository.findUserByUsernameHash(usernameHash);
 
   try {
     assertActiveUser(user);

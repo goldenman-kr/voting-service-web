@@ -145,7 +145,7 @@ Required:
 
 Bootstrap-only:
 
-- `BOOTSTRAP_ADMIN_EMAIL`
+- `BOOTSTRAP_ADMIN_USERNAME`
 - `BOOTSTRAP_ADMIN_PASSWORD`
 - `BOOTSTRAP_CONFIRM=CREATE_INITIAL_ADMIN`
 - `BOOTSTRAP_TENANT_NAME`
@@ -154,7 +154,7 @@ Bootstrap-only:
 
 Disabled/future:
 
-- email provider env
+- username provider env
 - SMS provider env
 - Kakao provider env
 - external identity/SSO env

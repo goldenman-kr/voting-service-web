@@ -16,10 +16,14 @@ function readUiSource(relativePath: string): string {
 describe("UI guardrails", () => {
   it("public home page avoids MVP placeholder copy and exposes open-source/support information", () => {
     const source = readUiSource("src/app/page.tsx");
+    const navSource = readUiSource("src/components/ui/public-nav.tsx");
 
     expect(source).not.toContain("현재 MVP는 초대받은 유권자만 참여할 수 있는 방식으로 운영됩니다.");
     expect(source).not.toContain("투표 이미지 영역");
     expect(source).not.toContain(">관리자 메뉴</Link>");
+    expect(navSource).toContain("NEXT_PUBLIC_NAV_BADGE");
+    expect(navSource).not.toContain("온라인 투표 <span");
+    expect(navSource).toContain("text-amber-700");
     expect(source).toContain("https://github.com/goldenman-kr/voting-service-web");
     expect(source).toContain("GitHub 저장소 보기");
     expect(source).toContain("flex min-h-screen flex-col");

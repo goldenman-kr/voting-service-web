@@ -17,7 +17,7 @@ import { ApiError, normalizeApiError } from "../http/errors";
 import { apiError, apiSuccess } from "../http/response";
 
 const loginInputSchema = z.object({
-  email: z.string().trim().email().max(320),
+  username: z.string().trim().min(1).max(320),
   password: z.string().min(1).max(1024)
 });
 
@@ -136,7 +136,7 @@ export async function handleAdminLoginRoute(
   try {
     const input = loginInputSchema.parse(await parseJson(request));
     const result = await loginAdmin({
-      email: input.email,
+      username: input.username,
       password: input.password,
       repository: dependencies.repository,
       context: requestContext(request, dependencies)

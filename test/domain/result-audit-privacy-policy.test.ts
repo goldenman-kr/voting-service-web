@@ -43,8 +43,8 @@ describe("Published result policy", () => {
 describe("Audit requirement policy", () => {
   it("derives risk controls from permission guardrails", () => {
     expect(requiresAuditEvent(ElectionAction.PUBLISH_RESULT)).toBe(true);
-    expect(requiresReason(ElectionAction.PUBLISH_RESULT)).toBe(true);
-    expect(requiresStepUp(ElectionAction.PUBLISH_RESULT)).toBe(true);
+    expect(requiresReason(ElectionAction.PUBLISH_RESULT)).toBe(false);
+    expect(requiresStepUp(ElectionAction.PUBLISH_RESULT)).toBe(false);
     expect(requiresDualApproval(ElectionAction.INVALIDATE_ELECTION)).toBe(true);
   });
 

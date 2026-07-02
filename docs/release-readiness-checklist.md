@@ -9,7 +9,7 @@ This checklist describes the current MVP readiness gates. It is intended for loc
 - `SESSION_SECRET`: Production must use a high-entropy secret from managed secret storage.
 - `ENCRYPTION_KEY`: Placeholder until KMS-backed field encryption is implemented.
 - `HMAC_KEY`: HMAC key for hashes and token digests. Production must use managed secret storage.
-- `BOOTSTRAP_ADMIN_EMAIL`: One-time bootstrap input only.
+- `BOOTSTRAP_ADMIN_USERNAME`: One-time bootstrap input only.
 - `BOOTSTRAP_ADMIN_PASSWORD`: One-time bootstrap input only. Never hardcode operational passwords.
 - `BOOTSTRAP_TENANT_NAME`: Tenant name for bootstrap.
 - `BOOTSTRAP_ORGANIZATION_NAME`: Organization name for bootstrap.
@@ -45,7 +45,7 @@ npm run db:seed
 4. Bootstrap an initial admin with one-time environment values:
 
 ```bash
-BOOTSTRAP_ADMIN_EMAIL="admin@example.com" \
+BOOTSTRAP_ADMIN_USERNAME="admin-owner" \
 BOOTSTRAP_ADMIN_PASSWORD="replace-with-a-local-test-password" \
 npm run admin:bootstrap
 ```
@@ -122,7 +122,7 @@ Before provisioning staging:
 - choose PostgreSQL strategy: `docker-postgres`, `host-postgres`, or `managed-postgres`
 - document backup and restore approach before migration
 - prepare staging-only `DATABASE_URL`, `APP_URL`, `SESSION_SECRET`, `ENCRYPTION_KEY`, and `HMAC_KEY`
-- keep email/SMS/Kakao/external identity providers disabled
+- keep username/SMS/Kakao/external identity providers disabled
 - review migration SQL and run `npx prisma migrate deploy` as an explicit operator step
 - run `npm run db:seed`
 - bootstrap the first staging admin once, then remove bootstrap password env values
@@ -281,7 +281,7 @@ CI badges are not added yet because repository visibility and badge exposure pol
 
 ## Known Non-Production Areas
 
-- External email/SMS/Kakao delivery is not implemented.
+- External username/SMS/Kakao delivery is not implemented.
 - External identity verification and SSO are not implemented.
 - Real MFA/WebAuthn is not implemented.
 - KMS-backed field encryption is not implemented.

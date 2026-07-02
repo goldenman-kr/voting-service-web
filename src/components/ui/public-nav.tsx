@@ -7,11 +7,14 @@ const navItems = [
 ];
 
 export function PublicNav() {
+  const navBadge = process.env.NEXT_PUBLIC_NAV_BADGE?.trim();
+
   return (
     <nav className="border-b border-slate-200 bg-white/95">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
         <Link href="/" className="text-base font-semibold text-slate-950">
-          온라인 투표
+          온라인 투표{" "}
+          {navBadge ? <span className="text-sm font-medium text-amber-700">{navBadge}</span> : null}
         </Link>
         <div className="flex flex-wrap gap-1">
           {navItems.map((item) => (

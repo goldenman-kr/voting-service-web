@@ -55,7 +55,7 @@ export type AdminStepUpGrantCreateCommand = Readonly<{
 }>;
 
 export type AdminAuthRepository = {
-  findUserByEmailHash(emailHash: string): Promise<AdminUserAuthRecord | null>;
+  findUserByUsernameHash(usernameHash: string): Promise<AdminUserAuthRecord | null>;
   findUserById(userId: string): Promise<AdminUserAuthRecord | null>;
   createAdminSession(command: AdminSessionCreateCommand): Promise<AdminSessionRecord>;
   findAdminSessionByTokenHash(

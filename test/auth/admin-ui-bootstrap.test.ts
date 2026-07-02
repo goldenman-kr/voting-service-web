@@ -31,7 +31,10 @@ function createBootstrapPrismaDouble() {
     tenants: [] as Array<{ id: string; name: string }>,
     organizations: [] as Array<{ id: string; tenantId: string; name: string }>,
     userRoles: [] as Array<{ userId: string; roleId: string }>,
-    roles: [{ id: "role-organization-owner", code: Role.ORGANIZATION_OWNER, organizationId: null }]
+    roles: [
+      { id: "role-organization-owner", code: Role.ORGANIZATION_OWNER, organizationId: null },
+      { id: "role-election-manager", code: Role.ELECTION_MANAGER, organizationId: null }
+    ]
   };
   const prisma = {
     user: {
@@ -72,10 +75,10 @@ function createBootstrapPrismaDouble() {
 }
 
 describe("admin UI auth guardrails", () => {
-  it("login form renders email/password inputs and generic failure copy", () => {
+  it("login form renders username/password inputs and generic failure copy", () => {
     const markup = renderToStaticMarkup(createElement(AdminLoginForm));
 
-    expect(markup).toContain('type="email"');
+    expect(markup).toContain('type="text"');
     expect(markup).toContain('type="password"');
     expect(source("src/components/admin/admin-login-form.tsx")).toContain("인증 정보를 확인할 수 없습니다.");
     expect(markup).not.toMatch(/sessionToken|stepUpToken|tokenHash|passwordHash/);
@@ -110,14 +113,14 @@ describe("initial admin bootstrap policy", () => {
     const password = "one-time-bootstrap-password";
 
     const first = await bootstrapInitialAdmin(prisma as any, {
-      email: "owner@example.com",
+      username: "owner-admin",
       password,
       hmacKey,
       tenantName: "Bootstrap Tenant",
       organizationName: "Bootstrap Organization"
     });
     const second = await bootstrapInitialAdmin(prisma as any, {
-      email: "owner2@example.com",
+      username: "owner-admin-2",
       password: "another-one-time-password",
       hmacKey
     });
@@ -125,6 +128,10 @@ describe("initial admin bootstrap policy", () => {
     expect(first.created).toBe(true);
     expect(second).toMatchObject({ created: false, reason: "admin_already_exists" });
     expect(state.users).toHaveLength(1);
+    expect(state.userRoles.map((entry) => entry.roleId).sort()).toEqual([
+      "role-election-manager",
+      "role-organization-owner"
+    ]);
     expect(state.users[0].passwordHash).not.toBe(password);
     expect(await verifyAdminPassword(password, state.users[0].passwordHash)).toBe(true);
   });
@@ -134,7 +141,7 @@ describe("initial admin bootstrap policy", () => {
 
     await expect(
       bootstrapInitialAdmin(prisma as any, {
-        email: "owner@example.com",
+        username: "owner-admin",
         password: "one-time-bootstrap-password",
         hmacKey,
         nodeEnv: "production"

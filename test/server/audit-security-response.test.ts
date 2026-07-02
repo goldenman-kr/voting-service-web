@@ -14,11 +14,11 @@ import { apiError } from "../../src/server/http/response";
 
 describe("AuditEvent boundary", () => {
   it("requires reason for risky actions", () => {
-    expect(() => assertActionReasonProvided(ElectionAction.PUBLISH_RESULT)).toThrow(
+    expect(() => assertActionReasonProvided(ElectionAction.EDIT_ELECTION_INFO)).toThrow(
       /사유 입력/
     );
     expect(() =>
-      assertActionReasonProvided(ElectionAction.PUBLISH_RESULT, "approved release")
+      assertActionReasonProvided(ElectionAction.EDIT_ELECTION_INFO, "approved release")
     ).not.toThrow();
   });
 
