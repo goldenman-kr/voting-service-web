@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { MetricCard } from "../../../../../components/admin/admin-cards";
 import { DeletePreStartElectionForm } from "../../../../../components/admin/delete-election-form";
 import { ElectionStateCtaPanel } from "../../../../../components/admin/admin-operation-forms";
+import { StateHistoryTable, type StateHistoryTableRow } from "../../../../../components/admin/state-history-table";
 import { AnonymousVotingNotice } from "../../../../../components/ui/anonymous-voting-notice";
 import { PageHeader } from "../../../../../components/ui/page-header";
 import { WarningBanner } from "../../../../../components/ui/warning-banner";
@@ -25,6 +26,15 @@ import { getAdminElectionDetail } from "../../../../../server/elections/admin-el
 type Params = {
   params: Promise<{ election_id: string }> | { election_id: string };
 };
+
+const electionStateHistoryLabels: Record<string, string> = {
+  opened: "투표 시작",
+  paused: "투표 일시중단",
+  resumed: "투표 재개",
+  closed: "투표 종료"
+};
+
+const electionStateHistoryChangeTypes = Object.keys(electionStateHistoryLabels);
 
 function formatDateTime(date: Date): string {
   return new Intl.DateTimeFormat("ko-KR", {
@@ -59,8 +69,22 @@ function ReadinessBadge({ ready }: { ready: boolean }) {
 export default async function AdminElectionDetailPage({ params }: Params) {
   const restored = await getCurrentAdminSessionFromCookies();
   if (!restored) return null;
-  const election = await getAdminElectionDetail(getPrismaClient(), restored.session, (await params).election_id);
+  const prisma = getPrismaClient();
+  const election = await getAdminElectionDetail(prisma, restored.session, (await params).election_id);
   if (!election) notFound();
+  const stateHistories = await prisma.electionStateHistory.findMany({
+    where: {
+      electionId: election.id,
+      election: { organizationId: restored.session.organizationId, deletedAt: null },
+      changeType: { in: electionStateHistoryChangeTypes }
+    },
+    orderBy: { changedAt: "asc" },
+    select: { changeType: true, changedAt: true }
+  });
+  const stateHistoryRows: StateHistoryTableRow[] = stateHistories.map((history) => ({
+    label: electionStateHistoryLabels[history.changeType] ?? history.changeType,
+    changedAt: history.changedAt
+  }));
   const preStartStates = new Set<ElectionStateValue>([
     ElectionState.DRAFT,
     ElectionState.READY_FOR_REVIEW,
@@ -76,10 +100,6 @@ export default async function AdminElectionDetailPage({ params }: Params) {
   const registrySummary = election.voterRegistry
     ? `${election.voterRegistry.validRows}/${election.voterRegistry.totalRows}명 확인 가능`
     : "아직 등록된 선거인 명부가 없습니다.";
-  const invitationStatus =
-    election.invitationSummary.total > 0
-      ? `${election.invitationSummary.total}건 준비, ${election.invitationSummary.sent}건 발송`
-      : "아직 준비된 초대가 없습니다.";
   const resultStatus = election.resultSummary.latestResultStatus
     ? labelOf(resultStatusLabelMap, election.resultSummary.latestResultStatus)
     : election.resultSummary.publishedVersionCount > 0
@@ -118,12 +138,6 @@ export default async function AdminElectionDetailPage({ params }: Params) {
       href: election.voterRegistry?.managedRegistryId
         ? `/admin/voter-registries/${election.voterRegistry.managedRegistryId}`
         : `/admin/elections/${election.id}/voters`
-    },
-    {
-      label: "투표 참여 인증 방식",
-      ready: Boolean(election.authenticationPolicy && election.authenticationPolicy.isEnabled !== false),
-      help: "유권자가 투표에 참여할 인증 방식이 활성화되어야 합니다.",
-      href: `/admin/elections/${election.id}/edit`
     }
   ];
   const isReadyToStart = readinessItems.every((item) => item.ready);
@@ -157,11 +171,10 @@ export default async function AdminElectionDetailPage({ params }: Params) {
           </>
         }
       />
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-3">
         <MetricCard label="문항 수" value={election.questionCount} hint="유권자가 답해야 할 질문입니다." />
         <MetricCard label="선택 항목 수" value={optionCount} hint="전체 문항에 등록된 선택 항목입니다." />
         <MetricCard label="선거인 수" value={election.eligibleVoterCount} hint="명부에 등록된 투표 대상자입니다." />
-        <MetricCard label="초대 상태" value={election.invitationSummary.total > 0 ? "준비됨" : "미준비"} hint={invitationStatus} />
       </section>
 
       {canUseExistingDraftEditPages ? (
@@ -304,7 +317,6 @@ export default async function AdminElectionDetailPage({ params }: Params) {
       <section className="grid gap-3 rounded-md border border-slate-200 bg-white p-5">
         <h2 className="text-base font-semibold">운영 상태</h2>
         <dl className="grid gap-3 text-sm md:grid-cols-2">
-          <div><dt className="font-semibold text-slate-500">초대 준비/발송</dt><dd>{invitationStatus}</dd></div>
           <div><dt className="font-semibold text-slate-500">결과 상태</dt><dd>{resultStatus}</dd></div>
           <div><dt className="font-semibold text-slate-500">다음에 할 일</dt><dd>{preStartStates.has(election.state) ? "설정을 확인한 뒤 바로 투표를 시작할 수 있습니다." : "아래 상태별 작업 영역에서 가능한 작업만 실행할 수 있습니다."}</dd></div>
           <div><dt className="font-semibold text-slate-500">공개 결과</dt><dd>{election.resultSummary.publishedVersionCount > 0 ? `${election.resultSummary.publishedVersionCount}건 공개 기록 있음` : "아직 공개 기록 없음"}</dd></div>
@@ -316,16 +328,13 @@ export default async function AdminElectionDetailPage({ params }: Params) {
           <div>
             <h2 className="text-base font-semibold">편집하기</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              통합 편집 마법사에서 기본 정보, 문항/선택 항목, 투표 참여 인증 방식을 정리할 수 있습니다.
+              통합 편집 마법사에서 기본 정보와 문항/선택 항목을 정리할 수 있습니다.
               선거인 명부 추가 등록은 연결된 독립 명부 관리 화면에서 진행합니다.
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Link className="rounded-md bg-blue-700 px-4 py-3 text-sm font-semibold text-white" href={`/admin/elections/${election.id}/edit`}>
               통합 편집 마법사
-            </Link>
-            <Link className="rounded-md border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-800" href={`/admin/elections/${election.id}/questions`}>
-              문항/선택 항목 편집
             </Link>
             <Link
               className="rounded-md border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-800"
@@ -333,29 +342,25 @@ export default async function AdminElectionDetailPage({ params }: Params) {
             >
               선거인 명부 편집
             </Link>
-            <Link className="rounded-md border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-800" href={`/admin/elections/${election.id}/auth-policy`}>
-              투표 참여 인증 방식 편집
-            </Link>
           </div>
         </section>
       ) : null}
 
       <ElectionStateCtaPanel electionId={election.id} state={election.state} />
+      <StateHistoryTable
+        title="투표 상태 변경 이력"
+        rows={stateHistoryRows}
+        emptyMessage="표시할 투표 상태 변경 이력이 없습니다."
+      />
       <AnonymousVotingNotice audience="admin" />
       <section className="grid gap-3 rounded-md border border-slate-200 bg-white p-5">
         <h2 className="text-base font-semibold">설정 바로가기</h2>
         <div className="flex flex-wrap gap-2">
-          <Link className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold" href={`/admin/elections/${election.id}/questions`}>
-            문항/선택 항목
-          </Link>
           <Link
             className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold"
             href={election.voterRegistry?.managedRegistryId ? `/admin/voter-registries/${election.voterRegistry.managedRegistryId}` : `/admin/elections/${election.id}/voters`}
           >
             선거인 명부
-          </Link>
-          <Link className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold" href={`/admin/elections/${election.id}/auth-policy`}>
-            투표 참여 인증 방식
           </Link>
           <Link className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold" href={`/admin/elections/${election.id}/results`}>
             결과

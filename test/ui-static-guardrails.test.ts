@@ -129,10 +129,13 @@ describe("UI guardrails", () => {
     expect(detailSource).toContain("election.state === ElectionState.DRAFT");
     expect(detailSource).toContain("선거인 명부 확인");
     expect(detailSource).toContain("관리자 화면에는 인증용 내부 값이 표시되지 않습니다");
+    expect(detailSource).not.toContain("/auth-policy");
     expect(detailSource).toContain("현재 상태에서는 문항, 선택 항목, 선거인 명부를 수정할 수 없습니다");
     expect(detailSource).toContain("바로 투표를 시작할 수 있습니다");
     expect(detailSource).toContain("DeletePreStartElectionForm");
     expect(detailSource).toContain("/admin/voter-registries/${election.voterRegistry.managedRegistryId}");
+    expect(detailSource).not.toContain("/questions");
+    expect(detailSource).not.toContain("문항/선택 항목 편집");
     expect(detailSource).not.toContain("AuthenticationPolicy");
     expect(detailSource).not.toContain("VoterRegistry");
     expect(detailSource).not.toContain("AnonymousBallotGroup");
@@ -217,6 +220,7 @@ describe("UI guardrails", () => {
 
   it("admin draft edit route exposes Draft-only conservative question and option editing", () => {
     const editPage = readUiSource("src/app/admin/(protected)/elections/[election_id]/edit/page.tsx");
+    const questionsPage = readUiSource("src/app/admin/(protected)/elections/[election_id]/questions/page.tsx");
     const formSource = readUiSource("src/components/admin/admin-election-forms.tsx");
     const actionSource = readUiSource("src/server/elections/admin-actions.ts");
     const editQuestionFormSource = formSource.slice(
@@ -235,8 +239,9 @@ describe("UI guardrails", () => {
     expect(editPage).toContain("통합 편집 제한");
     expect(editPage).toContain("문항/선택 항목 문구를 보수적으로 수정합니다");
     expect(editPage).toContain("EditElectionQuestionsAndOptionsForm");
-    expect(editPage).toContain("EditElectionSetupPolicyForm");
-    expect(editPage).toContain("명부 교체와 인증 방식 수정은 아래 읽기 전용 단계에서");
+    expect(editPage).not.toContain("EditElectionSetupPolicyForm");
+    expect(editPage).toContain("명부 교체는 아래 읽기 전용 단계에서");
+    expect(editPage).not.toContain("/auth-policy");
     expect(formSource).toContain("EditElectionBasicInfoForm");
     expect(formSource).toContain("updateElectionBasicInfoAction");
     expect(formSource).toContain("기본 정보 저장");
@@ -266,11 +271,16 @@ describe("UI guardrails", () => {
     expect(actionSource).toContain("문항/선택 항목이 저장되었습니다.");
     expect(actionSource).toContain("기본 정보가 저장되었습니다.");
     expect(actionSource).toContain("투표를 시작하기 전에 상세 화면에서 제목, 일정, 문항, 선택 항목, 선거인 명부를 다시 확인해 주세요.");
+    expect(questionsPage).toContain("canAddQuestion");
+    expect(questionsPage).toContain("election.startsAt > new Date()");
+    expect(questionsPage).toContain("canAddQuestion ? (");
     expect(editPage).toContain("투표 시작 전 최종 확인");
     expect(editPage).toContain("상세 화면으로 돌아가기");
-    expect(editPage).toContain("문항 관리");
+    expect(editPage).not.toContain("/questions");
+    expect(editPage).not.toContain("문항/선택 항목 세부 화면으로 이동");
+    expect(editPage).not.toContain("문항 관리");
     expect(editPage).toContain("선거인 명부 관리");
-    expect(editPage).toContain("인증 방식 설정");
+    expect(editPage).not.toContain("인증 방식 설정");
     expect(editPage).toContain("#pre-start-summary");
     expect(editSetupPolicyFormSource).toContain("투표 참여 인증 방식");
     expect(formSource).toContain("초대 링크 + 유권자 식별자 확인");
@@ -376,6 +386,10 @@ describe("UI guardrails", () => {
     expect(inviteSource).not.toContain("/invitations/${");
     expect(voterPortalSource).toContain("현재 진행 중인 투표");
     expect(voterPortalSource).toContain("완료된 투표");
+    expect(voterPortalSource).toContain("bg-sky-50");
+    expect(voterPortalSource).not.toContain("bg-yellow-50");
+    expect(voterPortalSource).toContain("bg-lime-50");
+    expect(voterPortalSource).toContain("bg-emerald-800");
     expect(voterPortalSource).not.toContain("초대 확인 시작");
     expect(voterPortalSource).not.toContain("PrivacyNotice");
     expect(voterPortalSource).not.toContain("개인정보 최소 노출");
@@ -420,7 +434,10 @@ describe("UI guardrails", () => {
     for (const source of resultSources) {
       expect(source).toContain("data.result_version.notice");
       expect(source).toContain("결과 공지");
+      expect(source).toContain("투표율");
+      expect(source).toContain("formatResultVoteCount");
       expect(source.indexOf("결과 공지")).toBeLessThan(source.indexOf("data.result.items.map"));
+      expect(source.indexOf("투표율")).toBeLessThan(source.indexOf("data.result.items.map"));
     }
   });
 
@@ -485,13 +502,34 @@ describe("UI guardrails", () => {
     expect(source).toContain("tally");
     expect(source).toContain("confirm");
     expect(source).toContain("publish");
-    expect(source).toContain("request_correction");
+    expect(source).not.toContain("request_correction");
+    expect(source).not.toContain("정정 요청");
     expect(source).toContain("invalidate");
-    expect(source).toContain("resend_invitations");
+    expect(source).not.toContain("resend_invitations");
     expect(source).not.toContain("prepare_invitations");
     expect(source).not.toContain("approve");
+    expect(source).toContain("투표 상태 변경");
+    expect(source).toContain("상태 변경 불가");
+    expect(source).toContain("현재 투표가 종료된 상태에서는 더이상 변경할 수 없습니다.");
+    expect(source).not.toContain("현재 상태에서 가능한 운영 CTA 없음");
+    expect(source).not.toContain("이 상태에서는 직접 상태 전환 작업을 제공하지 않습니다.");
     expect(detailPage).toContain("ElectionStateCtaPanel");
+    expect(detailPage).not.toContain("초대 상태");
+    expect(detailPage).not.toContain("초대 준비/발송");
+    expect(detailPage).toContain("투표 상태 변경 이력");
+    expect(detailPage).toContain("electionStateHistory.findMany");
+    expect(detailPage).toContain("opened");
+    expect(detailPage).toContain("closed");
     expect(resultsPage).toContain("ResultOperationPanel");
+    expect(resultsPage).toContain("결과 상태 변경 이력");
+    expect(resultsPage).toContain("result_tally_started");
+    expect(resultsPage).toContain("result_published");
+    expect(resultsPage).toContain("투표율");
+    expect(resultsPage).toContain("투표가 종료되지 않아 투표율만 표시됩니다.");
+    expect(resultsPage).toContain("실시간 투표율");
+    expect(resultsPage).toContain("!hasEnded");
+    expect(resultsPage).toContain("formatResultVoteCount");
+    expect(resultsPage.indexOf("투표율")).toBeLessThan(resultsPage.indexOf("집계 결과"));
     expect(resultsPage).not.toContain("StepUpPanel");
     expect(resultsPage).toContain("ReportExportSkeleton");
   });

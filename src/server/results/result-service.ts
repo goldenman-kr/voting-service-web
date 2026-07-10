@@ -290,8 +290,15 @@ function resultDto(
   result: ResultRecord,
   evaluation?: ResultPrivacyEvaluation,
   role = "ElectionManager",
-  nonVotingCount?: number
+  nonVotingCount?: number,
+  eligibleVoterCount?: number
 ) {
+  const resolvedEligibleVoterCount = eligibleVoterCount ?? null;
+  const resolvedNonVotingCount = nonVotingCount ?? null;
+  const actualVoteCount =
+    resolvedEligibleVoterCount === null || resolvedNonVotingCount === null
+      ? null
+      : Math.max(resolvedEligibleVoterCount - resolvedNonVotingCount, 0);
   const items = evaluation
     ? maskSmallGroupResultItems(result.items, evaluation).map((item) => ({
         question_id: item.questionId,
@@ -320,6 +327,10 @@ function resultDto(
       status: result.status,
       tallied_at: result.talliedAt?.toISOString(),
       source_rule: result.sourceRule,
+      turnout: {
+        eligible_voter_count: resolvedEligibleVoterCount,
+        actual_vote_count: actualVoteCount
+      },
       privacy_risk_level: evaluation?.privacyRiskLevel,
       can_publish_counts: evaluation?.canPublishCounts,
       masked_result_items: evaluation?.maskedResultItems,
@@ -365,6 +376,22 @@ async function countNonVotingEligibleVoters(
     repository.listBallotsForTally(election.id)
   ]);
   return Math.max(eligibleVoterCount - getTallyEligibleBallots(rawBallots, election).length, 0);
+}
+
+async function getTurnoutCounts(
+  repository: ResultRepository,
+  election: ResultElectionRecord
+): Promise<{ eligibleVoterCount: number; tallyEligibleBallotCount: number; nonVotingCount: number }> {
+  const [eligibleVoterCount, rawBallots] = await Promise.all([
+    repository.countEligibleVoters(election.id),
+    repository.listBallotsForTally(election.id)
+  ]);
+  const tallyEligibleBallotCount = getTallyEligibleBallots(rawBallots, election).length;
+  return {
+    eligibleVoterCount,
+    tallyEligibleBallotCount,
+    nonVotingCount: Math.max(eligibleVoterCount - tallyEligibleBallotCount, 0)
+  };
 }
 
 export async function tallyElectionResult(
@@ -413,7 +440,7 @@ export async function tallyElectionResult(
     }
   });
   return {
-    result: resultDto(result, undefined, "ElectionManager", nonVotingCount),
+    result: resultDto(result, undefined, "ElectionManager", nonVotingCount, eligibleVoterCount),
     tally_eligible_ballot_count: tallyEligibleBallots.length,
     election_state: ElectionState.PENDING_CONFIRMATION
   };
@@ -427,12 +454,12 @@ export async function getElectionResult(electionId: string, context: ResultServi
     throw notFoundError("result");
   }
   const latestVersion = await context.repository.findLatestResultVersion(electionId);
-  const [evaluation, nonVotingCount] = await Promise.all([
+  const [evaluation, turnout] = await Promise.all([
     evaluatePrivacyForResult(context.repository, election, result),
-    countNonVotingEligibleVoters(context.repository, election)
+    getTurnoutCounts(context.repository, election)
   ]);
   return {
-    result: resultDto(result, evaluation, "ElectionManager", nonVotingCount),
+    result: resultDto(result, evaluation, "ElectionManager", turnout.nonVotingCount, turnout.eligibleVoterCount),
     latest_version: latestVersion ? versionDto(latestVersion) : null
   };
 }
@@ -489,9 +516,9 @@ export async function publishResult(
   if (!result || result.id !== version.resultId) {
     throw notFoundError("result");
   }
-  const [evaluation, nonVotingCount] = await Promise.all([
+  const [evaluation, turnout] = await Promise.all([
     evaluatePrivacyForResult(context.repository, election, result),
-    countNonVotingEligibleVoters(context.repository, election)
+    getTurnoutCounts(context.repository, election)
   ]);
   const published = await context.repository.markResultVersionPublished(
     version.id,
@@ -518,7 +545,7 @@ export async function publishResult(
   return {
     result_version: versionDto(published),
     privacy: evaluation,
-    public_result_preview: resultDto(result, evaluation, "PublicViewer", nonVotingCount),
+    public_result_preview: resultDto(result, evaluation, "PublicViewer", turnout.nonVotingCount, turnout.eligibleVoterCount),
     election_state: ElectionState.PUBLISHED
   };
 }
@@ -749,12 +776,12 @@ export async function getPublicElectionResult(electionId: string, context: Publi
   if (!result) {
     throw notFoundError("published result");
   }
-  const [evaluation, nonVotingCount] = await Promise.all([
+  const [evaluation, turnout] = await Promise.all([
     evaluatePrivacyForResult(context.repository, election, result),
-    countNonVotingEligibleVoters(context.repository, election)
+    getTurnoutCounts(context.repository, election)
   ]);
   return {
     result_version: versionDto(version),
-    result: resultDto(result, evaluation, "PublicViewer", nonVotingCount)
+    result: resultDto(result, evaluation, "PublicViewer", turnout.nonVotingCount, turnout.eligibleVoterCount)
   };
 }

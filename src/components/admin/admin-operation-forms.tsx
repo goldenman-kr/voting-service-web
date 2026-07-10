@@ -75,21 +75,19 @@ export function ElectionStateCtaPanel({
       : state === ElectionState.OPEN
         ? [
             { operation: "pause", label: "일시중단" },
-            { operation: "close", label: "종료" },
-            { operation: "resend_invitations", label: "초대 재발송" }
+            { operation: "close", label: "종료" }
           ]
         : state === ElectionState.PAUSED
           ? [
               { operation: "resume", label: "재개" },
-              { operation: "close", label: "종료" },
-              { operation: "resend_invitations", label: "초대 재발송" }
+              { operation: "close", label: "종료" }
             ]
           : [];
 
   return (
     <section className="grid gap-4 rounded-md border border-slate-200 bg-white p-5">
       <div>
-        <h2 className="text-base font-semibold text-slate-950">운영 CTA</h2>
+        <h2 className="text-base font-semibold text-slate-950">투표 상태 변경</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
           표시된 작업만 현재 상태에서 실행할 수 있습니다. 투표 시작은 현재 시각으로 시작일시를 갱신하고 즉시 진행 상태로 전환합니다.
         </p>
@@ -101,8 +99,8 @@ export function ElectionStateCtaPanel({
           ))}
         </div>
       ) : (
-        <WarningBanner title="현재 상태에서 가능한 운영 CTA 없음">
-          이 상태에서는 직접 상태 전환 작업을 제공하지 않습니다.
+        <WarningBanner title="상태 변경 불가">
+          현재 투표가 종료된 상태에서는 더이상 변경할 수 없습니다.
         </WarningBanner>
       )}
     </section>
@@ -125,8 +123,7 @@ export function ResultOperationPanel({
           ? [{ operation: "publish", label: "결과 공개", notice: true }]
           : state === ElectionState.PUBLISHED
             ? [
-                { operation: "request_correction", label: "정정 요청", notice: true },
-                { operation: "invalidate", label: "무효 처리", notice: true }
+                { operation: "invalidate", label: "무효 처리" }
               ]
             : [];
 

@@ -26,8 +26,22 @@ function ElectionList({
   elections: VoterPortalElectionSummary[];
   mode: "ballot" | "results";
 }) {
+  const isBallotMode = mode === "ballot";
+  const sectionClassName = isBallotMode
+    ? "grid gap-3 rounded-md border border-sky-200 bg-sky-50 p-5"
+    : "grid gap-3 rounded-md border border-lime-200 bg-lime-50 p-5";
+  const cardClassName = isBallotMode
+    ? "grid gap-3 rounded-md border border-sky-200 bg-white p-4"
+    : "grid gap-3 rounded-md border border-lime-200 bg-white p-4";
+  const emptyClassName = isBallotMode
+    ? "rounded-md border border-dashed border-sky-300 bg-white px-4 py-5 text-sm text-slate-600"
+    : "rounded-md border border-dashed border-lime-300 bg-white px-4 py-5 text-sm text-slate-600";
+  const actionClassName = isBallotMode
+    ? "w-fit rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white"
+    : "w-fit rounded-md bg-emerald-800 px-4 py-2 text-sm font-semibold text-white";
+
   return (
-    <section className="grid gap-3 rounded-md border border-slate-200 bg-white p-5">
+    <section className={sectionClassName}>
       <div>
         <h2 className="text-base font-semibold text-slate-950">{title}</h2>
         <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
@@ -35,7 +49,7 @@ function ElectionList({
       {elections.length > 0 ? (
         <div className="grid gap-3">
           {elections.map((election) => (
-            <article key={election.id} className="grid gap-3 rounded-md border border-slate-200 bg-slate-50 p-4">
+            <article key={election.id} className={cardClassName}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h3 className="font-semibold text-slate-950">{election.title}</h3>
@@ -48,7 +62,7 @@ function ElectionList({
               </p>
               <Link
                 href={`/voter/elections/${election.id}/verify`}
-                className="w-fit rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white"
+                className={actionClassName}
               >
                 {mode === "ballot" ? "본인 확인 후 투표하기" : "본인 확인 후 결과 보기"}
               </Link>
@@ -56,7 +70,7 @@ function ElectionList({
           ))}
         </div>
       ) : (
-        <p className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600">
+        <p className={emptyClassName}>
           표시할 투표가 없습니다.
         </p>
       )}

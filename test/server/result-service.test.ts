@@ -435,6 +435,10 @@ describe("result tally service", () => {
     const result = repository.results[0];
 
     expect(output.tally_eligible_ballot_count).toBe(2);
+    expect(output.result.turnout).toEqual({
+      eligible_voter_count: 12,
+      actual_vote_count: 2
+    });
     expect(result.sourceRule).toContain("is_current=true");
     expect(result.items.find((item) => item.optionId === "option-a")?.voteCount).toBe(1);
     expect(result.items.find((item) => item.optionId === "option-b")?.voteCount).toBe(1);
@@ -627,6 +631,10 @@ describe("report exports and public result access", () => {
 
     expect(publicResult.result_version.status).toBe("published");
     expect(publicResult.result_version.notice).toBe("published");
+    expect(publicResult.result.turnout).toEqual({
+      eligible_voter_count: 12,
+      actual_vote_count: 2
+    });
     expect(serialized).not.toContain("ballot");
     expect(serialized).not.toContain("vote-a");
     expect(serialized).not.toContain("anonymousBallotGroup");

@@ -1,8 +1,9 @@
 import { z } from "zod";
 
 import { AuthenticationMethod } from "../../guardrails/index.js";
+import { coerceDateInputAsKst } from "../../lib/kst-datetime";
 
-const dateInput = z.coerce.date();
+const dateInput = z.preprocess(coerceDateInputAsKst, z.coerce.date());
 
 const electionDraftBaseSchema = z.object({
     title: z.string().trim().min(1).max(200),

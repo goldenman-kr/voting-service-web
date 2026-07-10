@@ -18,7 +18,7 @@ export default async function AdminQuestionsPage({ params }: Params) {
   if (!restored) return null;
   const election = await getAdminElectionDetail(getPrismaClient(), restored.session, (await params).election_id);
   if (!election) notFound();
-  const disabled = election.state !== ElectionState.DRAFT;
+  const canAddQuestion = election.state === ElectionState.DRAFT && election.startsAt > new Date();
 
   return (
     <div className="grid gap-6">
@@ -31,9 +31,11 @@ export default async function AdminQuestionsPage({ params }: Params) {
       <WarningBanner>
         시작된 투표의 문항과 선택 항목은 직접 수정하지 않습니다. 오류 발견 시 중단, 무효, 재실시 정책을 사용합니다.
       </WarningBanner>
-      <FormSection title="문항 추가" description="MVP에서는 단일/복수 선택과 찬반 문항을 우선 지원합니다.">
-        <QuestionOptionForm electionId={election.id} disabled={disabled} />
-      </FormSection>
+      {canAddQuestion ? (
+        <FormSection title="문항 추가" description="MVP에서는 단일/복수 선택과 찬반 문항을 우선 지원합니다.">
+          <QuestionOptionForm electionId={election.id} disabled={false} />
+        </FormSection>
+      ) : null}
       <section className="rounded-md border border-slate-200 bg-white p-5">
         <h2 className="text-base font-semibold">현재 문항</h2>
         <div className="mt-4 grid gap-3">

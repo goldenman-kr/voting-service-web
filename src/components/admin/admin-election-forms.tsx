@@ -281,7 +281,7 @@ export function CreateElectionWizardForm({
     () => options.filter((option) => option.title.trim().length > 0),
     [options]
   );
-  const isStepOneComplete = Boolean(title.trim() && electionType && startsAt && endsAt && new Date(endsAt) > new Date(startsAt));
+  const isStepOneComplete = Boolean(title.trim() && electionType && startsAt && endsAt && endsAt > startsAt);
   const isStepTwoComplete = filledOptions.length >= 2;
   const isStepThreeComplete =
     registryMode === "existing" ? Boolean(managedRegistryId) : rowsToVoterCount(voterRows) > 0;
@@ -619,7 +619,7 @@ export function EditElectionBasicInfoForm({ initial }: { initial: EditBasicInfo 
   const [startsAt, setStartsAt] = useState(initial.startsAt);
   const [endsAt, setEndsAt] = useState(initial.endsAt);
 
-  const isComplete = Boolean(title.trim() && electionType && startsAt && endsAt && new Date(endsAt) > new Date(startsAt));
+  const isComplete = Boolean(title.trim() && electionType && startsAt && endsAt && endsAt > startsAt);
   const disabledReason = !isComplete
     ? "투표 제목, 유형, 시작일시, 종료일시를 모두 입력하고 종료일시가 시작일시보다 뒤인지 확인해 주세요."
     : undefined;

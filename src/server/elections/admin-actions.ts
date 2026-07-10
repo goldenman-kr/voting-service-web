@@ -10,6 +10,7 @@ import {
 } from "../../domain/auth-policy/authentication-policy";
 import { AuthenticationMethod, ElectionState } from "../../guardrails/index.js";
 import { parseEnv } from "../../lib/env";
+import { parseKstDateTimeInput } from "../../lib/kst-datetime";
 import {
   canonicalVoterIdentifier,
   parseVoterRegistryTextRows,
@@ -90,8 +91,8 @@ function validateBasicInfoInput(formData: FormData): string | null {
     }
   }
 
-  const startsAt = new Date(value(formData, "startsAt"));
-  const endsAt = new Date(value(formData, "endsAt"));
+  const startsAt = parseKstDateTimeInput(value(formData, "startsAt"));
+  const endsAt = parseKstDateTimeInput(value(formData, "endsAt"));
   if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
     return "시작일시와 종료일시를 확인해 주세요.";
   }
@@ -114,8 +115,8 @@ export async function createElectionDraftAction(
         description: optionalValue(formData, "description"),
         electionType: value(formData, "electionType") || "representative_election",
         votingMode: value(formData, "votingMode") || "anonymous",
-        startsAt: value(formData, "startsAt"),
-        endsAt: value(formData, "endsAt"),
+        startsAt: parseKstDateTimeInput(value(formData, "startsAt")),
+        endsAt: parseKstDateTimeInput(value(formData, "endsAt")),
         timezone: "Asia/Seoul"
       },
       context
@@ -167,8 +168,8 @@ export async function updateElectionBasicInfoAction(
         title: value(formData, "title"),
         description: optionalValue(formData, "description"),
         electionType: value(formData, "electionType") || "representative_election",
-        startsAt: value(formData, "startsAt"),
-        endsAt: value(formData, "endsAt"),
+        startsAt: parseKstDateTimeInput(value(formData, "startsAt")),
+        endsAt: parseKstDateTimeInput(value(formData, "endsAt")),
         timezone: "Asia/Seoul",
         reason: "통합 편집 마법사 기본 정보 수정"
       },
@@ -411,8 +412,8 @@ function validateWizardInput(formData: FormData): string | null {
     }
   }
 
-  const startsAt = new Date(value(formData, "startsAt"));
-  const endsAt = new Date(value(formData, "endsAt"));
+  const startsAt = parseKstDateTimeInput(value(formData, "startsAt"));
+  const endsAt = parseKstDateTimeInput(value(formData, "endsAt"));
   if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
     return "시작일시와 종료일시를 확인해 주세요.";
   }
@@ -484,8 +485,8 @@ export async function createElectionWizardAction(
         description: optionalValue(formData, "description"),
         electionType: value(formData, "electionType") || "representative_election",
         votingMode: "anonymous",
-        startsAt: value(formData, "startsAt"),
-        endsAt: value(formData, "endsAt"),
+        startsAt: parseKstDateTimeInput(value(formData, "startsAt")),
+        endsAt: parseKstDateTimeInput(value(formData, "endsAt")),
         timezone: "Asia/Seoul"
       },
       context
