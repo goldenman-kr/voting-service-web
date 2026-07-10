@@ -9,10 +9,11 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 FROM deps AS builder
+ARG APP_URL=https://localhost
 ARG NEXT_PUBLIC_NAV_BADGE=""
+ENV APP_URL=${APP_URL}
 ENV NEXT_PUBLIC_NAV_BADGE=${NEXT_PUBLIC_NAV_BADGE}
 ENV DATABASE_URL=postgresql://user:pass@localhost:5432/buildtime
-ENV APP_URL=https://localhost
 ENV SESSION_SECRET=build_time_dummy_secret_32_bytes_minimum
 ENV ENCRYPTION_KEY=build_time_dummy_secret_32_bytes_minimum
 ENV HMAC_KEY=build_time_dummy_secret_32_bytes_minimum
@@ -41,7 +42,8 @@ COPY scripts/bootstrap-admin.ts ./scripts/bootstrap-admin.ts
 COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
-RUN useradd --create-home --shell /usr/sbin/nologin nextjs
+RUN useradd --create-home --shell /usr/sbin/nologin nextjs \
+  && chown -R nextjs:nextjs /app/.next/cache
 USER nextjs
 
 EXPOSE 3000

@@ -27,25 +27,25 @@ export function StateHistoryTable({
   emptyMessage: string;
 }) {
   return (
-    <section className="grid gap-3 rounded-md border border-slate-200 bg-white p-5">
-      <h2 className="text-base font-semibold text-slate-950">{title}</h2>
+    <section className="ui-card grid gap-3 p-5">
+      <h2 className="text-base font-bold text-ink">{title}</h2>
       {rows.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="min-w-full table-fixed text-sm">
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-line">
               {rows.map((row, index) => (
                 <tr key={`${row.label}-${row.changedAt.toISOString()}-${index}`}>
-                  <th scope="row" className="w-1/2 py-3 pr-4 text-left font-semibold text-slate-700">
+                  <th scope="row" className="w-1/2 py-3 pr-4 text-left font-bold text-[#3A4A66]">
                     {row.label}
                   </th>
-                  <td className="py-3 text-slate-700">{formatStateHistoryDate(row.changedAt)}</td>
+                  <td className="py-3 text-ink-body">{formatStateHistoryDate(row.changedAt)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       ) : (
-        <p className="rounded-md bg-slate-50 px-4 py-3 text-sm text-slate-600">{emptyMessage}</p>
+        <p className="rounded-xl bg-surface px-4 py-3 text-sm text-ink-muted">{emptyMessage}</p>
       )}
     </section>
   );

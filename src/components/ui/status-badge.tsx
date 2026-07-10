@@ -2,11 +2,11 @@ import type { ElectionStateValue } from "../../domain/elections/state-machine";
 import { getElectionStateUi } from "../../lib/ui/election-state-ui";
 
 const toneClass = {
-  neutral: "border-slate-200 bg-slate-100 text-slate-700",
-  info: "border-blue-200 bg-blue-50 text-blue-700",
-  success: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  warning: "border-amber-200 bg-amber-50 text-amber-800",
-  danger: "border-red-200 bg-red-50 text-red-700"
+  neutral: "border-[#E0E5EE] bg-[#EEF1F6] text-[#5A6577]",
+  info: "border-brand-100 bg-brand-50 text-[#3E5BC0]",
+  success: "border-[#CDE9D8] bg-[#E9F6EF] text-[#1F7A4D]",
+  warning: "border-warning-200 bg-warning-50 text-warning-600",
+  danger: "border-danger-200 bg-danger-50 text-danger-600"
 } as const;
 
 export function StatusBadge({
@@ -20,9 +20,9 @@ export function StatusBadge({
   return (
     <span
       className={[
-        "inline-flex items-center rounded-full border font-medium",
+        "inline-flex items-center rounded-full border font-bold",
         toneClass[ui.tone],
-        size === "sm" ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm"
+        size === "sm" ? "px-2.5 py-1 text-xs" : "px-3 py-1.5 text-[13px]"
       ].join(" ")}
       title={ui.description}
     >

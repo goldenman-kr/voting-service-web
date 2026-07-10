@@ -28,23 +28,17 @@ function ElectionList({
 }) {
   const isBallotMode = mode === "ballot";
   const sectionClassName = isBallotMode
-    ? "grid gap-3 rounded-md border border-sky-200 bg-sky-50 p-5"
-    : "grid gap-3 rounded-md border border-lime-200 bg-lime-50 p-5";
-  const cardClassName = isBallotMode
-    ? "grid gap-3 rounded-md border border-sky-200 bg-white p-4"
-    : "grid gap-3 rounded-md border border-lime-200 bg-white p-4";
-  const emptyClassName = isBallotMode
-    ? "rounded-md border border-dashed border-sky-300 bg-white px-4 py-5 text-sm text-slate-600"
-    : "rounded-md border border-dashed border-lime-300 bg-white px-4 py-5 text-sm text-slate-600";
-  const actionClassName = isBallotMode
-    ? "w-fit rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white"
-    : "w-fit rounded-md bg-emerald-800 px-4 py-2 text-sm font-semibold text-white";
+    ? "grid gap-4 rounded-card border border-brand-100 bg-brand-50 p-5"
+    : "grid gap-4 rounded-card border border-line bg-surface p-5";
+  const cardClassName = "ui-card grid gap-3 p-5";
+  const emptyClassName = "rounded-xl border border-dashed border-line-input bg-white px-4 py-5 text-sm text-ink-muted";
+  const actionClassName = isBallotMode ? "ui-primary-button w-fit" : "ui-secondary-button w-fit";
 
   return (
     <section className={sectionClassName}>
       <div>
-        <h2 className="text-base font-semibold text-slate-950">{title}</h2>
-        <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
+        <h2 className="text-lg font-bold text-ink">{title}</h2>
+        <p className="mt-1 text-sm leading-6 text-ink-muted">{description}</p>
       </div>
       {elections.length > 0 ? (
         <div className="grid gap-3">
@@ -52,12 +46,12 @@ function ElectionList({
             <article key={election.id} className={cardClassName}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h3 className="font-semibold text-slate-950">{election.title}</h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">{election.description ?? "등록된 설명이 없습니다."}</p>
+                  <h3 className="font-bold text-ink">{election.title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-ink-muted">{election.description ?? "등록된 설명이 없습니다."}</p>
                 </div>
                 <StatusBadge status={election.state} size="sm" />
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-ink-faint">
                 {formatDate(election.startsAt)} - {formatDate(election.endsAt)}
               </p>
               <Link
@@ -81,7 +75,7 @@ function ElectionList({
 export default async function VoterDashboardPage() {
   const elections = await listVoterPortalElections();
   return (
-    <VoterShell>
+    <VoterShell wide>
       <PageHeader
         eyebrow="투표하러가기"
         title="참여 가능한 투표를 선택해 주세요"

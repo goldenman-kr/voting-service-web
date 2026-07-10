@@ -2,27 +2,122 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: "A2z";
+  src: url("/fonts/a2z/a2z-regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "A2z";
+  src: url("/fonts/a2z/a2z-medium.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "A2z";
+  src: url("/fonts/a2z/a2z-semibold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "A2z";
+  src: url("/fonts/a2z/a2z-bold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "A2z";
+  src: url("/fonts/a2z/a2z-extrabold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+}
+
 :root {
   color-scheme: light;
-  background: #f8fafc;
-  color: #0f172a;
+  background: #ffffff;
+  color: #101d33;
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
-  background: #f8fafc;
-  color: #0f172a;
+  background: #ffffff;
+  color: #101d33;
   font-family:
-    Arial,
-    Helvetica,
+    "A2z",
+    "Pretendard",
+    system-ui,
     sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+::selection {
+  background: #dbe6fb;
+}
+
+@layer base {
+  input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select {
+    @apply min-h-12 rounded-control border border-line-input bg-white px-3.5 text-[15px] text-ink-soft outline-none transition;
+  }
+
+  textarea {
+    @apply rounded-control border border-line-input bg-white px-3.5 py-3 text-[15px] text-ink-soft outline-none transition;
+  }
+
+  input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):focus,
+  select:focus,
+  textarea:focus {
+    border-color: #6180db;
+    box-shadow: 0 0 0 3px rgba(97, 128, 219, 0.15);
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: #6180db;
+  }
+}
+
+@layer components {
+  .ui-card {
+    @apply rounded-card border border-line bg-white shadow-card;
+  }
+
+  .ui-primary-button {
+    @apply inline-flex min-h-[46px] items-center justify-center rounded-[11px] bg-brand-600 px-5 py-3 text-sm font-bold text-white shadow-primary transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-600/15 disabled:cursor-not-allowed disabled:bg-slate-400 disabled:shadow-none;
+  }
+
+  .ui-secondary-button {
+    @apply inline-flex min-h-[46px] items-center justify-center rounded-[11px] border border-line-input bg-white px-5 py-3 text-sm font-bold text-ink-soft transition hover:border-brand-100 hover:bg-brand-50 hover:text-brand-800 focus:outline-none focus:ring-4 focus:ring-brand-600/15 disabled:cursor-not-allowed disabled:text-ink-faint;
+  }
+
+  .ui-danger-button {
+    @apply inline-flex min-h-[46px] items-center justify-center rounded-[11px] border border-danger-200 bg-danger-50 px-5 py-3 text-sm font-bold text-danger-600 transition hover:bg-red-100 focus:outline-none focus:ring-4 focus:ring-red-500/10 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .ui-eyebrow {
+    @apply text-[13px] font-bold tracking-[0.02em] text-brand-600;
+  }
 }

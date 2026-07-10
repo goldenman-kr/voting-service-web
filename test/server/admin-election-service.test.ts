@@ -7,6 +7,7 @@ import { createMockAdminSession } from "../../src/server/auth/admin-session";
 import {
   configureAuthenticationPolicy,
   approveElectionReview,
+  cancelExpiredPreStartElection,
   closeElection,
   createElectionDraft,
   createOption,
@@ -654,6 +655,48 @@ describe("admin election service", () => {
 
     expect(repository.elections.get(election.id)?.deletedAt).toEqual(now);
     await expect(getElection(election.id, context)).rejects.toThrow(/대상을 찾을 수 없습니다/);
+  });
+
+  it("cancels an expired pre-start election into the invalidated completed state", async () => {
+    const repository = new InMemoryElectionRepository();
+    const auditRecorder = new InMemoryAuditRecorder();
+    const context = createContext(repository, {
+      auditRecorder,
+      session: createMockAdminSession({ roles: [Role.ORGANIZATION_OWNER] })
+    });
+    const { election } = await createElectionDraft(
+      {
+        ...draftInput(),
+        startsAt: "2025-12-31T00:00:00.000Z",
+        endsAt: "2026-01-02T00:00:00.000Z"
+      },
+      context
+    );
+
+    const result = await cancelExpiredPreStartElection(election.id, {}, context);
+
+    expect(result.state).toBe(ElectionState.INVALIDATED);
+    expect(repository.elections.get(election.id)?.state).toBe(ElectionState.INVALIDATED);
+    expect(repository.stateHistories.at(-1)).toMatchObject({
+      fromState: ElectionState.DRAFT,
+      toState: ElectionState.INVALIDATED,
+      changeType: "cancelled",
+      reason: "시작일 경과 후 투표 시작 전 취소"
+    });
+    expect(auditRecorder.events.some((event) => event.eventType === "election.cancelled")).toBe(true);
+  });
+
+  it("rejects pre-start cancellation before the configured start time", async () => {
+    const repository = new InMemoryElectionRepository();
+    const context = createContext(repository, {
+      session: createMockAdminSession({ roles: [Role.ORGANIZATION_OWNER] })
+    });
+    const { election } = await createElectionDraft(draftInput(), context);
+
+    await expect(cancelExpiredPreStartElection(election.id, {}, context)).rejects.toThrow(
+      /현재 투표 상태/
+    );
+    expect(repository.elections.get(election.id)?.state).toBe(ElectionState.DRAFT);
   });
 
   it("allows Open to Paused to Open and Open or Paused to Closed", async () => {

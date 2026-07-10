@@ -95,29 +95,30 @@ type EditWizardSetupPolicy = Readonly<{
 }>;
 
 function FieldHelp({ children }: { children: ReactNode }) {
-  return <span className="text-xs leading-5 text-slate-500">{children}</span>;
+  return <span className="text-xs leading-5 text-ink-faint">{children}</span>;
 }
 
 function WizardStepIndicator({ currentStep }: { currentStep: number }) {
   return (
-    <ol className="grid gap-2 rounded-md border border-slate-200 bg-white p-3 text-sm sm:grid-cols-3">
+    <ol className="flex items-start rounded-card border border-line bg-white px-4 py-5 text-sm shadow-card sm:px-7">
       {wizardSteps.map((step) => {
         const active = step.id === currentStep;
         const complete = step.id < currentStep;
         return (
-          <li
-            key={step.id}
-            aria-current={active ? "step" : undefined}
-            className={[
-              "rounded-md border px-3 py-2 font-semibold",
-              active
-                ? "border-blue-600 bg-blue-50 text-blue-900"
-                : complete
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-                  : "border-slate-200 bg-slate-50 text-slate-600"
-            ].join(" ")}
-          >
-            {step.label}
+          <li key={step.id} className="contents">
+            <div aria-current={active ? "step" : undefined} className="flex min-w-[88px] flex-col items-center gap-2 text-center">
+              <span className={[
+                "grid h-9 w-9 place-items-center rounded-full text-sm font-bold",
+                complete || active ? "bg-brand-600 text-white" : "bg-[#EAEEF5] text-[#9AA4B4]",
+                active ? "ring-4 ring-brand-600/15" : ""
+              ].join(" ")}>
+                {complete ? (
+                  <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m20 6-11 11-5-5" /></svg>
+                ) : step.id + 1}
+              </span>
+              <span className={active ? "font-bold text-ink" : complete ? "font-semibold text-brand-600" : "font-semibold text-ink-faint"}>{step.label.slice(2)}</span>
+            </div>
+            {step.id < wizardSteps.length - 1 ? <span className={complete ? "mt-[18px] h-0.5 flex-1 bg-brand-600" : "mt-[18px] h-0.5 flex-1 bg-[#E1E6EF]"} /> : null}
           </li>
         );
       })}
@@ -335,10 +336,10 @@ export function CreateElectionWizardForm({
     >
       <WizardStepIndicator currentStep={currentStep} />
 
-      <section className={currentStep === 0 ? "grid gap-5" : "hidden"}>
-        <div className="rounded-md border border-slate-200 bg-white p-5">
-          <h2 className="text-lg font-semibold text-slate-950">기본 정보</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
+      <section className={currentStep === 0 ? "ui-card grid gap-5 p-6" : "hidden"}>
+        <div>
+          <h2 className="text-lg font-bold text-ink">기본 정보</h2>
+          <p className="mt-2 text-sm leading-6 text-ink-muted">
             유권자가 처음 보게 되는 투표 이름과 일정을 정합니다. 시작일시 이후에는 투표 문항과 명부
             수정이 제한될 수 있습니다.
           </p>
@@ -386,6 +387,15 @@ export function CreateElectionWizardForm({
           <FieldHelp>투표 성격에 가장 가까운 유형을 선택해 주세요.</FieldHelp>
         </label>
 
+        <fieldset className="grid gap-2">
+          <legend className="text-sm font-bold text-[#3A4A66]">투표 방식</legend>
+          <div className="grid grid-cols-2 rounded-control border border-line-input bg-surface p-1">
+            <span className="flex min-h-[44px] items-center justify-center rounded-lg bg-white text-sm font-bold text-brand-600 shadow-sm">익명 투표</span>
+            <span aria-disabled="true" className="flex min-h-[44px] items-center justify-center rounded-lg text-sm font-semibold text-ink-faint">기명 투표</span>
+          </div>
+          <FieldHelp>현재 운영 정책은 유권자 인증과 선택 내용을 분리하는 익명 투표를 기본으로 사용합니다.</FieldHelp>
+        </fieldset>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="grid gap-1 text-sm font-medium text-slate-700">
             시작일시
@@ -412,12 +422,12 @@ export function CreateElectionWizardForm({
         </div>
       </section>
 
-      <section className={currentStep === 1 ? "grid gap-5" : "hidden"}>
-        <div className="rounded-md border border-slate-200 bg-white p-5">
+      <section className={currentStep === 1 ? "ui-card grid gap-5 p-6" : "hidden"}>
+        <div>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-slate-950">선택 항목</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
+              <h2 className="text-lg font-bold text-ink">선택 항목</h2>
+              <p className="mt-2 text-sm leading-6 text-ink-muted">
                 투표 제목과 설명을 안건으로 사용합니다. 이 단계에서는 유권자가 고를 선택 항목만 입력합니다.
                 선택 항목은 최소 2개가 필요합니다.
               </p>
@@ -480,10 +490,10 @@ export function CreateElectionWizardForm({
         </div>
       </section>
 
-      <section className={currentStep === 2 ? "grid gap-5" : "hidden"}>
-        <div className="rounded-md border border-slate-200 bg-white p-5">
-          <h2 className="text-lg font-semibold text-slate-950">선거인 명부</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
+      <section className={currentStep === 2 ? "ui-card grid gap-5 p-6" : "hidden"}>
+        <div>
+          <h2 className="text-lg font-bold text-ink">선거인 명부</h2>
+          <p className="mt-2 text-sm leading-6 text-ink-muted">
             이 투표에 사용할 명부를 직접 입력하거나 CSV/XLSX 파일에서 불러옵니다. 입력한 정보는 선거인
             확인용으로만 사용되며, 투표가 시작되면 명부 수정이 제한됩니다.
           </p>
@@ -584,7 +594,7 @@ export function CreateElectionWizardForm({
           type="button"
           onClick={() => setCurrentStep((step) => Math.max(step - 1, 0))}
           disabled={currentStep === 0 || pending}
-          className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 disabled:text-slate-400"
+          className="ui-secondary-button"
         >
           이전
         </button>
@@ -593,7 +603,7 @@ export function CreateElectionWizardForm({
             type="button"
             onClick={goNext}
             disabled={Boolean(disabledReason) || pending}
-            className="rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-400"
+            className="ui-primary-button"
           >
             다음
           </button>
@@ -601,7 +611,7 @@ export function CreateElectionWizardForm({
           <button
             type="submit"
             disabled={!canSubmit}
-            className="rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-400"
+            className="ui-primary-button"
           >
             {pending ? "저장 중" : "완료"}
           </button>

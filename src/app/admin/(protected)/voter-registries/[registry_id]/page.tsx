@@ -24,6 +24,44 @@ function formatDate(date: Date): string {
   }).format(date);
 }
 
+function formatDateTimeParts(date: Date): { date: string; time: string } {
+  return {
+    date: new Intl.DateTimeFormat("ko-KR", {
+      dateStyle: "short",
+      timeZone: "Asia/Seoul"
+    }).format(date),
+    time: new Intl.DateTimeFormat("ko-KR", {
+      timeStyle: "short",
+      timeZone: "Asia/Seoul"
+    }).format(date)
+  };
+}
+
+function DateTimeCell({ value }: { value: Date }) {
+  const parts = formatDateTimeParts(value);
+  return (
+    <time dateTime={value.toISOString()} className="grid gap-1 whitespace-nowrap leading-5 text-slate-600">
+      <span>{parts.date}</span>
+      <span className="text-xs text-slate-500">{parts.time}</span>
+    </time>
+  );
+}
+
+function ElectionPeriodCell({ startsAt, endsAt }: { startsAt: Date; endsAt: Date }) {
+  return (
+    <dl className="grid gap-1 leading-6 text-slate-600">
+      <div className="grid grid-cols-[2.5rem_1fr] gap-2">
+        <dt className="font-semibold text-slate-500">시작</dt>
+        <dd className="whitespace-nowrap">{formatDate(startsAt)}</dd>
+      </div>
+      <div className="grid grid-cols-[2.5rem_1fr] gap-2">
+        <dt className="font-semibold text-slate-500">종료</dt>
+        <dd className="whitespace-nowrap">{formatDate(endsAt)}</dd>
+      </div>
+    </dl>
+  );
+}
+
 export default async function ManagedVoterRegistryDetailPage({ params }: Params) {
   const restored = await getCurrentAdminSessionFromCookies();
   if (!restored) return null;
@@ -129,32 +167,39 @@ export default async function ManagedVoterRegistryDetailPage({ params }: Params)
           </p>
         </div>
         {registry.usedElections.length > 0 ? (
-          <div className="overflow-hidden rounded-md border border-slate-200">
-            <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+          <div className="overflow-x-auto rounded-md border border-slate-200">
+            <table className="w-full min-w-[760px] table-fixed border-collapse text-left text-sm">
+              <colgroup>
+                <col />
+                <col className="w-[7rem]" />
+                <col className="w-[14rem]" />
+                <col className="w-[6.5rem]" />
+                <col className="w-[5rem]" />
+              </colgroup>
               <thead className="bg-slate-100 text-xs font-semibold uppercase tracking-normal text-slate-600">
                 <tr>
-                  <th className="px-4 py-3">투표 제목</th>
-                  <th className="px-4 py-3">상태</th>
-                  <th className="px-4 py-3">투표 기간</th>
-                  <th className="px-4 py-3">연결일</th>
-                  <th className="px-4 py-3">작업</th>
+                  <th className="px-4 py-3 [word-break:keep-all]">투표 제목</th>
+                  <th className="px-3 py-3 [word-break:keep-all]">상태</th>
+                  <th className="px-3 py-3 [word-break:keep-all]">투표 기간</th>
+                  <th className="px-3 py-3 [word-break:keep-all]">연결일</th>
+                  <th className="px-3 py-3 [word-break:keep-all]">작업</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {registry.usedElections.map((election) => (
                   <tr key={election.id}>
-                    <td className="px-4 py-3 font-medium text-slate-950">{election.title}</td>
-                    <td className="px-4 py-3">
+                    <td className="whitespace-normal px-4 py-3 font-medium text-slate-950 [overflow-wrap:break-word] [word-break:keep-all]">{election.title}</td>
+                    <td className="whitespace-normal px-3 py-3 [word-break:keep-all]">
                       <StatusBadge status={election.state} size="sm" />
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {formatDate(election.startsAt)} - {formatDate(election.endsAt)}
+                    <td className="whitespace-normal px-3 py-3 [overflow-wrap:break-word] [word-break:keep-all]">
+                      <ElectionPeriodCell startsAt={election.startsAt} endsAt={election.endsAt} />
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{formatDate(election.linkedAt)}</td>
-                    <td className="px-4 py-3">
+                    <td className="whitespace-normal px-3 py-3 [word-break:keep-all]"><DateTimeCell value={election.linkedAt} /></td>
+                    <td className="whitespace-normal px-3 py-3 [word-break:keep-all]">
                       <Link
                         href={`/admin/elections/${election.id}`}
-                        className="font-semibold text-blue-700 hover:text-blue-900"
+                        className="whitespace-nowrap font-semibold text-blue-700 hover:text-blue-900"
                       >
                         투표 보기
                       </Link>

@@ -64,20 +64,20 @@ export function VoterInviteExchangeForm() {
 
   return (
     <form
-      className="grid gap-4 rounded-md border border-slate-200 bg-white p-5"
+      className="ui-card grid gap-[18px] p-6"
       onSubmit={(event) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
         void exchange(String(formData.get("invitation") ?? ""));
       }}
     >
-      <label className="grid gap-2 text-sm font-medium text-slate-700">
+      <label className="grid gap-2 text-[13.5px] font-bold text-[#3A4A66]">
         초대 확인값
         <input
           name="invitation"
           type="password"
           autoComplete="one-time-code"
-          className="min-h-12 rounded-md border border-slate-300 px-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          className="text-base"
           placeholder="초대 화면에서 받은 값을 입력하세요"
         />
       </label>
@@ -85,7 +85,7 @@ export function VoterInviteExchangeForm() {
       <button
         type="submit"
         disabled={state.pending || isPending}
-        className="min-h-12 w-full rounded-md bg-blue-700 px-4 py-3 text-base font-semibold text-white disabled:bg-slate-400"
+        className="ui-primary-button w-full text-base"
       >
         {state.pending || isPending ? "확인 중" : "초대 확인"}
       </button>
@@ -119,67 +119,70 @@ export function VoterIdentifierForm() {
 
   return (
     <form
-      className="grid gap-4 rounded-md border border-slate-200 bg-white p-5"
+      className="ui-card grid gap-[18px] p-6"
       onSubmit={(event) => {
         event.preventDefault();
         void submit(new FormData(event.currentTarget));
       }}
     >
-      <label className="grid gap-2 text-sm font-medium text-slate-700">
+      <label className="grid gap-[7px] text-[13.5px] font-bold text-[#3A4A66]">
         호수번호
         <input
           name="householdNumber"
           required
           pattern="\d+"
           maxLength={8}
-          className="min-h-12 rounded-md border border-slate-300 px-3 text-base"
+          className="text-base"
           inputMode="numeric"
           autoComplete="off"
+          placeholder="예: 234"
         />
-        <span className="text-xs font-normal leading-5 text-slate-500">숫자만 적어주세요 (예: 2,34,52)</span>
+        <span className="text-xs font-normal leading-5 text-ink-faint">숫자만 적어주세요 (예: 2, 34, 52)</span>
       </label>
-      <label className="grid gap-2 text-sm font-medium text-slate-700">
+      <label className="grid gap-[7px] text-[13.5px] font-bold text-[#3A4A66]">
         이름
         <input
           name="name"
           required
-          className="min-h-12 rounded-md border border-slate-300 px-3 text-base"
+          className="text-base"
           autoComplete="name"
+          placeholder="예: 홍길동"
         />
-        <span className="text-xs font-normal leading-5 text-slate-500">한글이름을 빈칸없이 적어주세요 (예: 홍길동)</span>
+        <span className="text-xs font-normal leading-5 text-ink-faint">한글이름을 빈칸없이 적어주세요 (예: 홍길동)</span>
       </label>
-      <label className="grid gap-2 text-sm font-medium text-slate-700">
+      <label className="grid gap-[7px] text-[13.5px] font-bold text-[#3A4A66]">
         식별번호
         <input
           name="identifierLast4"
           required
           pattern="\d{4}"
           maxLength={4}
-          className="min-h-12 rounded-md border border-slate-300 px-3 text-base"
+          className="text-base"
           inputMode="numeric"
           autoComplete="off"
+          placeholder="예: 1234"
         />
-        <span className="text-xs font-normal leading-5 text-slate-500">입주등록한 세대주의 전화번호 뒷4자리 (예: 1234)</span>
+        <span className="text-xs font-normal leading-5 text-ink-faint">입주등록한 세대주의 전화번호 뒷 4자리</span>
       </label>
-      <label className="grid gap-2 text-sm font-medium text-slate-700">
+      <label className="grid gap-[7px] text-[13.5px] font-bold text-[#3A4A66]">
         생년월일
         <input
           name="birthDate6"
           required
           pattern="\d{6}"
           maxLength={6}
-          className="min-h-12 rounded-md border border-slate-300 px-3 text-base"
+          className="text-base"
           inputMode="numeric"
           autoComplete="off"
+          placeholder="예: 781207"
         />
-        <span className="text-xs font-normal leading-5 text-slate-500">6자리 연월일 (예: 781207)</span>
+        <span className="text-xs font-normal leading-5 text-ink-faint">6자리 연월일 (예: 781207)</span>
       </label>
       {state.error ? <p className="text-sm text-red-700">{state.error}</p> : null}
-      <p className="text-sm leading-6 text-slate-600">인증코드는 MVP 기본 흐름에서 사용하지 않습니다.</p>
       <button
         type="submit"
         disabled={state.pending}
-        className="min-h-12 w-full rounded-md bg-blue-700 px-4 py-3 text-base font-semibold text-white disabled:bg-slate-400"
+        className="ui-primary-button w-full text-base"
       >
         {state.pending ? "확인 중" : "확인"}
       </button>

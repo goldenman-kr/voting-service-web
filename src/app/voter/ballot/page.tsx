@@ -14,7 +14,7 @@ export default async function VoterBallotPage() {
   ]);
   if (!election) {
     return (
-      <VoterShell>
+      <VoterShell step={2}>
         <ErrorState title="투표 화면을 열 수 없습니다" description={error ?? "초대 확인부터 다시 진행해 주세요."} />
         <VoterSecondaryLink href="/voter/invite">초대 확인으로 이동</VoterSecondaryLink>
       </VoterShell>
@@ -22,7 +22,7 @@ export default async function VoterBallotPage() {
   }
 
   return (
-    <VoterShell>
+    <VoterShell step={2}>
       <PageHeader
         eyebrow="투표 입력"
         title={election.title}

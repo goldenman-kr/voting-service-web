@@ -36,32 +36,32 @@ export default async function VoterResultsPage() {
         description="관리자 확정과 공개 이후 열람할 수 있습니다."
       />
       {resultNotice ? (
-        <section className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-950">
-          <h2 className="font-semibold">결과 공지</h2>
+        <section className="rounded-[14px] border border-brand-100 bg-brand-50 p-4 text-sm leading-6 text-ink-body">
+          <h2 className="font-bold text-brand-800">결과 공지</h2>
           <p className="mt-1 whitespace-pre-wrap">{resultNotice}</p>
         </section>
       ) : null}
-      <section className="grid gap-2 rounded-md border border-slate-200 bg-white p-5">
-        <h2 className="text-base font-semibold text-slate-950">투표율</h2>
-        <p className="text-2xl font-semibold text-slate-950">
+      <section className="ui-card grid gap-2 p-5">
+        <h2 className="text-base font-bold text-ink">투표율</h2>
+        <p className="text-[28px] font-extrabold text-ink">
           {formatPercent(actualVoteCount, eligibleVoterCount)}
         </p>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-ink-muted">
           총 유권자 {eligibleVoterCount}명 중 {actualVoteCount}명 투표
         </p>
       </section>
-      <section className="grid gap-3 rounded-md border border-slate-200 bg-white p-5">
+      <section className="ui-card grid gap-3 p-5">
         {data.result.items.map((item, index) => (
           <div key={`${item.display_label ?? "item"}-${index}`} className="flex items-center justify-between">
-            <span className="font-medium">{item.display_label ?? "결과 항목"}</span>
-            <span className="text-sm text-slate-700">
+            <span className="font-semibold text-ink">{item.display_label ?? "결과 항목"}</span>
+            <span className="text-sm text-ink-body">
               {formatResultVoteCount(item, voteDenominators)}
             </span>
           </div>
         ))}
       </section>
       {data.result.privacy_risk_level ? (
-        <p className="text-xs text-slate-500">공개 위험도: {data.result.privacy_risk_level}</p>
+        <p className="text-xs text-ink-faint">공개 위험도: {data.result.privacy_risk_level}</p>
       ) : null}
     </VoterShell>
   );

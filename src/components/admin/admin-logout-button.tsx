@@ -19,7 +19,7 @@ export function AdminLogoutButton() {
       type="button"
       onClick={logout}
       disabled={loading}
-      className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:text-slate-400"
+      className="ui-secondary-button min-h-[42px] w-full py-2 text-sm"
     >
       {loading ? "로그아웃 중" : "로그아웃"}
     </button>

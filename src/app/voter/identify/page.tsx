@@ -5,7 +5,7 @@ import { VoterShell } from "../../../components/voter/voter-shell";
 
 export default function VoterIdentifyPage() {
   return (
-    <VoterShell>
+    <VoterShell step={1}>
       <PageHeader
         eyebrow="유권자 확인"
         title="이름과 조직 내 식별번호를 입력해 주세요"
@@ -13,7 +13,6 @@ export default function VoterIdentifyPage() {
       />
       <VoterIdentifierForm />
       <VoterIdentifierNotice />
-      <p className="text-sm leading-6 text-slate-600">5회 실패 시 15분 동안 다시 시도할 수 없습니다.</p>
     </VoterShell>
   );
 }

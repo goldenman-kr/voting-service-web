@@ -33,25 +33,25 @@ export function AdminLoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-4 rounded-md border border-slate-200 bg-white p-5 shadow-sm">
-      <label className="grid gap-1 text-sm font-medium text-slate-700">
+    <form onSubmit={onSubmit} className="ui-card grid gap-4 p-6">
+      <label className="grid gap-1.5 text-sm font-bold text-[#3A4A66]">
         계정명
         <input
           name="username"
           type="text"
           autoComplete="username"
           required
-          className="rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          className="text-base"
         />
       </label>
-      <label className="grid gap-1 text-sm font-medium text-slate-700">
+      <label className="grid gap-1.5 text-sm font-bold text-[#3A4A66]">
         비밀번호
         <input
           name="password"
           type="password"
           autoComplete="current-password"
           required
-          className="rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          className="text-base"
         />
       </label>
       {error ? (
@@ -62,7 +62,7 @@ export function AdminLoginForm() {
       <button
         type="submit"
         disabled={loading}
-        className="min-h-11 rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-400"
+        className="ui-primary-button"
       >
         {loading ? "확인 중" : "로그인"}
       </button>

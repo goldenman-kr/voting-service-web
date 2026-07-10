@@ -4,9 +4,9 @@ export function AnonymousVotingNotice({
   audience?: "admin" | "voter";
 }) {
   return (
-    <section className="rounded-md border border-indigo-200 bg-indigo-50 p-4 text-indigo-950">
-      <h2 className="text-sm font-semibold">익명투표 안내</h2>
-      <ul className="mt-2 space-y-1 text-sm leading-6 text-indigo-900">
+    <section className="rounded-[14px] border border-brand-100 bg-brand-50 p-4 text-ink-soft">
+      <h2 className="text-sm font-bold text-brand-800">익명투표 보호 안내</h2>
+      <ul className="mt-2 space-y-1 text-sm leading-6 text-ink-body">
         <li>투표자 신원과 선택 내용은 분리해서 처리합니다.</li>
         {audience === "admin" ? (
           <>

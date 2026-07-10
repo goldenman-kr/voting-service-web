@@ -10,6 +10,7 @@ import {
 import { ElectionAction, canPerformElectionAction } from "../../domain/elections/actions";
 import {
   assertElectionTransitionAllowed,
+  canCancelExpiredPreStartElection,
   type ElectionStateValue
 } from "../../domain/elections/state-machine";
 import { PolicyDecision } from "../../domain/policy-decision";
@@ -871,6 +872,47 @@ export async function deletePreStartElection(
     afterSummary: { deletedAt: now }
   });
   return { electionId, deletedAt: now };
+}
+
+export async function cancelExpiredPreStartElection(
+  electionId: string,
+  rawInput: unknown,
+  context: ElectionServiceContext
+) {
+  const input = electionTransitionInputSchema.parse(rawInput);
+  assertPermissionControls(context, "election.invalidate", input.reason);
+  const election = await getScopedElection(context, electionId);
+  assertElectionActionAllowed(election, ElectionAction.CANCEL_ELECTION, input.reason);
+  const cancelledAt = nowFrom(context);
+  if (!canCancelExpiredPreStartElection(election.state, election.startsAt, cancelledAt)) {
+    throw conflictError(`pre-start cancellation denied in ${election.state}`);
+  }
+  try {
+    assertElectionTransitionAllowed(election.state, ElectionState.INVALIDATED);
+  } catch {
+    throw conflictError(`transition denied: ${election.state} -> ${ElectionState.INVALIDATED}`);
+  }
+  const reason = input.reason || "시작일 경과 후 투표 시작 전 취소";
+  await context.repository.updateElectionState(electionId, ElectionState.INVALIDATED);
+  await context.repository.recordElectionStateHistory({
+    electionId,
+    fromState: election.state,
+    toState: ElectionState.INVALIDATED,
+    requestedById: context.session.userId,
+    approvedById: context.session.userId,
+    reason,
+    changeType: "cancelled",
+    changedAt: cancelledAt
+  });
+  await audit(context, {
+    eventType: "election.cancelled",
+    targetType: "Election",
+    targetId: electionId,
+    reason,
+    beforeSummary: { state: election.state, startsAt: election.startsAt },
+    afterSummary: { state: ElectionState.INVALIDATED, cancelledAt }
+  });
+  return { electionId, state: ElectionState.INVALIDATED, cancelledAt };
 }
 
 export async function pauseElection(

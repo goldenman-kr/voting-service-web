@@ -27,6 +27,7 @@ import {
   createOption,
   createQuestion,
   approveElectionReview,
+  cancelExpiredPreStartElection,
   closeElection,
   deletePreStartElection,
   importEligibleVoters,
@@ -720,6 +721,7 @@ type ElectionOperation =
   | "pause"
   | "resume"
   | "close"
+  | "cancel"
   | "prepare_invitations"
   | "send_invitations"
   | "resend_invitations";
@@ -731,6 +733,7 @@ const electionOperationMessages: Record<ElectionOperation, string> = {
   pause: "투표를 일시중단했습니다.",
   resume: "투표를 재개했습니다.",
   close: "투표를 종료했습니다.",
+  cancel: "투표를 취소하고 무효 상태로 보관했습니다.",
   prepare_invitations: "초대와 투표 자격을 준비했습니다.",
   send_invitations: "초대 발송 요청을 처리했습니다.",
   resend_invitations: "초대 재발송 요청을 처리했습니다."
@@ -763,6 +766,9 @@ export async function electionOperationAction(
         break;
       case "close":
         await closeElection(electionId, { reason }, context);
+        break;
+      case "cancel":
+        await cancelExpiredPreStartElection(electionId, { reason }, context);
         break;
       case "prepare_invitations":
         await prepareInvitationsForElection(electionId, { reason }, context);

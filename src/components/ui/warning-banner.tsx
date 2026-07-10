@@ -8,9 +8,9 @@ export function WarningBanner({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-md border border-amber-200 bg-amber-50 p-4 text-amber-950">
-      <h2 className="text-sm font-semibold">{title}</h2>
-      <div className="mt-2 text-sm leading-6 text-amber-900">{children}</div>
+    <section className="rounded-[14px] border border-warning-200 bg-warning-50 p-4 text-warning-700">
+      <h2 className="text-sm font-bold text-warning-600">{title}</h2>
+      <div className="mt-2 text-sm leading-6 text-warning-700">{children}</div>
     </section>
   );
 }
