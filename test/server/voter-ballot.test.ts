@@ -302,19 +302,20 @@ describe("voter anonymous ballot service", () => {
     );
   });
 
-  it("records late submissions as rejected and not current", async () => {
+  it("rejects late submissions before creating ballot records", async () => {
     const repository = new InMemoryBallotRepository();
     repository.election = {
       ...repository.election,
       endsAt: new Date("2025-12-31T23:59:00.000Z")
     };
-    const result = await submitAnonymousBallot(repository, answer(), context());
-
-    expect(result.response.accepted).toBe(false);
-    expect(repository.ballots[0]).toMatchObject({
-      acceptanceStatus: "rejected_late",
-      isCurrent: false
-    });
+    await expect(submitAnonymousBallot(repository, answer(), context())).rejects.toThrow(
+      /관리자 결과 처리를 기다리고 있습니다/
+    );
+    expect(repository.ballots).toHaveLength(0);
+    expect(repository.votes).toHaveLength(0);
+    expect(repository.groups.size).toBe(0);
+    expect(repository.passes.size).toBe(0);
+    expect(repository.submissionEvents).toHaveLength(0);
   });
 
   it("rejects revotes after a completed submission", async () => {

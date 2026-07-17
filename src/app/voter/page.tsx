@@ -1,7 +1,7 @@
-import Link from "next/link";
-
 import { StatusBadge } from "../../components/ui/status-badge";
 import { PageHeader } from "../../components/ui/page-header";
+import { WarningBanner } from "../../components/ui/warning-banner";
+import { VoterElectionAction } from "../../components/voter/voter-election-action";
 import { VoterShell } from "../../components/voter/voter-shell";
 import { listVoterPortalElections, type VoterPortalElectionSummary } from "../../server/voters/voter-ui-data";
 
@@ -24,9 +24,9 @@ function ElectionList({
   title: string;
   description: string;
   elections: VoterPortalElectionSummary[];
-  mode: "ballot" | "results";
+  mode: "ballot" | "awaiting" | "results";
 }) {
-  const isBallotMode = mode === "ballot";
+  const isBallotMode = mode !== "results";
   const sectionClassName = isBallotMode
     ? "grid gap-4 rounded-card border border-brand-100 bg-brand-50 p-5"
     : "grid gap-4 rounded-card border border-line bg-surface p-5";
@@ -49,17 +49,21 @@ function ElectionList({
                   <h3 className="font-bold text-ink">{election.title}</h3>
                   <p className="mt-1 text-sm leading-6 text-ink-muted">{election.description ?? "등록된 설명이 없습니다."}</p>
                 </div>
-                <StatusBadge status={election.state} size="sm" />
+                {mode === "awaiting" ? (
+                  <span className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
+                    결과 처리 대기
+                  </span>
+                ) : <StatusBadge status={election.state} size="sm" />}
               </div>
               <p className="text-xs text-ink-faint">
                 {formatDate(election.startsAt)} - {formatDate(election.endsAt)}
               </p>
-              <Link
+              <VoterElectionAction
                 href={`/voter/elections/${election.id}/verify`}
                 className={actionClassName}
-              >
-                {mode === "ballot" ? "본인 확인 후 투표하기" : "본인 확인 후 결과 보기"}
-              </Link>
+                ended={mode === "awaiting"}
+                label={mode === "results" ? "본인 확인 후 결과 보기" : "본인 확인 후 투표하기"}
+              />
             </article>
           ))}
         </div>
@@ -72,8 +76,13 @@ function ElectionList({
   );
 }
 
-export default async function VoterDashboardPage() {
+export default async function VoterDashboardPage({
+  searchParams
+}: {
+  searchParams?: Promise<{ ended?: string }> | { ended?: string };
+}) {
   const elections = await listVoterPortalElections();
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
   return (
     <VoterShell wide>
       <PageHeader
@@ -81,11 +90,22 @@ export default async function VoterDashboardPage() {
         title="참여 가능한 투표를 선택해 주세요"
         description="진행 중인 투표와 완료된 투표를 확인할 수 있습니다. 투표를 선택한 뒤 선거인 명부 확인을 거쳐 참여하거나 결과를 볼 수 있습니다."
       />
+      {resolvedSearchParams?.ended === "1" ? (
+        <WarningBanner title="투표 종료">
+          투표가 종료되어 관리자 결과 처리를 기다리고 있습니다.
+        </WarningBanner>
+      ) : null}
       <ElectionList
         title="현재 진행 중인 투표"
         description="선거인 명부 확인 후 투표할 수 있습니다."
         elections={elections.active}
         mode="ballot"
+      />
+      <ElectionList
+        title="투표 종료 · 결과 처리 대기"
+        description="투표 시간이 종료되어 관리자의 종료 및 결과 처리를 기다리고 있습니다."
+        elections={elections.awaitingProcessing}
+        mode="awaiting"
       />
       <ElectionList
         title="완료된 투표"

@@ -60,13 +60,13 @@ const resultDisplayStates = new Set<ElectionStateValue>([
   ElectionState.INVALIDATED
 ]);
 
-async function countLiveActualVotes(electionId: string): Promise<number> {
+async function countLiveActualVotes(electionId: string, endsAt: Date): Promise<number> {
   return getPrismaClient().ballot.count({
     where: {
       electionId,
       isCurrent: true,
       acceptanceStatus: BallotAcceptanceStatus.accepted,
-      serverReceivedAt: { lte: new Date() }
+      serverReceivedAt: { lte: endsAt }
     }
   });
 }
@@ -80,7 +80,7 @@ export default async function AdminResultsPage({ params }: Params) {
   const hasEnded = election.endsAt <= new Date() || resultDisplayStates.has(election.state);
 
   if (!hasEnded) {
-    const actualVoteCount = await countLiveActualVotes(election.id);
+    const actualVoteCount = await countLiveActualVotes(election.id, election.endsAt);
     return (
       <div className="grid gap-6">
         <PageHeader
@@ -93,6 +93,36 @@ export default async function AdminResultsPage({ params }: Params) {
         </section>
         <section className="grid gap-2 rounded-md border border-slate-200 bg-white p-5">
           <h2 className="text-base font-semibold text-slate-950">실시간 투표율</h2>
+          <p className="text-2xl font-semibold text-slate-950">
+            {formatPercent(actualVoteCount, election.eligibleVoterCount)}
+          </p>
+          <p className="text-sm text-slate-600">
+            총 유권자 {election.eligibleVoterCount}명 중 {actualVoteCount}명 투표
+          </p>
+        </section>
+      </div>
+    );
+  }
+
+  const storedResult = await getPrismaClient().result.findFirst({
+    where: { electionId: election.id },
+    select: { id: true }
+  });
+  if (!storedResult) {
+    const actualVoteCount = await countLiveActualVotes(election.id, election.endsAt);
+    return (
+      <div className="grid gap-6">
+        <PageHeader
+          eyebrow="결과 관리"
+          title={`${election.title} 결과`}
+          description="투표 시간이 종료되어 관리자의 종료 및 결과 처리를 기다리고 있습니다."
+          status={election.state}
+        />
+        <WarningBanner title="관리자 결과 처리 대기">
+          마감 시각 전까지 정상 접수된 투표를 기준으로 투표율을 표시합니다. 투표 종료 후 결과 집계를 진행해 주세요.
+        </WarningBanner>
+        <section className="grid gap-2 rounded-md border border-slate-200 bg-white p-5">
+          <h2 className="text-base font-semibold text-slate-950">마감 기준 투표율</h2>
           <p className="text-2xl font-semibold text-slate-950">
             {formatPercent(actualVoteCount, election.eligibleVoterCount)}
           </p>

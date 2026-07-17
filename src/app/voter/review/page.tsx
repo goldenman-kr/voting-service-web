@@ -21,6 +21,17 @@ export default async function VoterReviewPage() {
       </VoterShell>
     );
   }
+  if (!election.voting_open) {
+    return (
+      <VoterShell step={3}>
+        <PageHeader eyebrow="투표 종료" title="제출할 수 없습니다" />
+        <WarningBanner title="관리자 결과 처리 대기 중">
+          투표가 종료되어 선택 내용을 제출할 수 없습니다.
+        </WarningBanner>
+        <VoterSecondaryLink href="/voter">투표 목록으로 이동</VoterSecondaryLink>
+      </VoterShell>
+    );
+  }
 
   return (
     <VoterShell step={3}>

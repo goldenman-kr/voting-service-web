@@ -51,7 +51,11 @@ export default async function VoterElectionPage() {
         </div>
       </section>
       {election.voting_mode === "anonymous" ? <AnonymousVotingNotice audience="voter" /> : null}
-      <VoterSecondaryLink href="/voter/ballot">투표 시작</VoterSecondaryLink>
+      {election.voting_open ? (
+        <VoterSecondaryLink href="/voter/ballot">투표 시작</VoterSecondaryLink>
+      ) : (
+        <VoterSecondaryLink href="/voter">관리자 결과 처리 대기</VoterSecondaryLink>
+      )}
     </VoterShell>
   );
 }

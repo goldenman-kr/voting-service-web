@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 
 import type { ElectionStateValue } from "../../domain/elections/state-machine";
+import { isAwaitingAdminResultProcessing } from "../../domain/elections/voting-window";
 import { parseEnv } from "../../lib/env";
 import { VOTER_SESSION_COOKIE_POLICY } from "../auth/voter-session";
 import { BALLOT_GROUP_COOKIE_POLICY } from "../ballots/ballot-group-token";
@@ -44,6 +45,7 @@ export type VoterElectionInfoView = Readonly<{
   anonymous_notice?: string;
   starts_at: string;
   ends_at: string;
+  voting_open: boolean;
   questions: readonly VoterQuestionView[];
 }>;
 
@@ -93,6 +95,7 @@ export type VoterPortalElectionSummary = Readonly<{
   state: ElectionStateValue;
   startsAt: Date;
   endsAt: Date;
+  awaitingAdminProcessing: boolean;
 }>;
 
 async function voterRequestContext(): Promise<VoterRequestContext> {
@@ -146,6 +149,7 @@ export async function getCurrentVoterResult(): Promise<VoterDataResult<VoterResu
 
 export async function listVoterPortalElections(): Promise<{
   active: VoterPortalElectionSummary[];
+  awaitingProcessing: VoterPortalElectionSummary[];
   completed: VoterPortalElectionSummary[];
 }> {
   const prisma = getPrismaClient();
@@ -165,14 +169,15 @@ export async function listVoterPortalElections(): Promise<{
       endsAt: true
     }
   });
+  const now = new Date();
+  const summaries = elections.map((election) => ({
+    ...election,
+    state: election.state as ElectionStateValue,
+    awaitingAdminProcessing: isAwaitingAdminResultProcessing(election, now)
+  }));
   return {
-    active: elections.filter((election) => election.state === "open").map((election) => ({
-      ...election,
-      state: election.state as ElectionStateValue
-    })),
-    completed: elections.filter((election) => election.state !== "open").map((election) => ({
-      ...election,
-      state: election.state as ElectionStateValue
-    }))
+    active: summaries.filter((election) => election.state === "open" && !election.awaitingAdminProcessing),
+    awaitingProcessing: summaries.filter((election) => election.awaitingAdminProcessing),
+    completed: summaries.filter((election) => election.state !== "open")
   };
 }
