@@ -97,11 +97,11 @@ export default function HomePage() {
       </header>
 
       <section className="mx-auto w-full max-w-[1200px] px-4 sm:px-8">
-        <div className="flex flex-wrap items-center justify-between gap-5 rounded-[18px] bg-ink px-6 py-5 text-[#E7ECF5] sm:px-8">
-          <span className="text-sm font-semibold tracking-[0.02em] text-[#9FB0CC]">신뢰 기반의 온라인 투표를 위해</span>
+        <div className="flex flex-wrap items-center justify-between gap-5 rounded-[18px] bg-[#EAF0FA] px-6 py-5 text-[#34445F] sm:px-8">
+          <span className="text-sm font-semibold tracking-[0.02em] text-[#657592]">신뢰 기반의 온라인 투표를 위해</span>
           <div className="flex flex-wrap gap-x-8 gap-y-3">
             {["선거인 명부 인증", "초대 확인 절차", "결과 이력 관리", "오픈소스 공개"].map((item) => (
-              <span key={item} className="flex items-center gap-2.5 text-[15px] font-semibold"><span className="text-[#7FA8F5]">●</span>{item}</span>
+              <span key={item} className="flex items-center gap-2.5 text-[15px] font-semibold"><span className="text-[#7897CF]">●</span>{item}</span>
             ))}
           </div>
         </div>
@@ -146,24 +146,24 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto mt-14 w-full max-w-[1200px] px-4 sm:px-8">
-        <div className="relative grid items-center gap-10 overflow-hidden rounded-[24px] bg-ink px-7 py-11 text-white sm:px-14 lg:grid-cols-[1.3fr_1fr]">
-          <div className="absolute -right-16 -top-16 h-[260px] w-[260px] rounded-full bg-[#7FA8F5]/10" />
+      <section id="vote" className="mx-auto w-full max-w-[760px] scroll-mt-24 px-4 py-20 text-center sm:px-8">
+        <h2 className="text-[34px] font-extrabold tracking-[-0.03em] text-ink sm:text-[38px]">준비되셨나요?</h2>
+        <p className="mx-auto mt-3 max-w-[560px] text-[16px] leading-7 text-[#5A6577]">지금 바로 초대 확인과 명부 인증을 시작하고, 소중한 한 표를 행사하세요.</p>
+        <Link href="/voter" className="ui-primary-button mt-7 gap-2 px-6 text-base">투표하러가기 <Icon name="arrow" className="h-[18px] w-[18px]" /></Link>
+      </section>
+
+      <section className="mx-auto w-full max-w-[1200px] px-4 pb-14 sm:px-8">
+        <div className="relative grid items-center gap-10 overflow-hidden rounded-[24px] bg-[#526785] px-7 py-11 text-white sm:px-14 lg:grid-cols-[1.3fr_1fr]">
+          <div className="absolute -right-16 -top-16 h-[260px] w-[260px] rounded-full bg-white/10" />
           <div className="relative z-10">
-            <span className="text-[13px] font-bold text-[#9FB8F0]">오픈소스 검토</span>
+            <span className="text-[13px] font-bold text-[#D5E1F5]">오픈소스 검토</span>
             <h2 className="mt-3 text-[28px] font-extrabold tracking-[-0.025em] sm:text-[32px]">숨기지 않습니다. 코드로 증명합니다.</h2>
-            <p className="mt-3 max-w-[560px] text-[15px] leading-7 text-[#B8C4D8]">투표 시스템의 주요 동작 방식은 공개 저장소에서 누구나 확인할 수 있습니다. 코드와 변경 이력을 투명하게 관리해 운영 정책과 보안 원칙을 검증받습니다.</p>
+            <p className="mt-3 max-w-[560px] text-[15px] leading-7 text-[#E1E8F2]">투표 시스템의 주요 동작 방식은 공개 저장소에서 누구나 확인할 수 있습니다. 코드와 변경 이력을 투명하게 관리해 운영 정책과 보안 원칙을 검증받습니다.</p>
           </div>
           <a href="https://github.com/goldenman-kr/voting-service-web" className="ui-secondary-button relative z-10 justify-self-start border-white bg-white text-ink lg:justify-self-center">
             <Icon name="code" className="mr-2 h-4 w-4" /> GitHub 저장소 보기
           </a>
         </div>
-      </section>
-
-      <section id="vote" className="mx-auto w-full max-w-[760px] scroll-mt-24 px-4 py-20 text-center sm:px-8">
-        <h2 className="text-[34px] font-extrabold tracking-[-0.03em] text-ink sm:text-[38px]">준비되셨나요?</h2>
-        <p className="mx-auto mt-3 max-w-[560px] text-[16px] leading-7 text-[#5A6577]">지금 바로 초대 확인과 명부 인증을 시작하고, 소중한 한 표를 행사하세요.</p>
-        <Link href="/voter" className="ui-primary-button mt-7 gap-2 px-6 text-base">투표하러가기 <Icon name="arrow" className="h-[18px] w-[18px]" /></Link>
       </section>
 
       <footer className="mt-auto border-t border-line bg-canvas">
