@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { AuthStatus, CredentialEventType, CredentialStatus } from "@prisma/client";
 
 import { getDefaultAuthenticationMethod } from "../../domain/auth-policy/authentication-policy";
+import { isAwaitingAdminResultProcessing, isVotingWindowOpen } from "../../domain/elections/voting-window";
 import { parseEnv } from "../../lib/env";
 import { canonicalVoterIdentifier, validateVoterRegistryFields } from "../../lib/voter-registry-fields";
 import { VOTER_SESSION_COOKIE_POLICY, createVoterSession } from "../auth/voter-session";
@@ -54,6 +55,7 @@ export async function verifyListedElectionVoterAction(formData: FormData) {
       election: {
         select: {
           state: true,
+          endsAt: true,
           authenticationPolicy: {
             select: { method: true }
           }
@@ -66,11 +68,15 @@ export async function verifyListedElectionVoterAction(formData: FormData) {
   if (!eligibleVoter || !credential) {
     genericVerifyFailure(electionId);
   }
+  const now = new Date();
+  if (isAwaitingAdminResultProcessing(eligibleVoter.election, now)) {
+    redirect("/voter?ended=1");
+  }
   if (
     credential.credentialStatus === CredentialStatus.locked ||
     credential.credentialStatus === CredentialStatus.revoked ||
     credential.credentialStatus === CredentialStatus.expired ||
-    (credential.lockedUntil && credential.lockedUntil > new Date())
+    (credential.lockedUntil && credential.lockedUntil > now)
   ) {
     genericVerifyFailure(electionId);
   }
@@ -92,7 +98,7 @@ export async function verifyListedElectionVoterAction(formData: FormData) {
       opaqueHandleHash: issued.session.opaqueHandleHash,
       authenticationMethod: method,
       authenticated: true,
-      identifierVerifiedAt: new Date(),
+      identifierVerifiedAt: now,
       step: AuthStatus.authenticated,
       issuedAt: issued.session.issuedAt,
       expiresAt: issued.session.expiresAt
@@ -104,7 +110,7 @@ export async function verifyListedElectionVoterAction(formData: FormData) {
       authStatus: AuthStatus.authenticated,
       identifierFailedAttempts: 0,
       lockedUntil: null,
-      authenticatedAt: new Date()
+      authenticatedAt: now
     }
   });
   await prisma.credentialEvent.create({
@@ -126,7 +132,7 @@ export async function verifyListedElectionVoterAction(formData: FormData) {
     expires: issued.session.expiresAt
   });
 
-  if (eligibleVoter.election.state === "open") {
+  if (isVotingWindowOpen(eligibleVoter.election, now)) {
     redirect(`/voter/elections/${electionId}/ballot`);
   }
   if (completedStates.has(eligibleVoter.election.state)) {

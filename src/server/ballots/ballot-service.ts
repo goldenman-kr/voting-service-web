@@ -4,6 +4,7 @@ import {
   isBallotEligibleForTally
 } from "../../domain/ballots/ballot-policy";
 import { ElectionAction, canPerformElectionAction } from "../../domain/elections/actions";
+import { isVotingWindowOpen } from "../../domain/elections/voting-window";
 import { PolicyDecision } from "../../domain/policy-decision";
 import { BallotAcceptanceStatus, ElectionState } from "../../guardrails/index.js";
 import { hashIpAddress, maskIpAddress, summarizeUserAgent } from "../../lib/masking";
@@ -75,6 +76,15 @@ function forbiddenState(internalReason: string) {
   });
 }
 
+function votingPeriodEnded(internalReason: string) {
+  return new ApiError({
+    status: 409,
+    code: "conflict",
+    userMessage: "투표가 종료되어 관리자 결과 처리를 기다리고 있습니다.",
+    internalReason
+  });
+}
+
 function revoteDisabled(internalReason: string) {
   return new ApiError({
     status: 409,
@@ -130,14 +140,20 @@ async function requireElection(
   return election;
 }
 
-function ensureSubmitAllowed(election: VoterElectionRecord): void {
+function ensureSubmitAllowed(election: VoterElectionRecord, now: Date): void {
   const decision = canPerformElectionAction(election.state, ElectionAction.SUBMIT_BALLOT);
   if (decision === PolicyDecision.DENIED) {
     throw forbiddenState(`submit denied in ${election.state}`);
   }
+  if (!isVotingWindowOpen(election, now)) {
+    throw votingPeriodEnded(`submit denied after endsAt: ${election.endsAt.toISOString()}`);
+  }
 }
 
-function voterStateMessage(election: VoterElectionRecord): string {
+function voterStateMessage(election: VoterElectionRecord, now: Date): string {
+  if (election.state === ElectionState.OPEN && !isVotingWindowOpen(election, now)) {
+    return "투표가 종료되어 관리자 결과 처리를 기다리고 있습니다.";
+  }
   if (election.state === ElectionState.OPEN) {
     return "투표가 진행 중입니다.";
   }
@@ -259,12 +275,13 @@ export async function getVoterElectionInfo(
   repository: BallotRepository,
   context: VoterRequestContext
 ) {
+  const now = nowFrom(context);
   const { session, handleHash } = await requireVoterSession(repository, context);
   const [election, questions] = await Promise.all([
     requireElection(repository, session.electionId),
     repository.listQuestionsWithOptions(session.electionId)
   ]);
-  await repository.touchVoterSession(handleHash, nowFrom(context));
+  await repository.touchVoterSession(handleHash, now);
 
   return sanitizeResponseForRole(
     "Voter",
@@ -273,7 +290,7 @@ export async function getVoterElectionInfo(
       title: election.title,
       description: election.description,
       state: election.state,
-      state_message: voterStateMessage(election),
+      state_message: voterStateMessage(election, now),
       voting_mode: election.votingMode,
       anonymous_notice:
         election.votingMode === "anonymous"
@@ -281,6 +298,7 @@ export async function getVoterElectionInfo(
           : undefined,
       starts_at: election.startsAt.toISOString(),
       ends_at: election.endsAt.toISOString(),
+      voting_open: isVotingWindowOpen(election, now),
       questions: questions.map((question) => ({
         id: question.id,
         title: question.title,
@@ -343,7 +361,7 @@ export async function submitAnonymousBallot(
     requireElection(repository, session.electionId),
     repository.listQuestionsWithOptions(session.electionId)
   ]);
-  ensureSubmitAllowed(election);
+  ensureSubmitAllowed(election, receivedAt);
   const credential = await repository.findVotingCredential(session.votingCredentialId);
   if (!credential) {
     throw createAuthenticationError("credential not found for voter session");
@@ -382,8 +400,8 @@ export async function submitAnonymousBallot(
     throw error;
   }
 
-  const accepted = receivedAt.getTime() <= election.endsAt.getTime();
-  const acceptanceStatus = accepted ? "accepted" : "rejected_late";
+  const accepted = true;
+  const acceptanceStatus = "accepted";
   const receipt = receiptHash(`${randomBytes(16).toString("hex")}:${receivedAt.toISOString()}`, context.hmacKey);
   const transactionResult = await repository.submitBallotTransaction({
     accepted,

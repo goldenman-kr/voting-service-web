@@ -42,6 +42,24 @@ describe("UI guardrails", () => {
     expect(source).not.toContain("support.js");
   });
 
+  it("blocks expired open elections across voter UI and keeps admin turnout visible before tally", () => {
+    const voterDashboard = readUiSource("src/app/voter/page.tsx");
+    const voterAction = readUiSource("src/components/voter/voter-election-action.tsx");
+    const voterData = readUiSource("src/server/voters/voter-ui-data.ts");
+    const publicAction = readUiSource("src/server/voters/public-actions.ts");
+    const ballotService = readUiSource("src/server/ballots/ballot-service.ts");
+    const adminResults = readUiSource("src/app/admin/(protected)/elections/[election_id]/results/page.tsx");
+
+    expect(voterDashboard).toContain("투표 종료 · 결과 처리 대기");
+    expect(voterAction).toContain("관리자 결과 처리 대기 중입니다");
+    expect(voterData).toContain("isAwaitingAdminResultProcessing");
+    expect(publicAction).toContain("isVotingWindowOpen");
+    expect(ballotService).toContain("votingPeriodEnded");
+    expect(ballotService).toContain("ensureSubmitAllowed(election, receivedAt)");
+    expect(adminResults).toContain("마감 기준 투표율");
+    expect(adminResults).toContain("acceptanceStatus: BallotAcceptanceStatus.accepted");
+  });
+
   it("design tokens and self-hosted A2z assets remain available", () => {
     const globals = readUiSource("src/app/globals.css");
     const tailwind = readUiSource("tailwind.config.ts");
