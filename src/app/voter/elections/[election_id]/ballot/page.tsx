@@ -19,7 +19,7 @@ export default async function ListedVoterBallotPage({ params }: Params) {
   ]);
   if (!election || election.election_id !== electionId) {
     return (
-      <VoterShell>
+      <VoterShell step={2}>
         <ErrorState title="투표 화면을 열 수 없습니다" description={error ?? "선거인 확인부터 다시 진행해 주세요."} />
         <VoterSecondaryLink href={`/voter/elections/${electionId}/verify`}>선거인 확인으로 이동</VoterSecondaryLink>
       </VoterShell>
@@ -27,7 +27,7 @@ export default async function ListedVoterBallotPage({ params }: Params) {
   }
 
   return (
-    <VoterShell>
+    <VoterShell step={2}>
       <PageHeader
         eyebrow="투표 입력"
         title={election.title}

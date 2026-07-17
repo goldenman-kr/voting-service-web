@@ -25,7 +25,7 @@ export type BootstrapInitialAdminResult = Readonly<{
 
 const DEFAULT_TENANT_NAME = "Initial Tenant";
 const DEFAULT_ORGANIZATION_NAME = "Initial Organization";
-const DEFAULT_INITIAL_ADMIN_ROLE_CODES = Object.freeze([Role.ORGANIZATION_OWNER, Role.ELECTION_MANAGER]);
+const DEFAULT_INITIAL_ADMIN_ROLE_CODES = Object.freeze([Role.ORGANIZATION_OWNER]);
 const PRODUCTION_CONFIRMATION_REQUIRED =
   "BOOTSTRAP_CONFIRM=CREATE_INITIAL_ADMIN is required in production";
 

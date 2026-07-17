@@ -64,10 +64,16 @@ export type VoterResultView = Readonly<{
   };
   result: {
     status: string;
+    turnout?: {
+      eligible_voter_count?: number | null;
+      actual_vote_count?: number | null;
+    };
     privacy_risk_level?: string;
     can_publish_counts?: boolean;
     required_action?: string;
     items: readonly {
+      question_id?: string | null;
+      option_id?: string | null;
       display_label?: string | null;
       masked?: boolean;
       vote_count?: number;

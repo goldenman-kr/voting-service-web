@@ -3,13 +3,13 @@ import { notFound } from "next/navigation";
 
 import {
   EditElectionBasicInfoForm,
-  EditElectionQuestionsAndOptionsForm,
-  EditElectionSetupPolicyForm
+  EditElectionQuestionsAndOptionsForm
 } from "../../../../../../components/admin/admin-election-forms";
 import { EmptyState } from "../../../../../../components/ui/empty-state";
 import { PageHeader } from "../../../../../../components/ui/page-header";
 import { WarningBanner } from "../../../../../../components/ui/warning-banner";
 import { ElectionState } from "../../../../../../guardrails/index.js";
+import { formatDateTimeLocalKst } from "../../../../../../lib/kst-datetime";
 import { electionTypeLabelMap, labelOf } from "../../../../../../lib/ui/election-labels";
 import { getCurrentAdminSessionFromCookies } from "../../../../../../server/auth/current-admin";
 import { getPrismaClient } from "../../../../../../server/db/prisma";
@@ -18,20 +18,6 @@ import { getAdminElectionDetail } from "../../../../../../server/elections/admin
 type Params = {
   params: Promise<{ election_id: string }> | { election_id: string };
 };
-
-function toDateTimeLocal(date: Date): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  }).formatToParts(date);
-  const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${byType.year}-${byType.month}-${byType.day}T${byType.hour}:${byType.minute}`;
-}
 
 export default async function AdminElectionEditPage({ params }: Params) {
   const restored = await getCurrentAdminSessionFromCookies();
@@ -83,8 +69,7 @@ export default async function AdminElectionEditPage({ params }: Params) {
       ) : (
         <WarningBanner title="이번 단계의 수정 범위">
           기본 정보와 문항/선택 항목 문구를 저장할 수 있습니다. 선택 항목 추가는 append-only로만 제공하며
-          투표 참여 인증 방식은 이 화면에서 수정할 수 있습니다. 선거인 명부는 요약과 기존 세부 관리 화면
-          링크만 제공합니다.
+          선거인 명부는 요약과 기존 명부 관리 화면 링크만 제공합니다.
         </WarningBanner>
       )}
 
@@ -95,8 +80,8 @@ export default async function AdminElectionEditPage({ params }: Params) {
             title: election.title,
             description: election.description,
             electionType: election.electionType,
-            startsAt: toDateTimeLocal(election.startsAt),
-            endsAt: toDateTimeLocal(election.endsAt)
+            startsAt: formatDateTimeLocalKst(election.startsAt),
+            endsAt: formatDateTimeLocalKst(election.endsAt)
           }}
         />
       ) : (
@@ -134,30 +119,44 @@ export default async function AdminElectionEditPage({ params }: Params) {
             <div><dt className="font-semibold text-slate-500">선택 항목 수</dt><dd>{optionCount}</dd></div>
             <div><dt className="font-semibold text-slate-500">투표 유형</dt><dd>{labelOf(electionTypeLabelMap, election.electionType)}</dd></div>
           </dl>
-          <Link
-            href={`/admin/elections/${election.id}/questions`}
-            className="w-fit rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800"
-          >
-            문항/선택 항목 세부 화면으로 이동
-          </Link>
         </section>
       )}
 
       {showEditForm ? (
-        <EditElectionSetupPolicyForm
-          initial={{
-            electionId: election.id,
-            currentMethod: election.authenticationPolicy?.method,
-            voterRegistry: election.voterRegistry
-          }}
-        />
+        <section className="grid gap-4 rounded-md border border-slate-200 bg-white p-5">
+          <div>
+            <h2 className="text-base font-semibold text-slate-950">3 선거인 명부</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              현재 투표 참여 인증 방식은 고정되어 있습니다. 선거인 명부 연결 상태만 확인하고, 명부 관리는 세부 화면에서 진행합니다.
+            </p>
+          </div>
+          <dl className="grid gap-3 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="font-semibold text-slate-500">선거인 명부</dt>
+              <dd>
+                {election.voterRegistry
+                  ? `${election.voterRegistry.validRows}/${election.voterRegistry.totalRows}명 확인 가능`
+                  : "아직 등록된 선거인 명부가 없습니다."}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-slate-500">투표 참여 인증 방식</dt>
+              <dd>{election.authenticationPolicy?.isEnabled === false ? "비활성" : "이름, 호수, 식별번호, 생년월일 확인"}</dd>
+            </div>
+          </dl>
+          <Link
+            href={election.voterRegistry?.managedRegistryId ? `/admin/voter-registries/${election.voterRegistry.managedRegistryId}` : `/admin/elections/${election.id}/voters`}
+            className="w-fit rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800"
+          >
+            선거인 명부 세부 화면으로 이동
+          </Link>
+        </section>
       ) : (
         <section className="grid gap-4 rounded-md border border-slate-200 bg-white p-5">
           <div>
             <h2 className="text-base font-semibold text-slate-950">3 선거인 명부/인증 방식</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              명부 교체와 인증 방식 수정은 아래 읽기 전용 단계에서 현재 연결 상태를 확인한 뒤 별도 세부 화면에서
-              처리합니다.
+              명부 교체는 아래 읽기 전용 단계에서 현재 연결 상태를 확인한 뒤 별도 세부 화면에서 처리합니다.
             </p>
           </div>
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
@@ -180,12 +179,6 @@ export default async function AdminElectionEditPage({ params }: Params) {
               className="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800"
             >
               선거인 명부 세부 화면으로 이동
-            </Link>
-            <Link
-              href={`/admin/elections/${election.id}/auth-policy`}
-              className="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800"
-            >
-              투표 참여 인증 방식 세부 화면으로 이동
             </Link>
           </div>
         </section>
@@ -214,22 +207,10 @@ export default async function AdminElectionEditPage({ params }: Params) {
               투표 시작 전 최종 확인
             </Link>
             <Link
-              href={`/admin/elections/${election.id}/questions`}
-              className="rounded-md border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-900"
-            >
-              문항 관리
-            </Link>
-            <Link
               href={election.voterRegistry?.managedRegistryId ? `/admin/voter-registries/${election.voterRegistry.managedRegistryId}` : `/admin/elections/${election.id}/voters`}
               className="rounded-md border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-900"
             >
               선거인 명부 관리
-            </Link>
-            <Link
-              href={`/admin/elections/${election.id}/auth-policy`}
-              className="rounded-md border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-900"
-            >
-              인증 방식 설정
             </Link>
           </div>
           <p className="text-sm leading-6 text-emerald-900">

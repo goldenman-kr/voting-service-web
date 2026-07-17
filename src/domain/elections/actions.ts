@@ -13,6 +13,7 @@ export const ElectionAction = {
   PAUSE_ELECTION: "pauseElection",
   RESUME_ELECTION: "resumeElection",
   CLOSE_ELECTION: "closeElection",
+  CANCEL_ELECTION: "cancelElection",
   TALLY_RESULT: "tallyResult",
   CONFIRM_RESULT: "confirmResult",
   PUBLISH_RESULT: "publishResult",
@@ -65,6 +66,13 @@ export const ELECTION_ACTION_POLICY: Readonly<
   [ElectionAction.CLOSE_ELECTION]: Object.freeze({
     [ElectionState.OPEN]: PolicyDecision.REQUIRES_DUAL_APPROVAL,
     [ElectionState.PAUSED]: PolicyDecision.REQUIRES_DUAL_APPROVAL
+  }),
+  [ElectionAction.CANCEL_ELECTION]: Object.freeze({
+    [ElectionState.DRAFT]: PolicyDecision.REQUIRES_PERMISSION,
+    [ElectionState.READY_FOR_REVIEW]: PolicyDecision.REQUIRES_PERMISSION,
+    [ElectionState.APPROVED]: PolicyDecision.REQUIRES_PERMISSION,
+    [ElectionState.SCHEDULED]: PolicyDecision.REQUIRES_PERMISSION,
+    [ElectionState.NOTICE]: PolicyDecision.REQUIRES_PERMISSION
   }),
   [ElectionAction.TALLY_RESULT]: Object.freeze({
     [ElectionState.CLOSED]: PolicyDecision.REQUIRES_STEP_UP

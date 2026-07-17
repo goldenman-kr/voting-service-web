@@ -4,6 +4,7 @@ import { ElectionState } from "../../src/guardrails/index.js";
 import { PolicyDecision } from "../../src/domain/policy-decision";
 import {
   assertElectionTransitionAllowed,
+  canCancelExpiredPreStartElection,
   canInvalidateElectionFromState,
   canTransitionElectionState,
   getAllowedElectionTransitions
@@ -41,11 +42,19 @@ describe("election state machine", () => {
     ).toThrow(/not allowed/);
   });
 
-  it("allows invalidation only from operational/result states", () => {
-    expect(canInvalidateElectionFromState(ElectionState.DRAFT)).toBe(false);
+  it("allows invalidation as the terminal state for cancelled pre-start and operational elections", () => {
+    expect(canInvalidateElectionFromState(ElectionState.DRAFT)).toBe(true);
     expect(canInvalidateElectionFromState(ElectionState.OPEN)).toBe(true);
     expect(canInvalidateElectionFromState(ElectionState.PUBLISHED)).toBe(true);
     expect(getAllowedElectionTransitions(ElectionState.INVALIDATED)).toEqual([]);
+  });
+
+  it("allows pre-start cancellation only after the configured start time", () => {
+    const startsAt = new Date("2026-01-01T00:00:00.000Z");
+    expect(canCancelExpiredPreStartElection(ElectionState.DRAFT, startsAt, startsAt)).toBe(true);
+    expect(canCancelExpiredPreStartElection(ElectionState.SCHEDULED, startsAt, new Date("2026-01-02T00:00:00.000Z"))).toBe(true);
+    expect(canCancelExpiredPreStartElection(ElectionState.DRAFT, startsAt, new Date("2025-12-31T23:59:59.000Z"))).toBe(false);
+    expect(canCancelExpiredPreStartElection(ElectionState.OPEN, startsAt, new Date("2026-01-02T00:00:00.000Z"))).toBe(false);
   });
 });
 
@@ -71,6 +80,18 @@ describe("state-based election actions", () => {
     );
     expect(canPerformElectionAction(ElectionState.PENDING_CONFIRMATION, ElectionAction.CONFIRM_RESULT)).toBe(
       PolicyDecision.REQUIRES_DUAL_APPROVAL
+    );
+  });
+
+  it("exposes pre-start cancellation as a distinct permission-controlled action", () => {
+    expect(canPerformElectionAction(ElectionState.DRAFT, ElectionAction.CANCEL_ELECTION)).toBe(
+      PolicyDecision.REQUIRES_PERMISSION
+    );
+    expect(canPerformElectionAction(ElectionState.NOTICE, ElectionAction.CANCEL_ELECTION)).toBe(
+      PolicyDecision.REQUIRES_PERMISSION
+    );
+    expect(canPerformElectionAction(ElectionState.OPEN, ElectionAction.CANCEL_ELECTION)).toBe(
+      PolicyDecision.DENIED
     );
   });
 

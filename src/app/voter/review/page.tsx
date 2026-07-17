@@ -15,7 +15,7 @@ export default async function VoterReviewPage() {
   ]);
   if (!election) {
     return (
-      <VoterShell>
+      <VoterShell step={3}>
         <ErrorState title="제출 전 확인을 열 수 없습니다" description={error ?? "투표 정보를 다시 확인해 주세요."} />
         <VoterSecondaryLink href="/voter/election">투표 정보로 이동</VoterSecondaryLink>
       </VoterShell>
@@ -23,7 +23,7 @@ export default async function VoterReviewPage() {
   }
 
   return (
-    <VoterShell>
+    <VoterShell step={3}>
       <PageHeader
         eyebrow="제출 전 확인"
         title="제출 후에는 투표참여가 완료되며 다시 수정할 수 없습니다."

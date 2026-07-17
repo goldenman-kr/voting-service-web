@@ -18,7 +18,7 @@ export default async function AdminElectionsPage() {
         title="투표 목록"
         description="상태별로 가능한 작업만 노출합니다. 익명투표 참여 현황은 집계 중심으로 표시합니다."
         actions={
-          <Link href="/admin/elections/new" className="rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white">
+          <Link href="/admin/elections/new" className="ui-primary-button">
             새 투표
           </Link>
         }

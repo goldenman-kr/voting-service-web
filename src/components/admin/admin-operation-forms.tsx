@@ -23,7 +23,7 @@ function ActionMessage({ state }: { state: AdminActionState | ResultActionState 
     <p
       role="status"
       className={[
-        "rounded-md border px-3 py-2 text-sm",
+        "rounded-xl border px-3 py-2 text-sm",
         state.ok ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-800"
       ].join(" ")}
     >
@@ -43,14 +43,22 @@ function ElectionOperationForm({
 }) {
   const [state, action, pending] = useActionState(electionOperationAction, initialElectionState);
   return (
-    <form action={action} className="grid gap-3 rounded-md border border-slate-200 bg-white p-4">
+    <form
+      action={action}
+      className="grid gap-3 rounded-xl border border-line bg-surface p-4"
+      onSubmit={(event) => {
+        if (operation === "cancel" && !window.confirm("이 투표를 취소하고 무효 상태로 보관하시겠습니까?")) {
+          event.preventDefault();
+        }
+      }}
+    >
       <input type="hidden" name="electionId" value={electionId} />
       <input type="hidden" name="operation" value={operation} />
       <ActionMessage state={state} />
       <button
         type="submit"
         disabled={pending}
-        className="w-fit rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-400"
+        className={operation === "close" || operation === "cancel" ? "ui-danger-button w-fit" : operation === "pause" ? "ui-secondary-button w-fit" : "ui-primary-button w-fit"}
       >
         {pending ? "처리 중" : label}
       </button>
@@ -60,10 +68,12 @@ function ElectionOperationForm({
 
 export function ElectionStateCtaPanel({
   electionId,
-  state
+  state,
+  canCancel = false
 }: {
   electionId: string;
   state: ElectionStateValue;
+  canCancel?: boolean;
 }) {
   const operations: OperationButton[] =
     state === ElectionState.DRAFT ||
@@ -71,27 +81,28 @@ export function ElectionStateCtaPanel({
     state === ElectionState.APPROVED ||
     state === ElectionState.SCHEDULED ||
     state === ElectionState.NOTICE
-      ? [{ operation: "open", label: "투표 시작" }]
+      ? [
+          { operation: "open", label: "투표 시작" },
+          ...(canCancel ? [{ operation: "cancel", label: "투표 취소" }] : [])
+        ]
       : state === ElectionState.OPEN
         ? [
             { operation: "pause", label: "일시중단" },
-            { operation: "close", label: "종료" },
-            { operation: "resend_invitations", label: "초대 재발송" }
+            { operation: "close", label: "종료" }
           ]
         : state === ElectionState.PAUSED
           ? [
               { operation: "resume", label: "재개" },
-              { operation: "close", label: "종료" },
-              { operation: "resend_invitations", label: "초대 재발송" }
+              { operation: "close", label: "종료" }
             ]
           : [];
 
   return (
-    <section className="grid gap-4 rounded-md border border-slate-200 bg-white p-5">
+    <section className="ui-card grid gap-4 p-5">
       <div>
-        <h2 className="text-base font-semibold text-slate-950">운영 CTA</h2>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
-          표시된 작업만 현재 상태에서 실행할 수 있습니다. 투표 시작은 현재 시각으로 시작일시를 갱신하고 즉시 진행 상태로 전환합니다.
+        <h2 className="text-base font-bold text-ink">투표 상태 변경</h2>
+        <p className="mt-2 text-sm leading-6 text-ink-muted">
+          표시된 작업만 현재 상태에서 실행할 수 있습니다. 투표 시작은 현재 시각으로 시작일시를 갱신하고 즉시 진행 상태로 전환합니다. 시작일이 지난 준비 상태의 투표는 취소해 무효 상태로 보관할 수 있습니다.
         </p>
       </div>
       {operations.length > 0 ? (
@@ -101,8 +112,8 @@ export function ElectionStateCtaPanel({
           ))}
         </div>
       ) : (
-        <WarningBanner title="현재 상태에서 가능한 운영 CTA 없음">
-          이 상태에서는 직접 상태 전환 작업을 제공하지 않습니다.
+        <WarningBanner title="상태 변경 불가">
+          현재 투표가 종료된 상태에서는 더이상 변경할 수 없습니다.
         </WarningBanner>
       )}
     </section>
@@ -125,16 +136,15 @@ export function ResultOperationPanel({
           ? [{ operation: "publish", label: "결과 공개", notice: true }]
           : state === ElectionState.PUBLISHED
             ? [
-                { operation: "request_correction", label: "정정 요청", notice: true },
-                { operation: "invalidate", label: "무효 처리", notice: true }
+                { operation: "invalidate", label: "무효 처리" }
               ]
             : [];
 
   return (
-    <section className="grid gap-4 rounded-md border border-slate-200 bg-white p-5">
+    <section className="ui-card grid gap-4 p-5">
       <div>
-        <h2 className="text-base font-semibold text-slate-950">결과 운영 CTA</h2>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
+        <h2 className="text-base font-bold text-ink">결과 운영 CTA</h2>
+        <p className="mt-2 text-sm leading-6 text-ink-muted">
           집계, 확정, 공개, 정정, 무효 처리는 상태 정책과 결과 공개 이후 덮어쓰기 금지 원칙을 따릅니다.
         </p>
       </div>
@@ -162,11 +172,11 @@ function ResultOperationForm({
 }) {
   const [actionState, action, pending] = useActionState(resultOperationAction, initialResultState);
   return (
-    <form action={action} className="grid gap-3 rounded-md border border-slate-200 p-4">
+    <form action={action} className="grid gap-3 rounded-xl border border-line bg-surface p-4">
       <input type="hidden" name="electionId" value={electionId} />
       <input type="hidden" name="operation" value={operation} />
       {notice ? (
-        <label className="grid gap-1 text-sm font-medium text-slate-700">
+        <label className="grid gap-1 text-sm font-bold text-[#3A4A66]">
           공지 문구
           <textarea name="notice" rows={3} className="rounded-md border border-slate-300 px-3 py-2" />
         </label>
@@ -175,7 +185,7 @@ function ResultOperationForm({
       <button
         type="submit"
         disabled={pending}
-        className="w-fit rounded-md bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-400"
+        className={operation === "invalidate" ? "ui-danger-button w-fit" : "ui-primary-button w-fit"}
       >
         {pending ? "처리 중" : label}
       </button>

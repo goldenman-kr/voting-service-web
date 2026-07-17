@@ -163,8 +163,8 @@ export async function getAdminElectionDashboard(
 ): Promise<AdminElectionDashboard> {
   const organizationId = assertAdminElectionRead(session);
   const elections = await listAdminElectionItems(prisma, session);
-  const registryCount = await prisma.voterRegistry.count({
-    where: { election: { organizationId } }
+  const registryCount = await prisma.managedVoterRegistry.count({
+    where: { organizationId }
   });
   const byState = Object.fromEntries(
     [
@@ -179,7 +179,9 @@ export async function getAdminElectionDashboard(
       ElectionState.TALLYING,
       ElectionState.PENDING_CONFIRMATION,
       ElectionState.CONFIRMED,
-      ElectionState.PUBLISHED
+      ElectionState.PUBLISHED,
+      ElectionState.ARCHIVED,
+      ElectionState.INVALIDATED
     ].map((state) => [state, elections.filter((election) => election.state === state).length])
   );
   const preStartStates = new Set<ElectionStateValue>([
@@ -194,7 +196,9 @@ export async function getAdminElectionDashboard(
     ElectionState.TALLYING,
     ElectionState.PENDING_CONFIRMATION,
     ElectionState.CONFIRMED,
-    ElectionState.PUBLISHED
+    ElectionState.PUBLISHED,
+    ElectionState.ARCHIVED,
+    ElectionState.INVALIDATED
   ]);
 
   return Object.freeze({

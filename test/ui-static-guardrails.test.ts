@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -20,7 +20,7 @@ describe("UI guardrails", () => {
 
     expect(source).not.toContain("현재 MVP는 초대받은 유권자만 참여할 수 있는 방식으로 운영됩니다.");
     expect(source).not.toContain("투표 이미지 영역");
-    expect(source).not.toContain(">관리자 메뉴</Link>");
+    expect(navSource).toContain('{ href: "/admin", label: "관리자" }');
     expect(navSource).toContain("NEXT_PUBLIC_NAV_BADGE");
     expect(navSource).not.toContain("온라인 투표 <span");
     expect(navSource).toContain("text-amber-700");
@@ -32,6 +32,37 @@ describe("UI guardrails", () => {
     expect(source).toContain("© 2026 KRYP. All rights reserved.");
     expect(source).toContain("온라인 선거시스템 문의: hello@kryp.xyz");
     expect(source).toContain("기술지원: kryp.xyz");
+    expect(source).toContain('src="/hero/bg1.png"');
+    expect(source).toContain('alt="시골 주택마을 전경"');
+    expect(source).toContain('src="/hero/bg2.png"');
+    expect(source).toContain('alt="투표함에 투표용지를 넣는 손"');
+    expect(source).toContain("shadow-hero");
+    expect(source).toContain("shadow-float");
+    expect(source).not.toContain("image-slot");
+    expect(source).not.toContain("support.js");
+  });
+
+  it("design tokens and self-hosted A2z assets remain available", () => {
+    const globals = readUiSource("src/app/globals.css");
+    const tailwind = readUiSource("tailwind.config.ts");
+    const fontFiles = ["a2z-regular.woff2", "a2z-medium.woff2", "a2z-semibold.woff2", "a2z-bold.woff2", "a2z-extrabold.woff2"];
+
+    expect(globals).toContain('@font-face');
+    expect(globals).toContain('font-family: "A2z"');
+    expect(globals).not.toContain("cdn.jsdelivr.net");
+    expect(tailwind).toContain('#6180DB');
+    expect(tailwind).toContain('#101D33');
+    expect(tailwind).toContain('#F4F6FA');
+    for (const fontFile of fontFiles) {
+      const path = join(projectRoot, "public/fonts/a2z", fontFile);
+      expect(existsSync(path)).toBe(true);
+      expect(statSync(path).size).toBeGreaterThan(100_000);
+    }
+    for (const heroFile of ["bg1.png", "bg2.png"]) {
+      const path = join(projectRoot, "public/hero", heroFile);
+      expect(existsSync(path)).toBe(true);
+      expect(statSync(path).size).toBeGreaterThan(100_000);
+    }
   });
 
   it("StatusBadge renders approved ElectionState values", () => {
@@ -82,6 +113,10 @@ describe("UI guardrails", () => {
     expect(formSource).toContain("1 기본 정보");
     expect(formSource).toContain("2 문항/선택지");
     expect(formSource).toContain("3 선거인 명부");
+    expect(formSource).toContain("WizardStepIndicator");
+    expect(formSource).toContain("ring-4 ring-brand-600/15");
+    expect(formSource).toContain("익명 투표");
+    expect(formSource).toContain("기명 투표");
     expect(formSource).toContain("isStepOneComplete");
     expect(formSource).toContain("isStepTwoComplete");
     expect(formSource).toContain("선택 항목은 최소 2개");
@@ -129,10 +164,13 @@ describe("UI guardrails", () => {
     expect(detailSource).toContain("election.state === ElectionState.DRAFT");
     expect(detailSource).toContain("선거인 명부 확인");
     expect(detailSource).toContain("관리자 화면에는 인증용 내부 값이 표시되지 않습니다");
+    expect(detailSource).not.toContain("/auth-policy");
     expect(detailSource).toContain("현재 상태에서는 문항, 선택 항목, 선거인 명부를 수정할 수 없습니다");
     expect(detailSource).toContain("바로 투표를 시작할 수 있습니다");
     expect(detailSource).toContain("DeletePreStartElectionForm");
     expect(detailSource).toContain("/admin/voter-registries/${election.voterRegistry.managedRegistryId}");
+    expect(detailSource).not.toContain("/questions");
+    expect(detailSource).not.toContain("문항/선택 항목 편집");
     expect(detailSource).not.toContain("AuthenticationPolicy");
     expect(detailSource).not.toContain("VoterRegistry");
     expect(detailSource).not.toContain("AnonymousBallotGroup");
@@ -143,6 +181,9 @@ describe("UI guardrails", () => {
     expect(authPolicyPage).not.toContain("AuthenticationPolicy 설정");
     expect(tableSource).toContain("labelOf(electionTypeShortLabelMap, election.electionType)");
     expect(shellSource).toContain("/admin/voter-registries");
+    expect(shellSource).toContain("lg:w-[262px]");
+    expect(shellSource).toContain("bg-canvas");
+    expect(shellSource).toContain("usePathname");
     expect(registryPage).toContain("독립 선거인명부");
     expect(registryPage).toContain("새 명부 만들기");
     expect(registryPage).not.toContain("새 투표 만들기");
@@ -171,8 +212,12 @@ describe("UI guardrails", () => {
     expect(listPage).toContain("복제하기");
     expect(listPage).toContain("시작됨 · 수정 불가");
     expect(listPage).toContain("overflow-x-auto");
+    expect(listPage).toContain("min-w-[820px]");
     expect(listPage).toContain("table-fixed");
-    expect(listPage).toContain("w-[44%]");
+    expect(listPage).not.toContain("w-[44%]");
+    expect(listPage).toContain("w-[5.5rem]");
+    expect(listPage).toContain("inline-block max-w-full rounded-lg");
+    expect(listPage).toContain("grid justify-items-start gap-1.5");
     expect(listPage).toContain("[word-break:keep-all]");
     expect(listPage).toContain("formatDateTimeParts");
     expect(listPage).toContain("DateTimeCell");
@@ -191,6 +236,10 @@ describe("UI guardrails", () => {
     expect(detailPage).toContain("ManagedRegistryTitleActions");
     expect(detailPage).toContain("이 명부가 사용된 투표");
     expect(detailPage).toContain("usedElections");
+    expect(detailPage).toContain("ElectionPeriodCell");
+    expect(detailPage).toContain("DateTimeCell");
+    expect(detailPage).toContain("시작</dt>");
+    expect(detailPage).toContain("종료</dt>");
     expect(detailPage).toContain("투표 보기");
     expect(detailPage).toContain("유권자와 투표 내용을 연결하는 정보는 표시하지 않습니다");
     expect(forms).toContain("선거인 추가");
@@ -217,6 +266,7 @@ describe("UI guardrails", () => {
 
   it("admin draft edit route exposes Draft-only conservative question and option editing", () => {
     const editPage = readUiSource("src/app/admin/(protected)/elections/[election_id]/edit/page.tsx");
+    const questionsPage = readUiSource("src/app/admin/(protected)/elections/[election_id]/questions/page.tsx");
     const formSource = readUiSource("src/components/admin/admin-election-forms.tsx");
     const actionSource = readUiSource("src/server/elections/admin-actions.ts");
     const editQuestionFormSource = formSource.slice(
@@ -235,8 +285,9 @@ describe("UI guardrails", () => {
     expect(editPage).toContain("통합 편집 제한");
     expect(editPage).toContain("문항/선택 항목 문구를 보수적으로 수정합니다");
     expect(editPage).toContain("EditElectionQuestionsAndOptionsForm");
-    expect(editPage).toContain("EditElectionSetupPolicyForm");
-    expect(editPage).toContain("명부 교체와 인증 방식 수정은 아래 읽기 전용 단계에서");
+    expect(editPage).not.toContain("EditElectionSetupPolicyForm");
+    expect(editPage).toContain("명부 교체는 아래 읽기 전용 단계에서");
+    expect(editPage).not.toContain("/auth-policy");
     expect(formSource).toContain("EditElectionBasicInfoForm");
     expect(formSource).toContain("updateElectionBasicInfoAction");
     expect(formSource).toContain("기본 정보 저장");
@@ -266,11 +317,16 @@ describe("UI guardrails", () => {
     expect(actionSource).toContain("문항/선택 항목이 저장되었습니다.");
     expect(actionSource).toContain("기본 정보가 저장되었습니다.");
     expect(actionSource).toContain("투표를 시작하기 전에 상세 화면에서 제목, 일정, 문항, 선택 항목, 선거인 명부를 다시 확인해 주세요.");
+    expect(questionsPage).toContain("canAddQuestion");
+    expect(questionsPage).toContain("election.startsAt > new Date()");
+    expect(questionsPage).toContain("canAddQuestion ? (");
     expect(editPage).toContain("투표 시작 전 최종 확인");
     expect(editPage).toContain("상세 화면으로 돌아가기");
-    expect(editPage).toContain("문항 관리");
+    expect(editPage).not.toContain("/questions");
+    expect(editPage).not.toContain("문항/선택 항목 세부 화면으로 이동");
+    expect(editPage).not.toContain("문항 관리");
     expect(editPage).toContain("선거인 명부 관리");
-    expect(editPage).toContain("인증 방식 설정");
+    expect(editPage).not.toContain("인증 방식 설정");
     expect(editPage).toContain("#pre-start-summary");
     expect(editSetupPolicyFormSource).toContain("투표 참여 인증 방식");
     expect(formSource).toContain("초대 링크 + 유권자 식별자 확인");
@@ -376,6 +432,10 @@ describe("UI guardrails", () => {
     expect(inviteSource).not.toContain("/invitations/${");
     expect(voterPortalSource).toContain("현재 진행 중인 투표");
     expect(voterPortalSource).toContain("완료된 투표");
+    expect(voterPortalSource).toContain("bg-brand-50");
+    expect(voterPortalSource).toContain("bg-surface");
+    expect(voterPortalSource).toContain("ui-primary-button");
+    expect(voterPortalSource).toContain("ui-secondary-button");
     expect(voterPortalSource).not.toContain("초대 확인 시작");
     expect(voterPortalSource).not.toContain("PrivacyNotice");
     expect(voterPortalSource).not.toContain("개인정보 최소 노출");
@@ -384,8 +444,9 @@ describe("UI guardrails", () => {
     expect(voterVerifySource).toContain("식별번호");
     expect(voterVerifySource).toContain("생년월일");
     expect(voterVerifySource).toContain("VoterIdentifierNotice");
-    expect(voterIdentifierNoticeSource).toContain("중요 사항");
-    expect(voterIdentifierNoticeSource).toContain("식별번호는 세대주의 전화번호 뒷 4자리입니다");
+    expect(voterIdentifierNoticeSource).toContain("안전한 유권자 확인");
+    expect(voterIdentifierNoticeSource).toContain("식별번호는 세대주의 전화번호 뒷 4자리");
+    expect(voterIdentifierNoticeSource).toContain("5회 실패 시 15분");
     expect(voterVerifySource).toContain("숫자만 적어주세요 (예: 2,34,52)");
     expect(voterVerifySource).toContain("한글이름을 빈칸없이 적어주세요");
     expect(voterVerifySource).toContain("입주등록한 세대주의 전화번호 뒷4자리");
@@ -397,7 +458,7 @@ describe("UI guardrails", () => {
     expect(publicActionSource).toContain("canonicalVoterIdentifier");
     expect(publicActionSource).not.toContain("invite_token");
     expect(inviteSource).not.toContain("회원번호/사번/학번");
-    expect(inviteSource).toContain("인증코드는 MVP 기본 흐름에서 사용하지 않습니다.");
+    expect(inviteSource).not.toContain("회원번호/사번/학번");
     expect(ballotSource).toContain("/api/v1/voter/ballots");
     expect(ballotSource).not.toContain("/api/v1/voter/ballots/revote");
     expect(ballotSource).toContain("제출 후에는 다시 수정할 수 없습니다.");
@@ -407,7 +468,10 @@ describe("UI guardrails", () => {
   it("voter shell uses a wider desktop layout without MVP copy", () => {
     const shellSource = readUiSource("src/components/voter/voter-shell.tsx");
 
-    expect(shellSource).toContain("max-w-4xl");
+    expect(shellSource).toContain("max-w-[860px]");
+    expect(shellSource).toContain("max-w-[640px]");
+    expect(shellSource).toContain("VoterStepBar");
+    expect(shellSource).toContain('["명부 인증", "투표", "검토", "완료"]');
     expect(shellSource).not.toContain("초대 기반 MVP");
   });
 
@@ -420,7 +484,10 @@ describe("UI guardrails", () => {
     for (const source of resultSources) {
       expect(source).toContain("data.result_version.notice");
       expect(source).toContain("결과 공지");
+      expect(source).toContain("투표율");
+      expect(source).toContain("formatResultVoteCount");
       expect(source.indexOf("결과 공지")).toBeLessThan(source.indexOf("data.result.items.map"));
+      expect(source.indexOf("투표율")).toBeLessThan(source.indexOf("data.result.items.map"));
     }
   });
 
@@ -482,32 +549,66 @@ describe("UI guardrails", () => {
     expect(source).toContain("pause");
     expect(source).toContain("resume");
     expect(source).toContain("close");
+    expect(source).toContain('{ operation: "cancel", label: "투표 취소" }');
+    expect(source).toContain("canCancel");
+    expect(source).toContain("취소하고 무효 상태로 보관");
     expect(source).toContain("tally");
     expect(source).toContain("confirm");
     expect(source).toContain("publish");
-    expect(source).toContain("request_correction");
+    expect(source).not.toContain("request_correction");
+    expect(source).not.toContain("정정 요청");
     expect(source).toContain("invalidate");
-    expect(source).toContain("resend_invitations");
+    expect(source).not.toContain("resend_invitations");
     expect(source).not.toContain("prepare_invitations");
     expect(source).not.toContain("approve");
+    expect(source).toContain("투표 상태 변경");
+    expect(source).toContain("상태 변경 불가");
+    expect(source).toContain("현재 투표가 종료된 상태에서는 더이상 변경할 수 없습니다.");
+    expect(source).not.toContain("현재 상태에서 가능한 운영 CTA 없음");
+    expect(source).not.toContain("이 상태에서는 직접 상태 전환 작업을 제공하지 않습니다.");
     expect(detailPage).toContain("ElectionStateCtaPanel");
+    expect(detailPage).toContain("election.startsAt <= currentTime");
+    expect(detailPage).toContain("cancelled: \"투표 취소(무효)\"");
+    expect(detailPage).not.toContain("초대 상태");
+    expect(detailPage).not.toContain("초대 준비/발송");
+    expect(detailPage).toContain("투표 상태 변경 이력");
+    expect(detailPage).toContain("electionStateHistory.findMany");
+    expect(detailPage).toContain("opened");
+    expect(detailPage).toContain("closed");
     expect(resultsPage).toContain("ResultOperationPanel");
+    expect(resultsPage).toContain("결과 상태 변경 이력");
+    expect(resultsPage).toContain("result_tally_started");
+    expect(resultsPage).toContain("result_published");
+    expect(resultsPage).toContain("투표율");
+    expect(resultsPage).toContain("투표가 종료되지 않아 투표율만 표시됩니다.");
+    expect(resultsPage).toContain("실시간 투표율");
+    expect(resultsPage).toContain("!hasEnded");
+    expect(resultsPage).toContain("formatResultVoteCount");
+    expect(resultsPage.indexOf("투표율")).toBeLessThan(resultsPage.indexOf("집계 결과"));
     expect(resultsPage).not.toContain("StepUpPanel");
     expect(resultsPage).toContain("ReportExportSkeleton");
   });
 
-  it("admin election tables keep Korean words intact and allocate operational columns", () => {
+  it("admin election tables keep Korean words intact and use title links without an action column", () => {
     const source = readUiSource("src/components/admin/admin-election-table.tsx");
 
     expect(source).toContain("overflow-x-auto");
-    expect(source).toContain("min-w-[980px]");
+    expect(source).toContain("min-w-[760px]");
     expect(source).toContain("table-fixed");
     expect(source).toContain("<colgroup>");
-    expect(source).toContain("w-[40%]");
+    expect(source).toContain("<col />");
+    expect(source).not.toContain("w-[40%]");
+    expect(source).toContain("w-[13rem]");
+    expect(source).not.toContain("w-[12rem]");
     expect(source).toContain("w-[5rem]");
     expect(source).toContain("electionTypeShortLabelMap");
     expect(source).toContain("[word-break:keep-all]");
-    expect(source).toContain("whitespace-nowrap");
+    expect(source).toContain('href={`/admin/elections/${election.id}`}');
+    expect(source).toContain("투표 (상세보기는 제목을 클릭)</th>");
+    expect(source).toContain("text-brand-700 underline");
+    expect(source).toContain("underline-offset-2");
+    expect(source).toContain("유권자수</th>");
+    expect(source).not.toContain(">작업</th>");
     expect(source).toContain("시작</dt>");
     expect(source).toContain("종료</dt>");
     expect(source).not.toContain(">문항</th>");

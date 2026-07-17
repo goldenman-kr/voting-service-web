@@ -33,7 +33,7 @@ describe("RBAC authorization helpers", () => {
       requireAllPermissions(owner, ["organization.read", "organization.update"])
     ).not.toThrow();
     expect(() =>
-      requireAllPermissions(owner, ["organization.read", "result.publish"])
+      requireAllPermissions(owner, ["organization.read", "tenant.manage"])
     ).toThrow(/권한/);
   });
 

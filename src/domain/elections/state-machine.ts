@@ -6,16 +6,26 @@ export const ALLOWED_ELECTION_TRANSITIONS: Readonly<Record<ElectionStateValue, r
   Object.freeze({
     [ElectionState.DRAFT]: Object.freeze([
       ElectionState.READY_FOR_REVIEW,
-      ElectionState.OPEN
+      ElectionState.OPEN,
+      ElectionState.INVALIDATED
     ]),
     [ElectionState.READY_FOR_REVIEW]: Object.freeze([
       ElectionState.DRAFT,
       ElectionState.APPROVED,
-      ElectionState.OPEN
+      ElectionState.OPEN,
+      ElectionState.INVALIDATED
     ]),
-    [ElectionState.APPROVED]: Object.freeze([ElectionState.SCHEDULED, ElectionState.OPEN]),
-    [ElectionState.SCHEDULED]: Object.freeze([ElectionState.NOTICE, ElectionState.OPEN]),
-    [ElectionState.NOTICE]: Object.freeze([ElectionState.OPEN]),
+    [ElectionState.APPROVED]: Object.freeze([
+      ElectionState.SCHEDULED,
+      ElectionState.OPEN,
+      ElectionState.INVALIDATED
+    ]),
+    [ElectionState.SCHEDULED]: Object.freeze([
+      ElectionState.NOTICE,
+      ElectionState.OPEN,
+      ElectionState.INVALIDATED
+    ]),
+    [ElectionState.NOTICE]: Object.freeze([ElectionState.OPEN, ElectionState.INVALIDATED]),
     [ElectionState.OPEN]: Object.freeze([
       ElectionState.PAUSED,
       ElectionState.CLOSED,
@@ -71,4 +81,20 @@ export function assertElectionTransitionAllowed(
 
 export function canInvalidateElectionFromState(state: ElectionStateValue): boolean {
   return getAllowedElectionTransitions(state).includes(ElectionState.INVALIDATED);
+}
+
+export const PRE_START_ELECTION_STATES: readonly ElectionStateValue[] = Object.freeze([
+  ElectionState.DRAFT,
+  ElectionState.READY_FOR_REVIEW,
+  ElectionState.APPROVED,
+  ElectionState.SCHEDULED,
+  ElectionState.NOTICE
+]);
+
+export function canCancelExpiredPreStartElection(
+  state: ElectionStateValue,
+  startsAt: Date,
+  now: Date
+): boolean {
+  return PRE_START_ELECTION_STATES.includes(state) && startsAt <= now;
 }

@@ -10,6 +10,7 @@ import {
 } from "../../domain/auth-policy/authentication-policy";
 import { AuthenticationMethod, ElectionState } from "../../guardrails/index.js";
 import { parseEnv } from "../../lib/env";
+import { parseKstDateTimeInput } from "../../lib/kst-datetime";
 import {
   canonicalVoterIdentifier,
   parseVoterRegistryTextRows,
@@ -26,6 +27,7 @@ import {
   createOption,
   createQuestion,
   approveElectionReview,
+  cancelExpiredPreStartElection,
   closeElection,
   deletePreStartElection,
   importEligibleVoters,
@@ -90,8 +92,8 @@ function validateBasicInfoInput(formData: FormData): string | null {
     }
   }
 
-  const startsAt = new Date(value(formData, "startsAt"));
-  const endsAt = new Date(value(formData, "endsAt"));
+  const startsAt = parseKstDateTimeInput(value(formData, "startsAt"));
+  const endsAt = parseKstDateTimeInput(value(formData, "endsAt"));
   if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
     return "시작일시와 종료일시를 확인해 주세요.";
   }
@@ -114,8 +116,8 @@ export async function createElectionDraftAction(
         description: optionalValue(formData, "description"),
         electionType: value(formData, "electionType") || "representative_election",
         votingMode: value(formData, "votingMode") || "anonymous",
-        startsAt: value(formData, "startsAt"),
-        endsAt: value(formData, "endsAt"),
+        startsAt: parseKstDateTimeInput(value(formData, "startsAt")),
+        endsAt: parseKstDateTimeInput(value(formData, "endsAt")),
         timezone: "Asia/Seoul"
       },
       context
@@ -167,8 +169,8 @@ export async function updateElectionBasicInfoAction(
         title: value(formData, "title"),
         description: optionalValue(formData, "description"),
         electionType: value(formData, "electionType") || "representative_election",
-        startsAt: value(formData, "startsAt"),
-        endsAt: value(formData, "endsAt"),
+        startsAt: parseKstDateTimeInput(value(formData, "startsAt")),
+        endsAt: parseKstDateTimeInput(value(formData, "endsAt")),
         timezone: "Asia/Seoul",
         reason: "통합 편집 마법사 기본 정보 수정"
       },
@@ -411,8 +413,8 @@ function validateWizardInput(formData: FormData): string | null {
     }
   }
 
-  const startsAt = new Date(value(formData, "startsAt"));
-  const endsAt = new Date(value(formData, "endsAt"));
+  const startsAt = parseKstDateTimeInput(value(formData, "startsAt"));
+  const endsAt = parseKstDateTimeInput(value(formData, "endsAt"));
   if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
     return "시작일시와 종료일시를 확인해 주세요.";
   }
@@ -484,8 +486,8 @@ export async function createElectionWizardAction(
         description: optionalValue(formData, "description"),
         electionType: value(formData, "electionType") || "representative_election",
         votingMode: "anonymous",
-        startsAt: value(formData, "startsAt"),
-        endsAt: value(formData, "endsAt"),
+        startsAt: parseKstDateTimeInput(value(formData, "startsAt")),
+        endsAt: parseKstDateTimeInput(value(formData, "endsAt")),
         timezone: "Asia/Seoul"
       },
       context
@@ -719,6 +721,7 @@ type ElectionOperation =
   | "pause"
   | "resume"
   | "close"
+  | "cancel"
   | "prepare_invitations"
   | "send_invitations"
   | "resend_invitations";
@@ -730,6 +733,7 @@ const electionOperationMessages: Record<ElectionOperation, string> = {
   pause: "투표를 일시중단했습니다.",
   resume: "투표를 재개했습니다.",
   close: "투표를 종료했습니다.",
+  cancel: "투표를 취소하고 무효 상태로 보관했습니다.",
   prepare_invitations: "초대와 투표 자격을 준비했습니다.",
   send_invitations: "초대 발송 요청을 처리했습니다.",
   resend_invitations: "초대 재발송 요청을 처리했습니다."
@@ -762,6 +766,9 @@ export async function electionOperationAction(
         break;
       case "close":
         await closeElection(electionId, { reason }, context);
+        break;
+      case "cancel":
+        await cancelExpiredPreStartElection(electionId, { reason }, context);
         break;
       case "prepare_invitations":
         await prepareInvitationsForElection(electionId, { reason }, context);

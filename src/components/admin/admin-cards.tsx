@@ -10,17 +10,20 @@ import { WarningBanner } from "../ui/warning-banner";
 export function MetricCard({
   label,
   value,
-  hint
+  hint,
+  featured = false
 }: {
   label: string;
   value: string | number;
   hint?: string;
+  featured?: boolean;
 }) {
   return (
-    <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="text-sm font-medium text-slate-500">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-slate-950">{value}</p>
-      {hint ? <p className="mt-2 text-xs text-slate-500">{hint}</p> : null}
+    <div className={["relative overflow-hidden rounded-card border bg-white p-4 shadow-card", featured ? "border-brand-100" : "border-line"].join(" ")}>
+      {featured ? <span className="absolute inset-y-0 left-0 w-1 bg-brand-600" /> : null}
+      <p className="text-[13px] font-semibold text-ink-muted">{label}</p>
+      <p className="mt-2 text-[26px] font-extrabold tracking-[-0.02em] text-ink">{value}</p>
+      {hint ? <p className="mt-2 text-xs leading-5 text-ink-faint">{hint}</p> : null}
     </div>
   );
 }

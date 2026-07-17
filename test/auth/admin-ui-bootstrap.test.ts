@@ -32,8 +32,7 @@ function createBootstrapPrismaDouble() {
     organizations: [] as Array<{ id: string; tenantId: string; name: string }>,
     userRoles: [] as Array<{ userId: string; roleId: string }>,
     roles: [
-      { id: "role-organization-owner", code: Role.ORGANIZATION_OWNER, organizationId: null },
-      { id: "role-election-manager", code: Role.ELECTION_MANAGER, organizationId: null }
+      { id: "role-organization-owner", code: Role.ORGANIZATION_OWNER, organizationId: null }
     ]
   };
   const prisma = {
@@ -128,10 +127,7 @@ describe("initial admin bootstrap policy", () => {
     expect(first.created).toBe(true);
     expect(second).toMatchObject({ created: false, reason: "admin_already_exists" });
     expect(state.users).toHaveLength(1);
-    expect(state.userRoles.map((entry) => entry.roleId).sort()).toEqual([
-      "role-election-manager",
-      "role-organization-owner"
-    ]);
+    expect(state.userRoles.map((entry) => entry.roleId)).toEqual(["role-organization-owner"]);
     expect(state.users[0].passwordHash).not.toBe(password);
     expect(await verifyAdminPassword(password, state.users[0].passwordHash)).toBe(true);
   });
