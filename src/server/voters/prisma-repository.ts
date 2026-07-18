@@ -169,7 +169,11 @@ export class PrismaVoterAuthRepository implements VoterAuthRepository {
         hasVoted: true,
         eligibleVoter: {
           select: {
-            externalIdentifierHmac: true
+            externalIdentifierHmac: true,
+            searchHmac: true,
+            registry: {
+              select: { useBirthDateForVerification: true }
+            }
           }
         }
       }
@@ -184,7 +188,10 @@ export class PrismaVoterAuthRepository implements VoterAuthRepository {
           authStatus: credential.authStatus,
           identifierFailedAttempts: credential.identifierFailedAttempts,
           lockedUntil: credential.lockedUntil,
-          externalIdentifierHmac: credential.eligibleVoter.externalIdentifierHmac,
+          externalIdentifierHmac:
+            credential.eligibleVoter.registry.useBirthDateForVerification
+              ? credential.eligibleVoter.externalIdentifierHmac
+              : credential.eligibleVoter.searchHmac ?? credential.eligibleVoter.externalIdentifierHmac,
           hasVoted: credential.hasVoted
         })
       : null;

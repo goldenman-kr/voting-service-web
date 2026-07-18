@@ -16,18 +16,27 @@ export default async function VoterElectionVerifyPage({ params, searchParams }: 
   const error = (await searchParams)?.error;
   const election = await getPrismaClient().election.findUnique({
     where: { id: electionId },
-    select: { id: true, title: true, description: true, state: true }
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      state: true,
+      voterRegistry: { select: { useBirthDateForVerification: true } }
+    }
   });
   if (!election || !["open", "closed", "tallying", "pending_confirmation", "confirmed", "published"].includes(election.state)) {
     notFound();
   }
+  const useBirthDateForVerification = election.voterRegistry?.useBirthDateForVerification !== false;
 
   return (
     <VoterShell step={1}>
       <PageHeader
         eyebrow="선거인 확인"
         title={election.title}
-        description={election.description ?? "선거인 명부 확인을 위해 호수번호, 이름, 식별번호, 생년월일을 입력합니다."}
+        description={election.description ?? (useBirthDateForVerification
+          ? "선거인 명부 확인을 위해 호수번호, 이름, 식별번호, 생년월일을 입력합니다."
+          : "선거인 명부 확인을 위해 호수번호, 이름, 식별번호를 입력합니다.")}
         status={election.state}
       />
       <form action={verifyListedElectionVoterAction} className="ui-card grid gap-[18px] p-6">
@@ -79,19 +88,21 @@ export default async function VoterElectionVerifyPage({ params, searchParams }: 
           />
           <span className="text-xs font-normal leading-5 text-slate-500">입주등록한 세대주의 전화번호 뒷4자리 (예: 1234)</span>
         </label>
-        <label className="grid gap-2 text-[13.5px] font-bold text-[#3A4A66]">
-          생년월일
-          <input
-            name="birthDate6"
-            required
-            pattern="\d{6}"
-            maxLength={6}
-            className="text-base"
-            inputMode="numeric"
-            autoComplete="off"
-          />
-          <span className="text-xs font-normal leading-5 text-slate-500">6자리 연월일 (예: 781207)</span>
-        </label>
+        {useBirthDateForVerification ? (
+          <label className="grid gap-2 text-[13.5px] font-bold text-[#3A4A66]">
+            생년월일
+            <input
+              name="birthDate6"
+              required
+              pattern="\d{6}"
+              maxLength={6}
+              className="text-base"
+              inputMode="numeric"
+              autoComplete="off"
+            />
+            <span className="text-xs font-normal leading-5 text-slate-500">6자리 연월일 (예: 781207)</span>
+          </label>
+        ) : null}
         <button type="submit" className="ui-primary-button text-base">
           확인
         </button>

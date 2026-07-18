@@ -37,7 +37,10 @@ export function normalizeVoterRegistryFields(input: Partial<VoterRegistryFields>
   };
 }
 
-export function validateVoterRegistryFields(input: Partial<VoterRegistryFields>): {
+export function validateVoterRegistryFields(
+  input: Partial<VoterRegistryFields>,
+  options?: { requireBirthDate?: boolean }
+): {
   ok: boolean;
   fields?: VoterRegistryFields;
   errors: string[];
@@ -54,20 +57,26 @@ export function validateVoterRegistryFields(input: Partial<VoterRegistryFields>)
   if (!/^\d{4}$/.test(fields.identifierLast4)) {
     errors.push(`${fieldLabels.identifierLast4}는 숫자 4자리로 입력해 주세요.`);
   }
-  if (!/^\d{6}$/.test(fields.birthDate6)) {
+  if (options?.requireBirthDate !== false && !/^\d{6}$/.test(fields.birthDate6)) {
     errors.push(`${fieldLabels.birthDate6}은 숫자 6자리로 입력해 주세요.`);
   }
 
   return errors.length === 0 ? { ok: true, fields, errors } : { ok: false, errors };
 }
 
-export function canonicalVoterIdentifier(fields: VoterRegistryFields): string {
-  return [
+export function canonicalVoterIdentifier(
+  fields: VoterRegistryFields,
+  options?: { includeBirthDate?: boolean }
+): string {
+  const values = [
     fields.householdNumber,
     fields.name,
-    fields.identifierLast4,
-    fields.birthDate6
-  ].join("|");
+    fields.identifierLast4
+  ];
+  if (options?.includeBirthDate !== false) {
+    values.push(fields.birthDate6);
+  }
+  return values.join("|");
 }
 
 export function encodedVoterRegistryPayload(fields: VoterRegistryFields): string {

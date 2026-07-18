@@ -528,7 +528,9 @@ export async function createElectionWizardAction(
         prisma: getPrismaClient(),
         session: context.session,
         electionId,
-        registryId: value(formData, "managedRegistryId")
+        registryId: value(formData, "managedRegistryId"),
+        hmacKey: context.hmacKey ?? parseEnv().HMAC_KEY,
+        encryptionKey: context.encryptionKey ?? parseEnv().ENCRYPTION_KEY
       });
       if (!linkResult.ok) {
         return { ok: false, message: linkResult.message };

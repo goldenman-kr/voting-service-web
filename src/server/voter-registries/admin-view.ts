@@ -12,6 +12,7 @@ export type ManagedVoterRegistrySummary = Readonly<{
   description?: string | null;
   totalRows: number;
   validRows: number;
+  useBirthDateForVerification: boolean;
   used: boolean;
   editable: boolean;
   createdAt: Date;
@@ -126,6 +127,7 @@ export async function listManagedVoterRegistrySummaries(
       description: registry.description,
       totalRows: registry.totalRows,
       validRows: registry.validRows,
+      useBirthDateForVerification: registry.useBirthDateForVerification,
       used,
       editable: !used,
       createdAt: registry.createdAt,
@@ -175,6 +177,7 @@ export async function getManagedVoterRegistryDetail(
     description: registry.description,
     totalRows: registry.totalRows,
     validRows: registry.validRows,
+    useBirthDateForVerification: registry.useBirthDateForVerification,
     used,
     editable: !used,
     createdAt: registry.createdAt,

@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import type { ElectionStateValue } from "../../domain/elections/state-machine";
 import { isAwaitingAdminResultProcessing } from "../../domain/elections/voting-window";
 import { parseEnv } from "../../lib/env";
-import { VOTER_SESSION_COOKIE_POLICY } from "../auth/voter-session";
+import { VOTER_SESSION_COOKIE_POLICY, hashOpaqueHandle } from "../auth/voter-session";
 import { BALLOT_GROUP_COOKIE_POLICY } from "../ballots/ballot-group-token";
 import {
   getVoterCompletionStatus,
@@ -105,6 +105,29 @@ async function voterRequestContext(): Promise<VoterRequestContext> {
     voterSessionHandle: cookieStore.get(VOTER_SESSION_COOKIE_POLICY.name)?.value,
     ballotGroupToken: cookieStore.get(BALLOT_GROUP_COOKIE_POLICY.name)?.value,
     hmacKey: env.HMAC_KEY
+  };
+}
+
+export async function getCurrentVoterVerificationOptions(): Promise<{
+  useBirthDateForVerification: boolean;
+}> {
+  const env = parseEnv();
+  const cookieStore = await cookies();
+  const handle = cookieStore.get(VOTER_SESSION_COOKIE_POLICY.name)?.value;
+  if (!handle) return { useBirthDateForVerification: true };
+  const session = await getPrismaClient().voterSession.findUnique({
+    where: { opaqueHandleHash: hashOpaqueHandle(handle, env.HMAC_KEY) },
+    select: {
+      election: {
+        select: {
+          voterRegistry: { select: { useBirthDateForVerification: true } }
+        }
+      }
+    }
+  });
+  return {
+    useBirthDateForVerification:
+      session?.election.voterRegistry?.useBirthDateForVerification !== false
   };
 }
 

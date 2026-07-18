@@ -93,7 +93,11 @@ export function VoterInviteExchangeForm() {
   );
 }
 
-export function VoterIdentifierForm() {
+export function VoterIdentifierForm({
+  useBirthDateForVerification = true
+}: {
+  useBirthDateForVerification?: boolean;
+}) {
   const router = useRouter();
   const [state, setState] = useState<VoterFlowState>({ pending: false });
 
@@ -103,14 +107,18 @@ export function VoterIdentifierForm() {
       name: String(formData.get("name") ?? ""),
       identifierLast4: String(formData.get("identifierLast4") ?? ""),
       birthDate6: String(formData.get("birthDate6") ?? "")
-    });
+    }, { requireBirthDate: useBirthDateForVerification });
     if (!fields.ok || !fields.fields) {
       setState({ pending: false, error: genericError });
       return;
     }
     setState({ pending: true });
     try {
-      await postJson("/api/v1/voter/identifier/verify", { identifier: canonicalVoterIdentifier(fields.fields) });
+      await postJson("/api/v1/voter/identifier/verify", {
+        identifier: canonicalVoterIdentifier(fields.fields, {
+          includeBirthDate: useBirthDateForVerification
+        })
+      });
       router.push("/voter/election");
     } catch {
       setState({ pending: false, error: genericError });
@@ -164,20 +172,22 @@ export function VoterIdentifierForm() {
         />
         <span className="text-xs font-normal leading-5 text-ink-faint">입주등록한 세대주의 전화번호 뒷 4자리</span>
       </label>
-      <label className="grid gap-[7px] text-[13.5px] font-bold text-[#3A4A66]">
-        생년월일
-        <input
-          name="birthDate6"
-          required
-          pattern="\d{6}"
-          maxLength={6}
-          className="text-base"
-          inputMode="numeric"
-          autoComplete="off"
-          placeholder="예: 781207"
-        />
-        <span className="text-xs font-normal leading-5 text-ink-faint">6자리 연월일 (예: 781207)</span>
-      </label>
+      {useBirthDateForVerification ? (
+        <label className="grid gap-[7px] text-[13.5px] font-bold text-[#3A4A66]">
+          생년월일
+          <input
+            name="birthDate6"
+            required
+            pattern="\d{6}"
+            maxLength={6}
+            className="text-base"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="예: 781207"
+          />
+          <span className="text-xs font-normal leading-5 text-ink-faint">6자리 연월일 (예: 781207)</span>
+        </label>
+      ) : null}
       {state.error ? <p className="text-sm text-red-700">{state.error}</p> : null}
       <button
         type="submit"

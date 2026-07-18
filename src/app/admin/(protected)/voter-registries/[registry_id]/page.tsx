@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import {
   AddManagedVoterDialog,
   ManagedRegistryTitleActions,
+  ManagedRegistryVerificationOptionsForm,
   ManagedVoterRowActions
 } from "../../../../../components/admin/managed-voter-registry-forms";
 import { PageHeader } from "../../../../../components/ui/page-header";
@@ -112,6 +113,12 @@ export default async function ManagedVoterRegistryDetailPage({ params }: Params)
           </p>
         ) : null}
       </section>
+
+      <ManagedRegistryVerificationOptionsForm
+        registryId={registry.id}
+        useBirthDateForVerification={registry.useBirthDateForVerification}
+        editable={registry.editable}
+      />
 
       <section className="grid gap-3 rounded-md border border-slate-200 bg-white p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">

@@ -13,6 +13,7 @@ import {
   createManagedRegistry,
   deleteManagedVoter,
   updateManagedRegistryTitle,
+  updateManagedRegistryVerificationOptions,
   updateManagedVoter,
   voterFieldsFromForm
 } from "./managed-registry-service";
@@ -59,6 +60,7 @@ export async function createManagedRegistryAction(
       title: value(formData, "title"),
       description: value(formData, "description"),
       rows: value(formData, "rows"),
+      useBirthDateForVerification: formData.get("useBirthDateForVerification") === "on",
       hmacKey: current.hmacKey,
       encryptionKey: current.encryptionKey
     });
@@ -118,6 +120,29 @@ export async function updateManagedRegistryTitleAction(
   }
 }
 
+export async function updateManagedRegistryVerificationOptionsAction(
+  _previous: VoterRegistryActionState = initialFailure,
+  formData: FormData
+): Promise<VoterRegistryActionState> {
+  const registryId = value(formData, "registryId");
+  try {
+    const current = await context();
+    const result = await updateManagedRegistryVerificationOptions({
+      prisma: current.prisma,
+      session: current.session,
+      registryId,
+      useBirthDateForVerification: formData.get("useBirthDateForVerification") === "on",
+      hmacKey: current.hmacKey,
+      encryptionKey: current.encryptionKey
+    });
+    revalidatePath(`/admin/voter-registries/${registryId}`);
+    revalidatePath("/admin/voter-registries");
+    return { ok: result.ok, message: result.message };
+  } catch (error) {
+    return { ok: false, message: safeMessage(error) };
+  }
+}
+
 export async function updateManagedVoterAction(
   _previous: VoterRegistryActionState = initialFailure,
   formData: FormData
@@ -150,7 +175,9 @@ export async function deleteManagedVoterAction(formData: FormData): Promise<void
       prisma: current.prisma,
       session: current.session,
       registryId,
-      voterId: value(formData, "voterId")
+      voterId: value(formData, "voterId"),
+      hmacKey: current.hmacKey,
+      encryptionKey: current.encryptionKey
     });
   } catch {
     // Keep delete failures generic and avoid echoing row data in the UI.

@@ -10,7 +10,7 @@ import {
 } from "../../lib/voter-registry-fields";
 import type { AdminSession } from "../auth/admin-session";
 import type { PrismaClientLike } from "../db/prisma";
-import { encryptPersonalValue } from "../privacy/personal-data-encryption";
+import { decryptPersonalValue, encryptPersonalValue } from "../privacy/personal-data-encryption";
 import { requirePermission } from "../rbac/authorize";
 
 export type RegistryActionResult = Readonly<{
@@ -42,7 +42,18 @@ function protectedPayload(fields: VoterRegistryFields, encryptionKey: string): {
   };
 }
 
-export function parseValidatedRows(raw: string): {
+function birthDateIndependentHmac(
+  encryptedPayload: string | null | undefined,
+  encryptionKey: string,
+  hmacKey: string
+): string | null {
+  const fields = decodeVoterRegistryPayload(decryptPersonalValue(encryptedPayload, encryptionKey));
+  return fields
+    ? hmacValue(canonicalVoterIdentifier(fields, { includeBirthDate: false }), hmacKey)
+    : null;
+}
+
+export function parseValidatedRows(raw: string, useBirthDateForVerification = true): {
   ok: boolean;
   fields: VoterRegistryFields[];
   message?: string;
@@ -63,11 +74,44 @@ export function parseValidatedRows(raw: string): {
     }
     fields.push(validation.fields);
   }
-  const identifiers = fields.map((field) => canonicalVoterIdentifier(field).toLowerCase());
+  const identifiers = fields.map((field) => canonicalVoterIdentifier(field, {
+    includeBirthDate: useBirthDateForVerification
+  }).toLowerCase());
   if (new Set(identifiers).size !== identifiers.length) {
     return { ok: false, fields: [], message: "선거인 명부에 중복된 선거인 정보가 있습니다." };
   }
   return { ok: true, fields };
+}
+
+function decryptedVoterFields(
+  encryptedPayload: string | null | undefined,
+  encryptionKey: string
+): VoterRegistryFields | null {
+  return decodeVoterRegistryPayload(decryptPersonalValue(encryptedPayload, encryptionKey));
+}
+
+async function hasDuplicateBirthDateIndependentIdentifier(
+  prisma: PrismaClientLike,
+  registryId: string,
+  fields: VoterRegistryFields,
+  encryptionKey: string,
+  excludedVoterId?: string
+): Promise<boolean> {
+  const expected = canonicalVoterIdentifier(fields, { includeBirthDate: false }).toLowerCase();
+  const voters = await prisma.managedVoter.findMany({
+    where: {
+      managedRegistryId: registryId,
+      status: "active",
+      ...(excludedVoterId ? { NOT: { id: excludedVoterId } } : {})
+    },
+    select: { externalIdentifierEncrypted: true }
+  });
+  return voters.some((voter) => {
+    const current = decryptedVoterFields(voter.externalIdentifierEncrypted, encryptionKey);
+    return current
+      ? canonicalVoterIdentifier(current, { includeBirthDate: false }).toLowerCase() === expected
+      : false;
+  });
 }
 
 async function assertEditableRegistry(
@@ -120,7 +164,12 @@ async function refreshCounts(prisma: PrismaClientLike, registryId: string): Prom
   });
 }
 
-async function syncEditableElectionSnapshots(prisma: PrismaClientLike, registryId: string): Promise<void> {
+async function syncEditableElectionSnapshots(
+  prisma: PrismaClientLike,
+  registryId: string,
+  hmacKey: string,
+  encryptionKey: string
+): Promise<void> {
   const now = new Date();
   const source = await prisma.managedVoterRegistry.findUnique({
     where: { id: registryId },
@@ -164,6 +213,7 @@ async function syncEditableElectionSnapshots(prisma: PrismaClientLike, registryI
             phoneEncrypted: voter.phoneEncrypted,
             externalIdentifierEncrypted: voter.externalIdentifierEncrypted,
             externalIdentifierHmac: voter.externalIdentifierHmac,
+            searchHmac: birthDateIndependentHmac(voter.externalIdentifierEncrypted, encryptionKey, hmacKey),
             status: "active"
           },
           update: {
@@ -171,6 +221,7 @@ async function syncEditableElectionSnapshots(prisma: PrismaClientLike, registryI
             nameEncrypted: voter.nameEncrypted,
             phoneEncrypted: voter.phoneEncrypted,
             externalIdentifierEncrypted: voter.externalIdentifierEncrypted,
+            searchHmac: birthDateIndependentHmac(voter.externalIdentifierEncrypted, encryptionKey, hmacKey),
             status: "active"
           }
         });
@@ -180,7 +231,8 @@ async function syncEditableElectionSnapshots(prisma: PrismaClientLike, registryI
         data: {
           totalRows: source.voters.length,
           validRows: source.voters.length,
-          status: source.voters.length > 0 ? "validated" : "draft"
+          status: source.voters.length > 0 ? "validated" : "draft",
+          useBirthDateForVerification: source.useBirthDateForVerification
         }
       });
     });
@@ -193,6 +245,7 @@ export async function createManagedRegistry({
   title,
   description,
   rows,
+  useBirthDateForVerification,
   hmacKey,
   encryptionKey
 }: {
@@ -201,6 +254,7 @@ export async function createManagedRegistry({
   title: string;
   description?: string;
   rows: string;
+  useBirthDateForVerification: boolean;
   hmacKey: string;
   encryptionKey: string;
 }): Promise<RegistryActionResult> {
@@ -209,7 +263,7 @@ export async function createManagedRegistry({
   if (!title.trim()) {
     return { ok: false, message: "명부 제목을 입력해 주세요." };
   }
-  const parsed = parseValidatedRows(rows);
+  const parsed = parseValidatedRows(rows, useBirthDateForVerification);
   if (!parsed.ok) {
     return { ok: false, message: parsed.message };
   }
@@ -222,6 +276,7 @@ export async function createManagedRegistry({
       sourceType: "manual",
       totalRows: parsed.fields.length,
       validRows: parsed.fields.length,
+      useBirthDateForVerification,
       voters: {
         create: parsed.fields.map((fields) => ({
           ...protectedPayload(fields, encryptionKey || hmacKey),
@@ -261,6 +316,46 @@ export async function updateManagedRegistryTitle({
   return { ok: true, message: "명부 제목을 수정했습니다." };
 }
 
+export async function updateManagedRegistryVerificationOptions({
+  prisma,
+  session,
+  registryId,
+  useBirthDateForVerification,
+  hmacKey,
+  encryptionKey
+}: {
+  prisma: PrismaClientLike;
+  session: AdminSession;
+  registryId: string;
+  useBirthDateForVerification: boolean;
+  hmacKey: string;
+  encryptionKey: string;
+}): Promise<RegistryActionResult> {
+  const editable = await assertEditableRegistry(prisma, session, registryId);
+  if (!editable.ok) return editable;
+  if (!useBirthDateForVerification) {
+    const voters = await prisma.managedVoter.findMany({
+      where: { managedRegistryId: registryId, status: "active" },
+      select: { externalIdentifierEncrypted: true }
+    });
+    const identifiers = voters.flatMap((voter) => {
+      const fields = decryptedVoterFields(voter.externalIdentifierEncrypted, encryptionKey);
+      return fields
+        ? [canonicalVoterIdentifier(fields, { includeBirthDate: false }).toLowerCase()]
+        : [];
+    });
+    if (identifiers.length !== voters.length || new Set(identifiers).size !== identifiers.length) {
+      return { ok: false, message: "생년월일을 제외하면 중복되는 선거인 정보가 있어 설정을 변경할 수 없습니다." };
+    }
+  }
+  await prisma.managedVoterRegistry.update({
+    where: { id: registryId },
+    data: { useBirthDateForVerification }
+  });
+  await syncEditableElectionSnapshots(prisma, registryId, hmacKey, encryptionKey);
+  return { ok: true, message: "선거인 인증 항목을 수정했습니다." };
+}
+
 export async function addManagedVoter({
   prisma,
   session,
@@ -283,6 +378,17 @@ export async function addManagedVoter({
     return { ok: false, message: "호수번호, 이름, 식별번호, 생년월일을 확인해 주세요." };
   }
   const externalIdentifierHmac = hmacValue(canonicalVoterIdentifier(validation.fields), hmacKey);
+  if (
+    editable.registry.useBirthDateForVerification === false &&
+    await hasDuplicateBirthDateIndependentIdentifier(
+      prisma,
+      registryId,
+      validation.fields,
+      encryptionKey
+    )
+  ) {
+    return { ok: false, message: "생년월일을 제외한 인증 정보가 중복됩니다." };
+  }
   const duplicate = await prisma.managedVoter.findFirst({
     where: { managedRegistryId: registryId, externalIdentifierHmac }
   });
@@ -298,7 +404,7 @@ export async function addManagedVoter({
     }
   });
   await refreshCounts(prisma, registryId);
-  await syncEditableElectionSnapshots(prisma, registryId);
+  await syncEditableElectionSnapshots(prisma, registryId, hmacKey, encryptionKey);
   return { ok: true, message: "선거인을 추가했습니다." };
 }
 
@@ -332,6 +438,18 @@ export async function updateManagedVoter({
     return { ok: false, message: "선거인을 찾을 수 없습니다." };
   }
   const externalIdentifierHmac = hmacValue(canonicalVoterIdentifier(validation.fields), hmacKey);
+  if (
+    editable.registry.useBirthDateForVerification === false &&
+    await hasDuplicateBirthDateIndependentIdentifier(
+      prisma,
+      registryId,
+      validation.fields,
+      encryptionKey,
+      voterId
+    )
+  ) {
+    return { ok: false, message: "생년월일을 제외한 인증 정보가 중복됩니다." };
+  }
   const duplicate = await prisma.managedVoter.findFirst({
     where: { managedRegistryId: registryId, externalIdentifierHmac, NOT: { id: voterId } }
   });
@@ -347,7 +465,7 @@ export async function updateManagedVoter({
     }
   });
   await refreshCounts(prisma, registryId);
-  await syncEditableElectionSnapshots(prisma, registryId);
+  await syncEditableElectionSnapshots(prisma, registryId, hmacKey, encryptionKey);
   return { ok: true, message: "선거인 정보를 수정했습니다." };
 }
 
@@ -355,12 +473,16 @@ export async function deleteManagedVoter({
   prisma,
   session,
   registryId,
-  voterId
+  voterId,
+  hmacKey,
+  encryptionKey
 }: {
   prisma: PrismaClientLike;
   session: AdminSession;
   registryId: string;
   voterId: string;
+  hmacKey: string;
+  encryptionKey: string;
 }): Promise<RegistryActionResult> {
   const editable = await assertEditableRegistry(prisma, session, registryId);
   if (!editable.ok) return editable;
@@ -375,7 +497,7 @@ export async function deleteManagedVoter({
     data: { status: "disabled" }
   });
   await refreshCounts(prisma, registryId);
-  await syncEditableElectionSnapshots(prisma, registryId);
+  await syncEditableElectionSnapshots(prisma, registryId, hmacKey, encryptionKey);
   return { ok: true, message: "선거인을 명부에서 제외했습니다." };
 }
 
@@ -406,6 +528,7 @@ export async function cloneManagedRegistry({
       sourceType: "clone",
       totalRows: source.voters.length,
       validRows: source.voters.length,
+      useBirthDateForVerification: source.useBirthDateForVerification,
       voters: {
         create: source.voters.map((voter) => ({
           nameEncrypted: voter.nameEncrypted,
@@ -424,12 +547,16 @@ export async function linkManagedRegistryToElection({
   prisma,
   session,
   electionId,
-  registryId
+  registryId,
+  hmacKey,
+  encryptionKey
 }: {
   prisma: PrismaClientLike;
   session: AdminSession;
   electionId: string;
   registryId: string;
+  hmacKey: string;
+  encryptionKey: string;
 }): Promise<RegistryActionResult> {
   requirePermission(session, "voter_registry.import");
   const organizationId = organizationIdFor(session);
@@ -446,6 +573,17 @@ export async function linkManagedRegistryToElection({
   if (source.voters.length === 0) {
     return { ok: false, message: "연결할 선거인이 1명 이상 필요합니다." };
   }
+  if (!source.useBirthDateForVerification) {
+    const identifiers = source.voters.flatMap((voter) => {
+      const fields = decryptedVoterFields(voter.externalIdentifierEncrypted, encryptionKey);
+      return fields
+        ? [canonicalVoterIdentifier(fields, { includeBirthDate: false }).toLowerCase()]
+        : [];
+    });
+    if (identifiers.length !== source.voters.length || new Set(identifiers).size !== identifiers.length) {
+      return { ok: false, message: "생년월일을 제외하면 중복되는 선거인 정보가 있어 투표에 연결할 수 없습니다." };
+    }
+  }
   await prisma.$transaction(async (tx) => {
     const registry = await tx.voterRegistry.upsert({
       where: { electionId },
@@ -456,6 +594,7 @@ export async function linkManagedRegistryToElection({
         sourceType: "managed",
         totalRows: source.voters.length,
         validRows: source.voters.length,
+        useBirthDateForVerification: source.useBirthDateForVerification,
         confirmedAt: new Date()
       },
       update: {
@@ -464,6 +603,7 @@ export async function linkManagedRegistryToElection({
         sourceType: "managed",
         totalRows: source.voters.length,
         validRows: source.voters.length,
+        useBirthDateForVerification: source.useBirthDateForVerification,
         confirmedAt: new Date()
       }
     });
@@ -476,6 +616,7 @@ export async function linkManagedRegistryToElection({
         phoneEncrypted: voter.phoneEncrypted,
         externalIdentifierEncrypted: voter.externalIdentifierEncrypted,
         externalIdentifierHmac: voter.externalIdentifierHmac,
+        searchHmac: birthDateIndependentHmac(voter.externalIdentifierEncrypted, encryptionKey, hmacKey),
         status: "active"
       })),
       skipDuplicates: true

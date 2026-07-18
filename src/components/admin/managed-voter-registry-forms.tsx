@@ -8,6 +8,7 @@ import {
   createManagedRegistryAction,
   deleteManagedVoterAction,
   updateManagedRegistryTitleAction,
+  updateManagedRegistryVerificationOptionsAction,
   updateManagedVoterAction,
   type VoterRegistryActionState
 } from "../../server/voter-registries/admin-actions";
@@ -195,6 +196,20 @@ export function CreateManagedVoterRegistryForm() {
         </label>
       </div>
 
+      <label className="flex items-start gap-3 rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+        <input
+          name="useBirthDateForVerification"
+          type="checkbox"
+          defaultChecked
+          disabled={pending}
+          className="mt-1"
+        />
+        <span>
+          <strong className="block font-semibold text-slate-950">선거인 인증 시 생년월일 사용</strong>
+          체크를 해제하면 선거인 목록의 생년월일 입력과 저장은 유지하지만, 투표 인증 화면에는 표시하지 않고 인증 비교에서도 제외합니다.
+        </span>
+      </label>
+
       <label className="grid gap-1 text-sm font-medium text-slate-700">
         선거인 목록
         <textarea
@@ -218,6 +233,56 @@ export function CreateManagedVoterRegistryForm() {
         className="w-fit rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-400"
       >
         {pending ? "저장 중" : "명부 저장"}
+      </button>
+    </form>
+  );
+}
+
+export function ManagedRegistryVerificationOptionsForm({
+  registryId,
+  useBirthDateForVerification,
+  editable
+}: {
+  registryId: string;
+  useBirthDateForVerification: boolean;
+  editable: boolean;
+}) {
+  const [state, action, pending] = useActionState(
+    updateManagedRegistryVerificationOptionsAction,
+    initialState
+  );
+  return (
+    <form action={action} className="grid gap-3 rounded-md border border-slate-200 bg-white p-5">
+      <input type="hidden" name="registryId" value={registryId} />
+      <div>
+        <h2 className="font-semibold text-slate-950">선거인 인증 항목</h2>
+        <p className="mt-1 text-sm leading-6 text-slate-600">
+          생년월일 사용 여부는 이 명부를 연결한 투표의 선거인 인증 화면과 비교 조건에 적용됩니다.
+        </p>
+      </div>
+      <label className="flex items-start gap-3 text-sm leading-6 text-slate-700">
+        <input
+          name="useBirthDateForVerification"
+          type="checkbox"
+          defaultChecked={useBirthDateForVerification}
+          disabled={!editable || pending}
+          className="mt-1"
+        />
+        <span>
+          <strong className="block font-semibold text-slate-950">선거인 인증 시 생년월일 사용</strong>
+          체크를 해제해도 선거인 목록에서는 생년월일을 계속 입력하고 관리할 수 있습니다.
+        </span>
+      </label>
+      {!editable ? (
+        <p className="text-sm text-slate-500">이미 시작된 투표에서 사용 중인 명부는 인증 항목을 변경할 수 없습니다.</p>
+      ) : null}
+      <ActionMessage state={state} />
+      <button
+        type="submit"
+        disabled={!editable || pending}
+        className="w-fit rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-400"
+      >
+        {pending ? "저장 중" : "인증 항목 저장"}
       </button>
     </form>
   );

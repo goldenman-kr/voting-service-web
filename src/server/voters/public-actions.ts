@@ -20,24 +20,38 @@ function genericVerifyFailure(electionId?: string): never {
 
 export async function verifyListedElectionVoterAction(formData: FormData) {
   const electionId = String(formData.get("electionId") ?? "").trim();
+  const prisma = getPrismaClient();
+  const registry = electionId
+    ? await prisma.voterRegistry.findUnique({
+        where: { electionId },
+        select: { useBirthDateForVerification: true }
+      })
+    : null;
+  const useBirthDateForVerification = registry?.useBirthDateForVerification !== false;
   const registryFields = validateVoterRegistryFields({
     householdNumber: String(formData.get("householdNumber") ?? ""),
     name: String(formData.get("name") ?? ""),
     identifierLast4: String(formData.get("identifierLast4") ?? ""),
     birthDate6: String(formData.get("birthDate6") ?? "")
-  });
+  }, { requireBirthDate: useBirthDateForVerification });
   const consent = formData.get("privacyConsent") === "on";
   if (!electionId || !registryFields.ok || !registryFields.fields || !consent) {
     genericVerifyFailure(electionId);
   }
 
   const env = parseEnv();
-  const prisma = getPrismaClient();
-  const externalIdentifierHmac = hashVoterIdentifier(canonicalVoterIdentifier(registryFields.fields), env.HMAC_KEY);
+  const identifierHmac = hashVoterIdentifier(
+    canonicalVoterIdentifier(registryFields.fields, {
+      includeBirthDate: useBirthDateForVerification
+    }),
+    env.HMAC_KEY
+  );
   const eligibleVoter = await prisma.eligibleVoter.findFirst({
     where: {
       electionId,
-      externalIdentifierHmac,
+      ...(useBirthDateForVerification
+        ? { externalIdentifierHmac: identifierHmac }
+        : { searchHmac: identifierHmac }),
       status: "active"
     },
     select: {

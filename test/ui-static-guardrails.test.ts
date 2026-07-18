@@ -58,6 +58,11 @@ describe("UI guardrails", () => {
     expect(ballotService).toContain("ensureSubmitAllowed(election, receivedAt)");
     expect(adminResults).toContain("마감 기준 투표율");
     expect(adminResults).toContain("acceptanceStatus: BallotAcceptanceStatus.accepted");
+    const noStoredResultBranch = adminResults.slice(
+      adminResults.indexOf("if (!storedResult)"),
+      adminResults.indexOf("const resultView")
+    );
+    expect(noStoredResultBranch).toContain("<ResultOperationPanel");
   });
 
   it("design tokens and self-hosted A2z assets remain available", () => {
@@ -252,6 +257,7 @@ describe("UI guardrails", () => {
     expect(detailPage).toContain("ManagedVoterRowActions");
     expect(detailPage).toContain("AddManagedVoterDialog");
     expect(detailPage).toContain("ManagedRegistryTitleActions");
+    expect(detailPage).toContain("ManagedRegistryVerificationOptionsForm");
     expect(detailPage).toContain("이 명부가 사용된 투표");
     expect(detailPage).toContain("usedElections");
     expect(detailPage).toContain("ElectionPeriodCell");
@@ -264,6 +270,8 @@ describe("UI guardrails", () => {
     expect(forms).toContain("선거인 수정");
     expect(forms).toContain("제목 수정");
     expect(forms).toContain("updateManagedRegistryTitleAction");
+    expect(forms).toContain("updateManagedRegistryVerificationOptionsAction");
+    expect(forms).toContain("선거인 인증 시 생년월일 사용");
     expect(forms).toContain("삭제");
     expect(forms).toContain("이미 시작된 투표에서 사용 중인 명부는 제목을 수정할 수 없습니다.");
     expect(forms).toContain("이미 시작된 투표에서 사용 중인 명부는 선거인을 수정하거나 삭제할 수 없습니다.");
@@ -275,7 +283,10 @@ describe("UI guardrails", () => {
     expect(service).toContain("linkManagedRegistryToElection");
     expect(service).toContain("managedRegistryId");
     expect(service).toContain("lockedByStartedElection");
+    expect(service).toContain("useBirthDateForVerification");
+    expect(service).toContain("includeBirthDate: false");
     expect(schema).toContain("model ManagedVoterRegistry");
+    expect(schema).toContain("useBirthDateForVerification");
     expect(schema).toContain("model ManagedVoter");
     expect(detailPage).not.toContain("Ballot ID");
     expect(detailPage).not.toContain("Vote ID");
@@ -461,6 +472,7 @@ describe("UI guardrails", () => {
     expect(voterVerifySource).toContain("호수번호");
     expect(voterVerifySource).toContain("식별번호");
     expect(voterVerifySource).toContain("생년월일");
+    expect(voterVerifySource).toContain("useBirthDateForVerification ? (");
     expect(voterVerifySource).toContain("VoterIdentifierNotice");
     expect(voterIdentifierNoticeSource).toContain("안전한 유권자 확인");
     expect(voterIdentifierNoticeSource).toContain("식별번호는 세대주의 전화번호 뒷 4자리");
@@ -473,6 +485,8 @@ describe("UI guardrails", () => {
     expect(voterVerifySource).not.toContain("회원번호/사번/학번");
     expect(voterVerifySource).toContain("verifyListedElectionVoterAction");
     expect(publicActionSource).toContain("createVoterSession");
+    expect(publicActionSource).toContain("requireBirthDate: useBirthDateForVerification");
+    expect(publicActionSource).toContain("searchHmac: identifierHmac");
     expect(publicActionSource).toContain("canonicalVoterIdentifier");
     expect(publicActionSource).not.toContain("invite_token");
     expect(inviteSource).not.toContain("회원번호/사번/학번");

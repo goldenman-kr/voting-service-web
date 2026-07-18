@@ -130,6 +130,7 @@ export default async function AdminResultsPage({ params }: Params) {
             총 유권자 {election.eligibleVoterCount}명 중 {actualVoteCount}명 투표
           </p>
         </section>
+        <ResultOperationPanel electionId={election.id} state={election.state} />
       </div>
     );
   }
